@@ -37,12 +37,13 @@ Test with temp directories — files created when missing, existing files not ov
 ### `AgentConfig` (output of discovery)
 ```typescript
 // The validated, ready-to-use agent configuration
-interface AgentConfig {
-  readonly frontmatter: AgentFrontmatter;  // Zod-validated
-  readonly systemPrompt: string;            // Markdown body
-  readonly filePath: string;                // Source .md file path
-  readonly source: "project" | "user";      // Where it was discovered
-}
+// Plain data object — no methods, all readonly
+type AgentConfig = Readonly<{
+  frontmatter: AgentFrontmatter;    // Zod-validated
+  systemPrompt: string;              // Markdown body
+  filePath: string;                  // Source .md file path
+  source: "project" | "user";        // Where it was discovered
+}>;
 ```
 
 ### Discovery Flow
@@ -70,16 +71,17 @@ interface AgentConfig {
 All errors collected as `DiscoveryDiagnostic[]` — never throw during discovery.
 
 ```typescript
-interface DiscoveryDiagnostic {
-  readonly level: "error" | "warning";
-  readonly filePath: string;
-  readonly message: string;
-}
+// Plain data — no classes, no methods
+type DiscoveryDiagnostic = Readonly<{
+  level: "error" | "warning";
+  filePath: string;
+  message: string;
+}>;
 
-interface DiscoveryResult {
-  readonly agents: readonly AgentConfig[];
-  readonly diagnostics: readonly DiscoveryDiagnostic[];
-}
+type DiscoveryResult = Readonly<{
+  agents: ReadonlyArray<AgentConfig>;
+  diagnostics: ReadonlyArray<DiscoveryDiagnostic>;
+}>;
 ```
 
 ## Tests

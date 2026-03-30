@@ -30,18 +30,46 @@ Never add `Co-Authored-By` trailers or any AI attribution to commit messages.
 - No redundant variable annotations: `const x = 'hello'` not `const x: string = 'hello'`
 - Annotate function parameters and public API contracts only
 
-### Pure functions by default
+### Functional patterns — non-negotiable
+- **No classes** — ever. Use plain functions, closures, and data objects
 - Default to pure functions: same input → same output, no side effects
 - Push side effects (I/O, time, randomness) to the edges — pass them as arguments
-- Use `readonly` for parameters that must not be mutated
+- Use `readonly` for all data types — mutable state is the exception, not the default
 - Impure shell, pure core (sandwich architecture)
+- Factory functions with closures for stateful behavior (not classes)
+- Use discriminated unions for variants, not inheritance
+- Prefer `ReadonlyArray<T>` and `Readonly<T>` in type signatures
+- Functions return new data, never mutate arguments
 
-### Object params for 3+ arguments
+### Object params for 2+ arguments
 ```ts
 // ✗
-function run(name: string, model: string, timeout: number) {}
+function run(name: string, model: string) {}
 // ✓
-function run(params: { name: string; model: string; timeout: number }) {}
+function run(params: { readonly name: string; readonly model: string }) {}
+```
+
+### Data over state
+```ts
+// ✗ class with mutable state
+class MetricsTracker {
+  private turns = 0;
+  addTurn() { this.turns++; }
+}
+
+// ✓ factory function with closure
+function createMetricsTracker() {
+  let turns = 0;
+  return {
+    addTurn: () => { turns++; },
+    snapshot: () => ({ turns }),
+  };
+}
+
+// ✓ or better — pure accumulator
+function addTurn(metrics: Readonly<Metrics>): Metrics {
+  return { ...metrics, turns: metrics.turns + 1 };
+}
 ```
 
 ### Code splitting
@@ -96,3 +124,6 @@ function run(params: { name: string; model: string; timeout: number }) {}
 - Types live next to the code that uses them
 - Unused code is deleted, not commented out
 - Feature folders: `src/discovery/`, `src/invocation/`, `src/rendering/`
+- All exported types are `Readonly` — mutable internals stay unexported
+- Functions are the unit of composition — not classes, not modules
+- Every function should be testable in isolation without mocking its module

@@ -41,20 +41,26 @@ function resolveVariables(template: string, variables: Record<string, string>): 
 
 ### Assembly Flow (I/O)
 ```typescript
-interface AssemblyContext {
-  readonly agentConfig: AgentConfig;
-  readonly sessionDir: string;
-  readonly conversationLogContent: string;  // Pre-read by caller
-}
+// Pure data in, string out. I/O (reading skill files) pushed to the edges.
+type AssemblyContext = Readonly<{
+  agentConfig: AgentConfig;
+  sessionDir: string;
+  conversationLogContent: string;  // Pre-read by caller
+  skillContents: ReadonlyArray<{ name: string; when: string; content: string }>;  // Pre-read by caller
+  projectKnowledgeContent: string;   // Pre-read by caller
+  generalKnowledgeContent: string;   // Pre-read by caller
+}>;
 
-function assembleSystemPrompt(ctx: AssemblyContext): Promise<string>
+// Pure function — no I/O. All file content pre-loaded by the caller.
+function assembleSystemPrompt(ctx: AssemblyContext): string
 ```
 
+This is a **pure function** — no I/O. All file contents are pre-read by the caller
+(the invocation layer) and passed in via `AssemblyContext`. This makes assembly
+testable without any file system.
+
 Steps:
-1. Read each skill `.md` file from `skills[].path`
-2. Read project knowledge `.yaml` from `knowledge.project.path`
-3. Read general knowledge `.yaml` from `knowledge.general.path`
-4. Build variable map:
+1. Build variable map:
    - `SESSION_DIR` → `ctx.sessionDir`
    - `CONVERSATION_LOG` → `ctx.conversationLogContent`
    - `DOMAIN_BLOCK` → serialize `domain` array as YAML

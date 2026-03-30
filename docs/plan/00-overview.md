@@ -4,6 +4,8 @@
 
 Each part is a self-contained unit with its own tests. Later parts depend on earlier parts. Each part is a separate branch, tested, and merged before starting the next.
 
+**Functional patterns throughout:** No classes. Pure functions as the default. Factory functions with closures for stateful behavior. All types are `Readonly`. I/O pushed to the edges (sandwich architecture). See `AGENTS.md` for the full rules.
+
 ```
 Part 1: Project Scaffolding
    └── tsconfig, biome, vitest, deps, pi package structure
@@ -29,8 +31,8 @@ Part 7: Agent Tool Registration
 Part 8: /agents Command & Rendering
    └── /agents command, renderCall, renderResult (thinking... → output + stats)
 
-Part 9: Extension Entry Point
-   └── Wire everything together: discovery on load, tool registration, command registration
+Part 9: Extension Entry Point + Test Harness
+   └── Wire everything, scripts/test-agent.ts, gated integration tests
 ```
 
 ## Dependency Graph
@@ -64,6 +66,8 @@ pi-agents/
 ├── package.json
 ├── tsconfig.json
 ├── biome.json
+├── scripts/
+│   └── test-agent.ts              # Dev tool: test an agent .md via SDK
 ├── docs/
 │   ├── agent-spec.md
 │   ├── extension-design.md

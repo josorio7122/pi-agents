@@ -151,6 +151,56 @@ This means the parent LLM sees all agents in its system prompt and can decide wh
 
 ---
 
+## Integration Test (`scripts/test-agent.ts`)
+
+A standalone script for testing agents during development. Not a vitest test — a dev tool that hits a real LLM.
+
+### Usage
+```bash
+npx tsx scripts/test-agent.ts .pi/agents/backend-dev.md "List the key files in this project"
+```
+
+### What It Does
+1. Parse the agent `.md` file
+2. Validate all 7 frontmatter blocks
+3. Assemble the full system prompt (read skills, knowledge, empty conversation log)
+4. Create a session via SDK (`createAgentSession` + `SessionManager.inMemory()`)
+5. Run the task
+6. Print: output, metrics (tokens, cost, turns, tools called)
+7. Dispose session
+
+### Design
+```typescript
+// scripts/test-agent.ts
+// Pure orchestration — reads args, calls functions, prints results.
+
+const [agentPath, task] = process.argv.slice(2);
+// ... validate args
+// ... parseAgentFile → validateAgent → assembleSystemPrompt → createAgentSession → prompt
+// ... print output + metrics
+```
+
+Uses the same functions as the extension — no separate code path. If the script works, the extension works.
+
+### Gated Integration Tests
+
+For CI, add optional integration tests gated behind `RUN_INTEGRATION=true`:
+
+```typescript
+import { describe, it, expect } from "vitest";
+
+describe.skipIf(!process.env.RUN_INTEGRATION)("integration", () => {
+  it("runs a test agent end-to-end", async () => {
+    // Uses claude-haiku-4-5 (cheapest)
+    // Verifies: discovery → assembly → session → prompt → output
+  });
+});
+```
+
+Cost: ~$0.001 per test run (haiku, short prompt).
+
+---
+
 ## Post-Implementation
 
 ### Manual Smoke Test Checklist

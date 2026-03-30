@@ -32,18 +32,21 @@ Integration-style tests with the SDK (in-memory session, mock resource loader).
 
 ### Metrics Tracker (Pure)
 ```typescript
-interface AgentMetrics {
+// Immutable snapshot — returned from tracker, never mutated by consumers
+type AgentMetrics = Readonly<{
   turns: number;
   inputTokens: number;
   outputTokens: number;
   cost: number;
-  toolCalls: Array<{ name: string; args: Record<string, unknown> }>;
+  toolCalls: ReadonlyArray<Readonly<{ name: string; args: Record<string, unknown> }>>;
   durationMs: number;
-}
+}>;
 
+// Factory function with closure — no class. Internal state is mutable,
+// but the public API only returns immutable snapshots.
 function createMetricsTracker(): {
-  handle(event: AgentSessionEvent): void;
-  snapshot(): AgentMetrics;
+  readonly handle: (event: AgentSessionEvent) => void;
+  readonly snapshot: () => AgentMetrics;
 }
 ```
 
@@ -54,13 +57,13 @@ Handles these events:
 
 ### Conversation Log (I/O)
 ```typescript
-interface ConversationEntry {
-  readonly ts: string;
-  readonly from: string;
-  readonly to: string;
-  readonly message: string;
-  readonly type?: string;
-}
+type ConversationEntry = Readonly<{
+  ts: string;
+  from: string;
+  to: string;
+  message: string;
+  type?: string;
+}>;
 
 function ensureLogExists(logPath: string): void
 // Creates file + parent dirs if missing.
@@ -74,23 +77,24 @@ function readLog(logPath: string): string
 
 ### Agent Session Runner
 ```typescript
-interface RunAgentParams {
-  readonly agentConfig: AgentConfig;
-  readonly task: string;
-  readonly sessionDir: string;
-  readonly conversationLogPath: string;
-  readonly authStorage: AuthStorage;
-  readonly modelRegistry: ModelRegistry;
-  readonly signal?: AbortSignal;
-  readonly onUpdate?: (metrics: AgentMetrics) => void;
-}
+type RunAgentParams = Readonly<{
+  agentConfig: AgentConfig;
+  task: string;
+  sessionDir: string;
+  conversationLogPath: string;
+  authStorage: AuthStorage;
+  modelRegistry: ModelRegistry;
+  signal?: AbortSignal;
+  onUpdate?: (metrics: AgentMetrics) => void;
+}>;
 
-interface RunAgentResult {
-  readonly output: string;
-  readonly metrics: AgentMetrics;
-  readonly error?: string;
-}
+type RunAgentResult = Readonly<{
+  output: string;
+  metrics: AgentMetrics;
+  error?: string;
+}>;
 
+// The one impure function — orchestrates I/O. Everything it calls is pure or a Pi SDK call.
 async function runAgent(params: RunAgentParams): Promise<RunAgentResult>
 ```
 
