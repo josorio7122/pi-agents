@@ -539,7 +539,7 @@ Add `color` and `icon` to Block 1:
 ```yaml
 name: backend-dev
 description: Builds APIs, databases, and infrastructure.
-model: claude-sonnet-4-6
+model: anthropic/claude-sonnet-4-6
 role: worker
 color: "#36f9f6"              # Hex color for TUI rendering
 icon: "🟢"                    # Emoji icon for TUI rendering

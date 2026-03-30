@@ -191,8 +191,23 @@ import { describe, it, expect } from "vitest";
 
 describe.skipIf(!process.env.RUN_INTEGRATION)("integration", () => {
   it("runs a test agent end-to-end", async () => {
-    // Uses claude-haiku-4-5 (cheapest)
+    // Uses anthropic/claude-haiku-4-5 (cheapest)
     // Verifies: discovery → assembly → session → prompt → output
+  });
+
+  it("agent updates project knowledge after task", async () => {
+    // 1. Create agent with mental-model skill + empty project knowledge file
+    // 2. Run agent on a task that requires reading files
+    // 3. Verify project knowledge file was modified (size > 0 or content changed)
+    // Self-enhancement is purely prompt-driven:
+    //   - The mental-model.md skill instructs the agent to update
+    //   - The agent uses the write tool to update the YAML
+    //   - No hooks, no automation — just a well-written skill
+  });
+
+  it("agent updates general knowledge after task", async () => {
+    // Same as above but for general knowledge file
+    // Verifies the agent generalizes learnings
   });
 });
 ```

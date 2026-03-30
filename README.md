@@ -22,7 +22,7 @@ An agent is a single `.md` file:
 ---
 name: backend-dev
 description: Builds APIs, databases, and infrastructure.
-model: claude-sonnet-4-6
+model: anthropic/claude-sonnet-4-6
 role: worker
 color: "#36f9f6"
 icon: "🟢"

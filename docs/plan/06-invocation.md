@@ -113,11 +113,16 @@ Steps:
 12. Return `{ output, metrics }`
 
 ### Model Resolution
-The frontmatter `model` field is just a string like `claude-sonnet-4-6`. Resolution:
-1. Try `modelRegistry.find("anthropic", model)` (most common)
-2. If not found, try other providers
-3. If `model` contains `/`, split as `provider/id`
-4. If still not found → error
+The frontmatter `model` field uses `provider/model-id` format (e.g., `anthropic/claude-sonnet-4-6`).
+
+```typescript
+// Uses parseModelId from Part 2 schema
+const { provider, modelId } = parseModelId(agentConfig.frontmatter.model);
+const model = getModel(provider, modelId);
+if (!model) throw new Error(`Model not found: ${agentConfig.frontmatter.model}`);
+```
+
+Direct mapping to Pi's `getModel(provider, id)`. No guessing, no scanning.
 
 ## Tests
 

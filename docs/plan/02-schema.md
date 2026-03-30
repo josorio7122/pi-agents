@@ -27,7 +27,7 @@ Validate entry format.
 const IdentitySchema = z.object({
   name: z.string().min(1),
   description: z.string().min(1),
-  model: z.string().min(1),
+  model: z.string().regex(/^.+\/.+$/),  // "provider/model-id" format (e.g., "anthropic/claude-sonnet-4-6")
   role: z.enum(["worker", "lead", "orchestrator"]),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
   icon: z.string().min(1),
@@ -133,6 +133,24 @@ function validateRoleTools(role: Role, tools: Tool[]): string[]
 // Orchestrator + edit → error
 ```
 
+### Model Parsing
+Pure function to split `provider/model-id`:
+
+```typescript
+function parseModelId(model: string): { provider: string; modelId: string }
+// "anthropic/claude-sonnet-4-6" → { provider: "anthropic", modelId: "claude-sonnet-4-6" }
+// Zod regex already validates the format contains a slash.
+```
+
+### Path Expansion
+Pure function to resolve `~` in knowledge paths:
+
+```typescript
+function expandPath(filePath: string): string
+// "~/.pi/agent/general/x.yaml" → "/Users/joe/.pi/agent/general/x.yaml"
+// Non-~ paths returned unchanged.
+```
+
 ## Tests
 
 ### Happy path
@@ -152,6 +170,8 @@ function validateRoleTools(role: Role, tools: Tool[]): string[]
 
 ### Invalid values
 - `role: "invalid"` → error
+- `model: "claude-sonnet-4-6"` (no provider) → error
+- `model: "anthropic/claude-sonnet-4-6"` (with provider) → valid
 - `color: "not-hex"` → error
 - `tools: []` (empty) → error
 - `domain: []` (empty) → error

@@ -83,7 +83,7 @@ name: backend-dev                # Unique identifier (used in logs, delegation, 
 description: >                   # What this agent does (visible to orchestrators for routing)
   Builds APIs, databases, and infrastructure.
   Thinks in endpoints, data models, queues, and deployment pipelines.
-model: claude-sonnet-4-6         # LLM model identifier
+model: anthropic/claude-sonnet-4-6  # "provider/model-id" format — must match Pi's model registry
 role: worker                     # worker | lead | orchestrator
 color: "#36f9f6"                 # Hex color for TUI rendering
 icon: "🟢"                       # Emoji icon for TUI display
@@ -162,7 +162,7 @@ name: backend-dev
 description: >
   Builds APIs, databases, and infrastructure.
   Thinks in endpoints, data models, queues, and deployment pipelines.
-model: claude-sonnet-4-6
+model: anthropic/claude-sonnet-4-6
 role: worker
 color: "#36f9f6"
 icon: "🟢"
@@ -174,7 +174,7 @@ icon: "🟢"
 |-------|------|:--------:|-------------|
 | `name` | string | ✅ | Unique identifier. Used in conversation log `from`/`to` fields, file paths, and delegation. |
 | `description` | string | ✅ | What this agent does. Visible to orchestrators/leads for routing decisions. |
-| `model` | string | ✅ | LLM model identifier (e.g., `claude-sonnet-4-6`, `claude-opus-4-6`). |
+| `model` | string | ✅ | LLM model in `provider/model-id` format (e.g., `anthropic/claude-sonnet-4-6`). Must match Pi's model registry. |
 | `role` | enum | ✅ | `worker`, `lead`, or `orchestrator`. |
 | `color` | string | ✅ | Hex color code (e.g., `"#36f9f6"`). Used for agent name rendering in TUI. |
 | `icon` | string | ✅ | Emoji icon (e.g., `"🟢"`). Displayed before agent name in TUI and `/agents` command. |
