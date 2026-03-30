@@ -28,7 +28,7 @@ An agent has exactly 7 blocks. All are required. The extension validates on load
 │                                                              │
 │  ┌───────────────────────────────────────────────────────┐   │
 │  │  Block 1: IDENTITY                                    │   │
-│  │  name · description · model · role                    │   │
+│  │  name · description · model · role · color · icon     │   │
 │  └───────────────────────────────────────────────────────┘   │
 │                                                              │
 │  ┌───────────────────────────────────────────────────────┐   │
@@ -85,6 +85,8 @@ description: >                   # What this agent does (visible to orchestrator
   Thinks in endpoints, data models, queues, and deployment pipelines.
 model: claude-sonnet-4-6         # LLM model identifier
 role: worker                     # worker | lead | orchestrator
+color: "#36f9f6"                 # Hex color for TUI rendering
+icon: "🟢"                       # Emoji icon for TUI display
 
 # ╔══════════════════════════════════════════════════════════╗
 # ║  BLOCK 2: DOMAIN                                        ║
@@ -162,6 +164,8 @@ description: >
   Thinks in endpoints, data models, queues, and deployment pipelines.
 model: claude-sonnet-4-6
 role: worker
+color: "#36f9f6"
+icon: "🟢"
 ```
 
 ### Fields
@@ -172,6 +176,8 @@ role: worker
 | `description` | string | ✅ | What this agent does. Visible to orchestrators/leads for routing decisions. |
 | `model` | string | ✅ | LLM model identifier (e.g., `claude-sonnet-4-6`, `claude-opus-4-6`). |
 | `role` | enum | ✅ | `worker`, `lead`, or `orchestrator`. |
+| `color` | string | ✅ | Hex color code (e.g., `"#36f9f6"`). Used for agent name rendering in TUI. |
+| `icon` | string | ✅ | Emoji icon (e.g., `"🟢"`). Displayed before agent name in TUI and `/agents` command. |
 
 ### Role Semantics
 
