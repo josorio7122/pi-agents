@@ -63,7 +63,8 @@ function detectMode(params: AgentToolInput): AgentMode | { error: string }
 ```
 1. Find agent config by name
 2. runAgent({ agentConfig, task, ... })
-3. Return output + metrics
+3. Truncate output if > 50KB (Pi's DEFAULT_MAX_BYTES)
+4. Return output + metrics
 ```
 
 ### Parallel Mode
@@ -82,7 +83,8 @@ Concurrency limit: 4 simultaneous agents (same as pi-flow subagent).
    a. Replace {previous} in task with output from prior step
    b. runAgent({ agentConfig, task, ... })
    c. If error → stop chain, report which step failed
-2. Return final step output + all metrics
+2. Truncate final output if > 50KB
+3. Return final step output + all metrics
 ```
 
 ### Tool Registration
@@ -93,6 +95,7 @@ function createAgentTool(params: {
   modelRegistry: ModelRegistry;
   sessionDir: string;
   conversationLogPath: string;
+  runAgent: RunAgentFn;  // Injectable — allows faux provider in tests
 }): ToolDefinition
 ```
 
@@ -113,26 +116,35 @@ promptGuidelines: [
 
 ## Tests
 
-### Mode detection
+### Mode detection (pure — no I/O)
 - `{ agent, task }` → single
 - `{ tasks: [...] }` → parallel
 - `{ chain: [...] }` → chain
 - `{ agent, task, tasks }` (multiple) → error
 - `{}` (none) → error
 
-### Single mode
+### Single mode (inject fake runAgent — no LLM needed)
 - Valid agent name + task → calls runAgent, returns result
 - Unknown agent name → error with available agents list
+- Long output → truncated with note
 
-### Parallel mode
+### Parallel mode (inject fake runAgent)
 - 2 tasks → both run, both results returned
 - Task with unknown agent → that task errors, others succeed
-- Respects concurrency limit
+- Respects concurrency limit (verify with timing)
 
-### Chain mode
+### Chain mode (inject fake runAgent)
 - 2-step chain → second step receives first's output via {previous}
 - Step 1 fails → chain stops, reports step 1 failure
 - No {previous} in task → runs normally (placeholder not required)
+
+All mode tests use an injectable `RunAgentFn` fake — no SDK, no LLM:
+```typescript
+const fakeRunAgent: RunAgentFn = async ({ task }) => ({
+  output: `Done: ${task}`,
+  metrics: emptyMetrics,
+});
+```
 
 ## Commit
 `feat: agent tool — single, parallel, chain invocation modes`

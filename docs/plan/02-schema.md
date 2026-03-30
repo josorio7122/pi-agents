@@ -151,6 +151,9 @@ function expandPath(filePath: string): string
 // Non-~ paths returned unchanged.
 ```
 
+> **Rule:** Every function that touches a path from frontmatter MUST call `expandPath` first.
+> This applies to: Part 3 (bootstrap), Part 4 (assembly), Part 5 (domain tools), Part 6 (invocation).
+
 ## Tests
 
 ### Happy path

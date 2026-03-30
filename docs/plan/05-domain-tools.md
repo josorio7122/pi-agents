@@ -65,7 +65,20 @@ function createScopedTools(params: {
   cwd: string;
   tools: readonly string[];
   domain: readonly DomainEntry[];
+  knowledgePaths: readonly string[];  // Project + general knowledge paths (auto-writable)
 }): ToolDefinition[]
+```
+
+Before checking domain, inject implicit entries for knowledge files:
+```typescript
+// Agent owns its knowledge — always readable + writable
+const implicitDomain = knowledgePaths.map(p => ({
+  path: expandPath(p),
+  read: true,
+  write: true,
+  delete: false,
+}));
+const fullDomain = [...domain, ...implicitDomain];
 ```
 
 For each tool in the agent's `tools` list:
@@ -101,6 +114,9 @@ Agent "backend-dev" can only write to: apps/backend/
 - `write` tool with read-only domain → returns domain error
 - `bash` tool → always passes (no domain check)
 - Only tools listed in agent's `tools` array are created (no extras)
+- `write` to project knowledge path → allowed (implicit domain)
+- `write` to general knowledge path → allowed (implicit domain)
+- `write` to random unlisted path → blocked
 
 ## Commit
 `feat: domain-scoped tools — enforce file-system boundaries per agent`

@@ -100,17 +100,19 @@ async function runAgent(params: RunAgentParams): Promise<RunAgentResult>
 
 Steps:
 1. Read conversation log from disk
-2. Assemble system prompt (Part 4)
-3. Create domain-scoped tools (Part 5)
-4. Resolve model from `agentConfig.frontmatter.model` via `modelRegistry`
-5. Create `ResourceLoader` with assembled system prompt
-6. `createAgentSession({ model, tools, resourceLoader, sessionManager: inMemory, ... })`
-7. Subscribe to events → metrics tracker + `onUpdate` callback
-8. `await session.prompt(task)`
-9. Extract final output from last assistant message
-10. Append to conversation log: `{ from: agent.name, to: "user", message: output }`
-11. `session.dispose()`
-12. Return `{ output, metrics }`
+2. Read skill files, project knowledge, general knowledge (all via `expandPath`)
+3. Assemble system prompt — pure function (Part 4)
+4. Create domain-scoped tools with implicit knowledge paths (Part 5)
+5. Resolve model: `parseModelId(frontmatter.model)` → `getModel(provider, id)`
+6. Create `ResourceLoader` with assembled system prompt
+7. `createAgentSession({ model, tools, resourceLoader, sessionManager: inMemory, ... })`
+8. Subscribe to events → metrics tracker + `onUpdate` callback
+9. **Append user task to conversation log:** `{ from: "user", to: agent.name, message: task }`
+10. `await session.prompt(task)`
+11. Extract final output from last assistant message
+12. **Append agent response to conversation log:** `{ from: agent.name, to: "user", message: output }`
+13. `session.dispose()`
+14. Return `{ output, metrics }`
 
 ### Model Resolution
 The frontmatter `model` field uses `provider/model-id` format (e.g., `anthropic/claude-sonnet-4-6`).
@@ -139,11 +141,22 @@ Direct mapping to Pi's `getModel(provider, id)`. No guessing, no scanning.
 - Read file with 3 entries → all 3 lines returned
 - Entry format → valid JSONL (one JSON per line, newline terminated)
 
-### Session runner
-- Requires real Pi SDK dependencies — test with in-memory session
+### Session runner (uses faux provider — no real LLM)
+```typescript
+import { registerFauxProvider, fauxText, fauxAssistantMessage } from "@mariozechner/pi-ai";
+
+// Setup: register faux provider with canned responses
+const faux = registerFauxProvider();
+faux.setResponses([
+  fauxAssistantMessage(fauxText("Agent completed the task.")),
+]);
+// Use faux.getModel() as the model
+```
 - Valid agent config + task → returns output + metrics
 - Agent with domain-restricted tools → tools correctly scoped
 - Abort signal → session aborted cleanly
+- Conversation log contains BOTH user task AND agent response after run
+- Faux provider → no API calls, fast, free, deterministic
 
 ## Commit
 `feat: agent invocation — SDK session, metrics tracking, conversation log`

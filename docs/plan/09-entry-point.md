@@ -24,8 +24,12 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 export default function (pi: ExtensionAPI) {
   let agents: AgentConfig[] = [];
 
+  let sessionId = "";
+
   // 1. Discover agents on session start
   pi.on("session_start", async (_event, ctx) => {
+    sessionId = crypto.randomUUID();
+
     const result = discoverAgents({
       projectDir: path.join(ctx.cwd, ".pi", "agents"),
       userDir: path.join(getAgentDir(), "agents"),
@@ -136,11 +140,13 @@ This means the parent LLM sees all agents in its system prompt and can decide wh
 
 ## Tests
 
-### Smoke test
+### Smoke test (uses faux provider)
 - Extension function executes without throwing
 - After simulated `session_start`, agents are discoverable
 - Tool is registered with correct name ("agent")
 - Command is registered with correct name ("agents")
+- Session ID generated and unique per session_start
+- Conversation path resolved with session ID
 
 ### Integration considerations
 - Full integration test requires Pi SDK — may need to be manual or use `createAgentSession` test harness

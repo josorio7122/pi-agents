@@ -82,7 +82,8 @@ pi-agents/
 │       ├── 06-invocation.md
 │       ├── 07-agent-tool.md
 │       ├── 08-command-rendering.md
-│       └── 09-entry-point.md
+│       ├── 09-entry-point.md
+│       └── 10-gaps-and-fixes.md    # Review findings — all fixes applied to parts above
 └── src/
     ├── index.ts                    # Extension entry point
     ├── schema/
