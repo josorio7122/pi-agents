@@ -213,7 +213,7 @@ For each agent invocation, the extension:
 │  5. Project knowledge content (read from .yaml file)     │
 │  6. General knowledge content (read from .yaml file)     │
 │  7. Conversation log (full text of conversation.jsonl    │
-│     — injected as {{ACTIVITY_LOG}})                      │
+│     — injected as {{CONVERSATION_LOG}})                      │
 │  8. {{SESSION_DIR}} resolved to actual path              │
 │                                                          │
 │  All {{VARIABLES}} resolved before the LLM call.         │

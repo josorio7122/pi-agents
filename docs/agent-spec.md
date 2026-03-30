@@ -469,7 +469,7 @@ The agent **does not write** to this file. The agent talks. The **extension reco
 │   (ONE file per session, append-only)                        │
 │                                                              │
 │   WRITTEN BY:  the extension — SOLE WRITER                   │
-│   READ BY:     all agents (injected as {{ACTIVITY_LOG}})     │
+│   READ BY:     all agents (injected as {{CONVERSATION_LOG}})     │
 │   MODIFIED BY: nobody — append-only, immutable entries       │
 │                                                              │
 └──────────────────────────────────────────────────────────────┘
@@ -558,7 +558,7 @@ One paragraph: what this agent does and how it thinks.
 ## Variables
 Runtime context injected by the extension before each invocation.
 - **Session:** `{{SESSION_DIR}}`
-- **Conversation Log:** `{{ACTIVITY_LOG}}`
+- **Conversation Log:** `{{CONVERSATION_LOG}}`
 
 ## Instructions
 Behavioral rules. What to do, what not to do.
@@ -591,7 +591,7 @@ The extension resolves these **before every invocation**:
 | Variable | Injected As | Source |
 |----------|------------|--------|
 | `{{SESSION_DIR}}` | Filepath string | Current session directory |
-| `{{ACTIVITY_LOG}}` | **Full text content** | Conversation JSONL — every message from every agent (written by extension) |
+| `{{CONVERSATION_LOG}}` | **Full text content** | Conversation JSONL — every message from every agent (written by extension) |
 | `{{DOMAIN_BLOCK}}` | YAML block | Agent's domain rules from frontmatter |
 | `{{KNOWLEDGE_BLOCK}}` | YAML block | Both knowledge configs from frontmatter |
 | `{{SKILLS_BLOCK}}` | YAML block | Agent's skill references from frontmatter |

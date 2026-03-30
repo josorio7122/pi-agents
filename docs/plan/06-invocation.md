@@ -1,0 +1,140 @@
+# Part 6: Agent Invocation (SDK)
+
+## Goal
+Create an `AgentSession` per agent using the Pi SDK. Track metrics (tokens, cost, turns, tools). Manage the conversation log (append-only writes). This is the runtime core.
+
+## Dependencies
+- Part 2 (schema)
+- Part 4 (prompt assembly)
+- Part 5 (domain-scoped tools)
+
+## Files
+
+### `src/invocation/metrics.ts`
+Pure accumulator: receives events, tracks tokens/cost/turns/tools.
+
+### `src/invocation/metrics.test.ts`
+Test metric accumulation from mock events.
+
+### `src/invocation/conversation-log.ts`
+Append-only log file management: read, append, ensure exists.
+
+### `src/invocation/conversation-log.test.ts`
+Test append, read, creation, format.
+
+### `src/invocation/session.ts`
+The main function: creates a `createAgentSession`, runs a prompt, tracks metrics, writes to conversation log.
+
+### `src/invocation/session.test.ts`
+Integration-style tests with the SDK (in-memory session, mock resource loader).
+
+## Design
+
+### Metrics Tracker (Pure)
+```typescript
+interface AgentMetrics {
+  turns: number;
+  inputTokens: number;
+  outputTokens: number;
+  cost: number;
+  toolCalls: Array<{ name: string; args: Record<string, unknown> }>;
+  durationMs: number;
+}
+
+function createMetricsTracker(): {
+  handle(event: AgentSessionEvent): void;
+  snapshot(): AgentMetrics;
+}
+```
+
+Handles these events:
+- `turn_end` → increment turns
+- `message_end` (assistant) → accumulate tokens + cost from `usage`
+- `tool_execution_start` → push to toolCalls array
+
+### Conversation Log (I/O)
+```typescript
+interface ConversationEntry {
+  readonly ts: string;
+  readonly from: string;
+  readonly to: string;
+  readonly message: string;
+  readonly type?: string;
+}
+
+function ensureLogExists(logPath: string): void
+// Creates file + parent dirs if missing.
+
+function appendToLog(logPath: string, entry: ConversationEntry): void
+// JSON.stringify(entry) + "\n" → appendFileSync
+
+function readLog(logPath: string): string
+// Returns full file content as string. Empty string if file doesn't exist.
+```
+
+### Agent Session Runner
+```typescript
+interface RunAgentParams {
+  readonly agentConfig: AgentConfig;
+  readonly task: string;
+  readonly sessionDir: string;
+  readonly conversationLogPath: string;
+  readonly authStorage: AuthStorage;
+  readonly modelRegistry: ModelRegistry;
+  readonly signal?: AbortSignal;
+  readonly onUpdate?: (metrics: AgentMetrics) => void;
+}
+
+interface RunAgentResult {
+  readonly output: string;
+  readonly metrics: AgentMetrics;
+  readonly error?: string;
+}
+
+async function runAgent(params: RunAgentParams): Promise<RunAgentResult>
+```
+
+Steps:
+1. Read conversation log from disk
+2. Assemble system prompt (Part 4)
+3. Create domain-scoped tools (Part 5)
+4. Resolve model from `agentConfig.frontmatter.model` via `modelRegistry`
+5. Create `ResourceLoader` with assembled system prompt
+6. `createAgentSession({ model, tools, resourceLoader, sessionManager: inMemory, ... })`
+7. Subscribe to events → metrics tracker + `onUpdate` callback
+8. `await session.prompt(task)`
+9. Extract final output from last assistant message
+10. Append to conversation log: `{ from: agent.name, to: "user", message: output }`
+11. `session.dispose()`
+12. Return `{ output, metrics }`
+
+### Model Resolution
+The frontmatter `model` field is just a string like `claude-sonnet-4-6`. Resolution:
+1. Try `modelRegistry.find("anthropic", model)` (most common)
+2. If not found, try other providers
+3. If `model` contains `/`, split as `provider/id`
+4. If still not found → error
+
+## Tests
+
+### Metrics
+- No events → zero metrics
+- Two `turn_end` events → turns = 2
+- `message_end` with usage → tokens accumulated
+- Multiple `tool_execution_start` → all recorded
+
+### Conversation log
+- Append to non-existent file → file created + entry written
+- Append to existing file → entry added at end
+- Read empty file → empty string
+- Read file with 3 entries → all 3 lines returned
+- Entry format → valid JSONL (one JSON per line, newline terminated)
+
+### Session runner
+- Requires real Pi SDK dependencies — test with in-memory session
+- Valid agent config + task → returns output + metrics
+- Agent with domain-restricted tools → tools correctly scoped
+- Abort signal → session aborted cleanly
+
+## Commit
+`feat: agent invocation — SDK session, metrics tracking, conversation log`
