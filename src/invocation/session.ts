@@ -33,6 +33,7 @@ type RunAgentParams = Readonly<{
   sessionDir: string;
   conversationLogPath: string;
   modelRegistry: ModelRegistry;
+  modelOverride?: unknown; // For testing with faux provider
   signal?: AbortSignal;
   onUpdate?: (metrics: AgentMetrics) => void;
 }>;
@@ -133,7 +134,7 @@ function createToolForAgent(params: {
 }
 
 export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> {
-  const { agentConfig, task, cwd, sessionDir, conversationLogPath, modelRegistry, onUpdate } = params;
+  const { agentConfig, task, cwd, sessionDir, conversationLogPath, modelRegistry, modelOverride, onUpdate } = params;
   const fm = agentConfig.frontmatter;
 
   // Read all file content upfront (I/O at the edges)
@@ -156,10 +157,13 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
     generalKnowledgeContent,
   });
 
-  // Resolve model
-  const { provider, modelId } = parseModelId(fm.model);
+  // Resolve model (override for testing, otherwise from registry)
   const model =
-    modelRegistry.find(provider, modelId) ?? getModel(provider as "anthropic", modelId as "claude-sonnet-4-5");
+    modelOverride ??
+    (() => {
+      const { provider, modelId } = parseModelId(fm.model);
+      return modelRegistry.find(provider, modelId) ?? getModel(provider as "anthropic", modelId as "claude-sonnet-4-5");
+    })();
   if (!model) {
     return { output: "", metrics: createMetricsTracker().snapshot(), error: `Model not found: ${fm.model}` };
   }
@@ -198,7 +202,7 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
   // Create agent session
   const { session } = await createAgentSession({
     cwd,
-    model,
+    model: model as never,
     tools: tools as never,
     sessionManager: SessionManager.inMemory(),
     settingsManager: SettingsManager.inMemory({ compaction: { enabled: false } }),
