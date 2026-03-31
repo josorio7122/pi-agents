@@ -138,7 +138,8 @@ pi-agents/
     │   ├── modes.ts                # executeSingle, executeParallel, executeChain
     │   ├── modes.test.ts           # Uses injectable RunAgentFn (no LLM)
     │   ├── render.ts               # renderCall + renderResult (Pi TUI components)
-    │   └── format.ts               # Pure: formatTokens, formatUsageStats, formatToolCall
+    │   ├── format.ts               # Pure: formatTokens, formatUsageStats, formatToolCall
+    │   └── format.test.ts          # Tests for formatting functions
     │
     └── command/                    # /agents slash command
         ├── agents-command.ts       # Register command, format agent list

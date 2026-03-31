@@ -27,7 +27,7 @@ Take parsed frontmatter + body → validate with Zod schema → validate role-to
 Test valid agents pass, invalid agents fail with specific error messages. Test that system prompt body is non-empty.
 
 ### `src/discovery/bootstrap.ts`
-Given a list of validated agent configs, ensure knowledge files exist. Create empty files if missing. I/O function.
+Given a list of validated agent configs, ensure knowledge files exist. Create empty files if missing. Uses `expandPath` on general knowledge paths (`~` → home dir). I/O function.
 
 ### `src/discovery/bootstrap.test.ts`
 Test with temp directories — files created when missing, existing files not overwritten.
@@ -106,7 +106,7 @@ type DiscoveryResult = Readonly<{
 
 ### Bootstrap
 - Agent with non-existent project knowledge path → file created
-- Agent with non-existent general knowledge path → file created (including parent dirs)
+- Agent with non-existent general knowledge path (`~/.pi/...`) → `expandPath` called, file created (including parent dirs)
 - Agent with existing knowledge files → files untouched (check mtime)
 
 ## Commit
