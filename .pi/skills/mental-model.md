@@ -1,3 +1,8 @@
+---
+name: mental-model
+description: Manage persistent knowledge files. Read at task start for context, update after meaningful work to capture learnings about the codebase and general strategies.
+---
+
 # Mental Model
 
 ## Instructions
