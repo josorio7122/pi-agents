@@ -72,5 +72,11 @@ anti_patterns:
 - NEVER store full file contents — reference by path
 - NEVER store conversation logs — that's what the session log is for
 - NEVER store raw test output — only conclusions
-- Your knowledge file has a max size — prioritize what matters most
+- Check your knowledge config for the max-lines limit — prioritize what matters most
 - When approaching the limit, remove the least valuable entries
+
+## Announcement
+
+When you update a knowledge file, state what changed in your response:
+"Updated project knowledge: added key_files.auth-routes, updated architecture.api.pattern"
+"Updated general knowledge: added strategies.debugging.middleware-order"

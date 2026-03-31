@@ -10,7 +10,7 @@ export type AssemblyContext = Readonly<{
   generalKnowledgeContent: string;
 }>;
 
-function serializeYaml(data: unknown) {
+function serializeBlock(data: unknown) {
   return JSON.stringify(data, null, 2);
 }
 
@@ -28,10 +28,12 @@ export function assembleSystemPrompt(ctx: AssemblyContext) {
   // Build variable map
   const variables: Record<string, string> = {
     SESSION_DIR: sessionDir,
-    CONVERSATION_LOG: conversationLogContent,
-    DOMAIN_BLOCK: serializeYaml(fm.domain),
-    KNOWLEDGE_BLOCK: serializeYaml(fm.knowledge),
-    SKILLS_BLOCK: serializeYaml(fm.skills),
+    CONVERSATION_LOG: conversationLogContent
+      ? `The following is the conversation history between all participants (JSONL format, one message per line):\n\n${conversationLogContent}`
+      : "(no conversation history yet)",
+    DOMAIN_BLOCK: serializeBlock(fm.domain),
+    KNOWLEDGE_BLOCK: serializeBlock(fm.knowledge),
+    SKILLS_BLOCK: serializeBlock(fm.skills),
     TEAM_BLOCK: "",
   };
 
