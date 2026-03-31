@@ -1,24 +1,76 @@
 ---
 name: mental-model
-description: Manage persistent knowledge files. Read at task start for context, update after meaningful work to capture learnings about the codebase and general strategies.
+description: Manage persistent knowledge files — two types (project-specific and general). Read both at task start, update both after meaningful work. Captures codebase understanding and reusable strategies.
 ---
 
 # Mental Model
 
-## Instructions
+You maintain two knowledge files. They are YOUR files. You own them.
 
-You have personal knowledge files. Read them at the start of every task for context. Update them after completing meaningful work.
+## Two Knowledge Types
 
-### When to Read
-- At the start of every task
-- When you need to recall prior observations
+**Project knowledge** — what you know about THIS codebase:
+- Architecture, stack, frameworks
+- Key files and their roles
+- Patterns, conventions, decisions
+- Gotchas, tribal knowledge, bug patterns
 
-### When to Update
-- After completing meaningful work
-- When you discover something new about the system
-- When your understanding changes — update stale entries, don't just append
+**General knowledge** — what you know about being effective (applies to ALL projects):
+- Debugging strategies and heuristics
+- Tool efficiency techniques
+- Framework-specific tips
+- Anti-patterns to avoid
 
-### What NOT to Store
-- Don't copy-paste entire files — reference them by path
-- Don't store conversation logs
-- Don't be prescriptive about categories — let structure emerge
+### Decision Rule
+
+Ask: "Would I tell a junior dev this on ANY project?"
+- **Yes** → general knowledge
+- **No, only this codebase** → project knowledge
+
+## When to Read
+
+Read BOTH knowledge files at the start of every task. Always. No exceptions.
+
+## When to Update
+
+After completing meaningful work, update BOTH files:
+- New discovery about this codebase → project knowledge
+- New strategy that works anywhere → general knowledge
+- Understanding changed → UPDATE the stale entry, do not just append
+- Observed what works well → capture it
+
+## Structure
+
+Write structured YAML. Let categories emerge from your work:
+
+```yaml
+# Project knowledge example
+architecture:
+  api:
+    pattern: "REST with WebSocket for real-time"
+    risks:
+      - "WebSocket connections not load-balanced"
+key_files:
+  - path: "src/server.ts"
+    role: "Entry point, middleware chain"
+gotchas:
+  - "Session middleware MUST be before auth routes"
+
+# General knowledge example
+strategies:
+  discovery:
+    - "Read test files first — they reveal the API contract"
+  debugging:
+    - "Check middleware order before digging into handler logic"
+anti_patterns:
+  - mistake: "Rewriting a function without checking callers"
+    lesson: "Always grep for callers before modifying signatures"
+```
+
+## Rules
+
+- NEVER store full file contents — reference by path
+- NEVER store conversation logs — that's what the session log is for
+- NEVER store raw test output — only conclusions
+- Your knowledge file has a max size — prioritize what matters most
+- When approaching the limit, remove the least valuable entries
