@@ -73,7 +73,7 @@ Systematic trace of every requirement in `agent-spec.md` and `extension-design.m
 | General knowledge content injected into prompt | Part 4 `assembly.ts` | ✅ | Pre-read, appended |
 | Agent updates knowledge via `write` tool | Part 5 `scoped-tools.ts` | ✅ | Knowledge paths implicitly writable |
 | Self-enhancement purely prompt-driven | No code needed | ✅ | `mental-model.md` skill instructs agent |
-| `max-lines` enforced | ⚠️ | **PARTIAL** | Agent manages this via skill instructions. No extension enforcement. |
+| `max-lines` enforced | ✅ | Extension truncates from the top after write if exceeded. System message logged. |
 
 ### Block 6: Conversation
 
@@ -223,13 +223,7 @@ Systematic trace of every requirement in `agent-spec.md` and `extension-design.m
 
 ### Issue 2: `max-lines` not enforced by extension
 
-**Spec says:** `max-lines` is a field on knowledge. Forces prioritization when exceeded.
-
-**Plan has:** The field exists in the schema. The `mental-model.md` skill instructs the agent to manage it. But the extension doesn't enforce it.
-
-**Impact:** Low — the agent self-manages via skill. If the agent ignores the instruction, the file grows unbounded.
-
-**Recommendation:** Defer. Monitor in practice. If agents consistently exceed, add extension-side enforcement later.
+**Status:** ✅ **Fixed** — Part 5 `scoped-tools.ts` now enforces `max-lines` as a post-write hook on knowledge files. If the agent writes past the limit, the extension truncates from the top (oldest entries removed) and logs a system message. The skill is the soft guidance; the extension is the hard limit.
 
 ### Issue 3: `updatable: false` not enforced
 
@@ -260,13 +254,12 @@ src/
 
 ## Verdict
 
-**99% coverage.** 1 remaining item deferred by design:
-
-1. `max-lines` enforcement → defer, agent self-manages via skill
+**100% coverage.** No deferred items.
 
 ✅ Domain violations in conversation log → fixed in Part 5
 ✅ `updatable: false` enforcement → fixed in Part 5
+✅ `max-lines` enforcement → fixed in Part 5 (post-write truncation)
 ✅ Outdated file structure in extension-design.md → updated
 ✅ `authStorage` removed → uses `ctx.modelRegistry` (matches pi-flow)
 
-**The plan covers every spec requirement for the pi-agents scope.** Ready to build.
+**The plan covers every spec requirement. Zero deferred items. Ready to build.**

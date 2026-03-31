@@ -158,5 +158,33 @@ function createScopedTools(params: {
 - `write` to random unlisted path → blocked + logged
 - Domain violation → conversation.jsonl has system message entry
 
+### Knowledge File Size Enforcement
+
+When the agent writes to a knowledge file (project or general), the extension checks the line count after the write completes. If it exceeds `max-lines`, truncate from the top (oldest entries removed first).
+
+```typescript
+// After a successful write to a knowledge file path:
+function enforceMaxLines(params: {
+  filePath: string;
+  maxLines: number;
+  conversationLogPath: string;
+  agentName: string;
+}): void
+// 1. Read file, count lines
+// 2. If lines <= maxLines → do nothing
+// 3. If lines > maxLines → keep last maxLines lines, write back
+// 4. Log to conversation: "Knowledge file truncated (12000 → 10000 lines)"
+```
+
+This is a post-write hook on the `write` tool wrapper. The agent's write succeeds, then the extension trims if needed.
+
+**Why truncate from the top?** Oldest entries are least relevant. The agent's most recent learnings (at the bottom) are the highest signal. This matches the `mental-model.md` skill's instruction: "update stale entries, don't just append" — but if the agent fails to prune, the extension does it.
+
+### Tests for max-lines enforcement
+- Knowledge file with 100 lines, max-lines 10000 → untouched
+- Knowledge file with 12000 lines, max-lines 10000 → truncated to 10000, system message logged
+- Non-knowledge file write → no line check (only knowledge paths)
+- Truncation preserves last N lines (not first N)
+
 ## Commit
-`feat: domain-scoped tools — enforce file-system boundaries per agent`
+`feat: domain-scoped tools — enforce file-system boundaries and knowledge size limits`
