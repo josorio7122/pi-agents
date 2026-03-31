@@ -100,11 +100,39 @@ For each tool in the agent's `tools` list:
    - If allowed → delegate to original tool's `execute`
 
 ### Domain Error Format
-When an operation is blocked, the tool returns an error the LLM can understand:
+When an operation is blocked, two things happen:
 
+1. **Log it** — append a system message to conversation.jsonl (the extension always writes, regardless of mode)
+2. **Throw it** — return an error the agent LLM can understand
+
+```typescript
+// 1. Write to conversation log (always — for observability/audit)
+appendToLog(conversationLogPath, {
+  ts: new Date().toISOString(),
+  from: "system",
+  to: agentName,
+  message: `Domain violation: write not permitted on apps/frontend/index.tsx`,
+  type: "system",
+});
+
+// 2. Throw error for the agent
+throw new Error(
+  `Domain violation: write not permitted on apps/frontend/index.tsx\n` +
+  `Agent "backend-dev" can only write to: apps/backend/`
+);
 ```
-Domain violation: write not permitted on apps/frontend/index.tsx
-Agent "backend-dev" can only write to: apps/backend/
+
+The `conversationLogPath` is passed into `createScopedTools` so domain errors can be logged.
+
+```typescript
+function createScopedTools(params: {
+  cwd: string;
+  tools: readonly string[];
+  domain: readonly DomainEntry[];
+  knowledgeEntries: readonly KnowledgeEntry[];
+  conversationLogPath: string;  // For logging domain violations
+  agentName: string;            // For log entry "to" field
+}): ToolDefinition[]
 ```
 
 ## Tests
@@ -121,13 +149,14 @@ Agent "backend-dev" can only write to: apps/backend/
 
 ### Scoped tools
 - `read` tool with valid path → executes normally
-- `read` tool with forbidden path → returns domain error
-- `write` tool with read-only domain → returns domain error
+- `read` tool with forbidden path → returns domain error + logs to conversation
+- `write` tool with read-only domain → returns domain error + logs to conversation
 - `bash` tool → always passes (no domain check)
 - Only tools listed in agent's `tools` array are created (no extras)
 - `write` to project knowledge path → allowed (implicit domain)
 - `write` to general knowledge path → allowed (implicit domain)
-- `write` to random unlisted path → blocked
+- `write` to random unlisted path → blocked + logged
+- Domain violation → conversation.jsonl has system message entry
 
 ## Commit
 `feat: domain-scoped tools — enforce file-system boundaries per agent`

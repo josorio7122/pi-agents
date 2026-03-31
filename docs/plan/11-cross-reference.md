@@ -88,7 +88,7 @@ Systematic trace of every requirement in `agent-spec.md` and `extension-design.m
 | Agent response written AFTER completion | Part 6 `session.ts` step 12 | ✅ | |
 | Full content injected as `{{CONVERSATION_LOG}}` | Part 4 `assembly.ts` | ✅ | Pre-read, injected |
 | Entry schema: `{ts, from, to, message, type?}` | Part 2 `conversation.ts` | ✅ | Zod schema |
-| Domain violations as system messages | Part 5 `scoped-tools.ts` | ⚠️ | **MISSING** — domain errors go to the agent as tool errors, but not written to conversation log |
+| Domain violations as system messages | Part 5 `scoped-tools.ts` | ✅ | Domain errors: 1) logged to conversation.jsonl as system message 2) thrown as tool error |
 
 ### Block 7: System Prompt
 
@@ -219,13 +219,7 @@ Systematic trace of every requirement in `agent-spec.md` and `extension-design.m
 
 ### Issue 1: Domain violations not written to conversation log
 
-**Spec says:** "Domain violations → `conversation.jsonl` (system message)" (Block 6 observability table)
-
-**Plan has:** Domain errors returned as tool errors to the agent. But NOT written to the conversation log as system messages.
-
-**Impact:** Low for pi-agents (single agent, no one else reads the log). Important for future team mode.
-
-**Recommendation:** Defer. Add in team layer when conversation log is shared.
+**Status:** ✅ **Fixed** — Part 5 `scoped-tools.ts` now writes domain violations to conversation.jsonl as system messages AND throws the error to the agent. The log always works regardless of mode — it's the write side. Whether the agent sees it depends on `{{CONVERSATION_LOG}}` being in the system prompt template.
 
 ### Issue 2: `max-lines` not enforced by extension
 
@@ -266,12 +260,13 @@ src/
 
 ## Verdict
 
-**97% coverage.** 2 remaining issues are low-impact and deferred by design:
+**99% coverage.** 1 remaining item deferred by design:
 
-1. Domain violations in conversation log → defer to team layer
-2. `max-lines` enforcement → defer, agent self-manages via skill
+1. `max-lines` enforcement → defer, agent self-manages via skill
 
+✅ Domain violations in conversation log → fixed in Part 5
 ✅ `updatable: false` enforcement → fixed in Part 5
 ✅ Outdated file structure in extension-design.md → updated
+✅ `authStorage` removed → uses `ctx.modelRegistry` (matches pi-flow)
 
 **The plan covers every spec requirement for the pi-agents scope.** Ready to build.
