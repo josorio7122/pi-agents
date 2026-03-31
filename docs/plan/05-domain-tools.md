@@ -96,8 +96,11 @@ For each tool in the agent's `tools` list:
 1. If `bash` → use `createBashTool(cwd)` directly (no domain wrapping)
 2. If file tool → use Pi's factory (`createReadTool(cwd)`, etc.) and wrap `execute`:
    - Before executing, call `checkDomain` on the path argument
-   - If blocked → throw error with clear message (the LLM sees this)
+   - If blocked → log domain violation to conversation.jsonl, throw error
    - If allowed → delegate to original tool's `execute`
+   - If writing to a knowledge file → wrap with `withFileMutationQueue(absolutePath, ...)`
+     to serialize concurrent writes from parallel agent invocations
+   - After writing to a knowledge file → call `enforceMaxLines` to truncate if needed
 
 ### Domain Error Format
 When an operation is blocked, two things happen:

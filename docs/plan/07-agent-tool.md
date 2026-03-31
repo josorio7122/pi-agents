@@ -77,6 +77,8 @@ function detectMode(params: AgentToolInput): AgentMode | { error: string }
 
 Concurrency limit: 4 simultaneous agents (same as pi-flow subagent).
 
+**Same agent invoked twice:** Allowed. Both read the knowledge file snapshot at boot (no conflict). Writes to knowledge files are serialized via Pi's `withFileMutationQueue()` in the scoped `write` tool — last write wins, but no data corruption.
+
 ### Chain Mode
 ```
 1. For each step in sequence:
@@ -129,7 +131,8 @@ promptGuidelines: [
 - Long output → truncated with note
 
 ### Parallel mode (inject fake runAgent)
-- 2 tasks → both run, both results returned
+- 2 different agents → both run, both results returned
+- Same agent twice → both run, knowledge writes serialized via mutation queue
 - Task with unknown agent → that task errors, others succeed
 - Respects concurrency limit (verify with timing)
 

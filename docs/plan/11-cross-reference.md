@@ -209,7 +209,7 @@ Systematic trace of every requirement in `agent-spec.md` and `extension-design.m
 |----------|:---------:|------------|
 | Agent descriptions in parent LLM system prompt? | ✅ | Via `promptGuidelines` on the tool (Part 7) |
 | Conversation log per-agent or shared? | ✅ | Per-session file. All agents in one session share one log. |
-| Knowledge file conflicts in parallel? | ⚠️ | **Not addressed** — last write wins for now. Add `withFileMutationQueue()` if needed. |
+| Knowledge file conflicts in parallel? | ✅ | Same agent twice: reads get snapshot at boot (safe), writes serialized via `withFileMutationQueue` (Part 5). Different agents: separate files, no conflict. |
 | Model resolution format? | ✅ | `provider/model-id` in frontmatter |
 | Agent output truncation? | ✅ | Pi's `truncateHead` (Part 7) |
 

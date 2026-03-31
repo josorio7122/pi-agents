@@ -642,14 +642,14 @@ pi-agents/
 
 ---
 
-## Open Design Decisions
+## Design Decisions (Resolved)
 
-1. **Agent description in system prompt** — Should the parent LLM see all agent descriptions in its system prompt (so it knows what agents are available)? Or only through the `/agents` command? Likely: inject a summary via `before_agent_start` event.
+1. **Agent descriptions in parent LLM prompt** — ✅ Via `promptGuidelines` on the agent tool. The parent LLM sees all agents listed in its system prompt.
 
-2. **Conversation log per-agent or shared** — In pi-agents (no teams), each agent invocation gets its own conversation context. The log mainly serves as history for the parent LLM to reference. In future team mode, it becomes the shared chat room.
+2. **Conversation log scope** — ✅ One log per session. All agent invocations within a session share it. Extension always writes (user tasks, agent responses, domain violations). Agent sees it only if `{{CONVERSATION_LOG}}` is in its template.
 
-3. **Knowledge file conflicts** — If two parallel agents both update the same knowledge file, last write wins. Acceptable for now? Or use `withFileMutationQueue()`?
+3. **Knowledge file conflicts in parallel** — ✅ Same agent invoked twice: both read a snapshot at boot (safe), writes serialized via `withFileMutationQueue` (last write wins, no corruption). Different agents have different knowledge files — no conflict.
 
-4. **Model resolution** — `model` in frontmatter is a string like `claude-sonnet-4-6`. How to resolve to an actual Model object? Use `modelRegistry.find(provider, id)` — but the frontmatter only has the model id, not the provider. Options: require `provider/model` format, or search all providers.
+4. **Model resolution** — ✅ Frontmatter uses `provider/model-id` format (e.g., `anthropic/claude-sonnet-4-6`). Split on `/` → `getModel(provider, id)`.
 
-5. **Agent tool output size** — Agent responses can be large. Should the extension truncate before returning to the parent LLM? Use Pi's `truncateHead`/`truncateTail` utilities?
+5. **Agent output truncation** — ✅ Pi's `truncateHead` applied to agent output before returning to parent LLM. Max 50KB / 2000 lines.
