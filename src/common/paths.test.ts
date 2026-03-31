@@ -22,4 +22,12 @@ describe("expandPath", () => {
     expect(result).not.toBe("~");
     expect(result).toMatch(/^\//);
   });
+
+  it("handles ~ with trailing slash", () => {
+    const result = expandPath("~/test/");
+    expect(result).not.toContain("~");
+    expect(result).toMatch(/^\//);
+    expect(result).toContain("/test/");
+    expect(result).toMatch(/\/test\/$/);
+  });
 });

@@ -46,11 +46,13 @@ export function assembleSystemPrompt(ctx: AssemblyContext) {
     }
   }
 
-  // Append knowledge
-  prompt += "\n\n---\n\n## Project Knowledge\n\n";
-  prompt += projectKnowledgeContent || "(empty)";
-  prompt += "\n\n## General Knowledge\n\n";
-  prompt += generalKnowledgeContent || "(empty)";
+  // Append knowledge with framing
+  prompt += "\n\n---\n\n## Project Knowledge\n";
+  prompt += "What you have learned about THIS codebase. Use this to navigate efficiently.\n\n";
+  prompt += projectKnowledgeContent || "(empty — you have not explored this codebase yet)";
+  prompt += "\n\n## General Knowledge\n";
+  prompt += "Your accumulated strategies and heuristics from all projects.\n\n";
+  prompt += generalKnowledgeContent || "(empty — you have not built general strategies yet)";
 
   return prompt;
 }
