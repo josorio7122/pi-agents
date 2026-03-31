@@ -26,6 +26,8 @@ tools:
 skills:
   - path: .pi/skills/mental-model.md
     when: Read knowledge files at task start. Update after completing work.
+  - path: .pi/skills/active-listener.md
+    when: Always. Read conversation log before responding.
 knowledge:
   project:
     path: .pi/knowledge/scout.yaml
