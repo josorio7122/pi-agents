@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { getAgentDir } from "@mariozechner/pi-coding-agent";
@@ -8,6 +9,8 @@ import { parseAgentFile } from "./discovery/parser.js";
 import { scanForAgentFiles } from "./discovery/scanner.js";
 import type { AgentConfig, DiscoveryDiagnostic } from "./discovery/validator.js";
 import { validateAgent } from "./discovery/validator.js";
+import { ensureLogExists } from "./invocation/conversation-log.js";
+import { createAgentTool } from "./tool/agent-tool.js";
 
 function discoverAgents(params: { readonly projectDir: string; readonly userDir: string }) {
   const diagnostics: DiscoveryDiagnostic[] = [];
@@ -15,7 +18,6 @@ function discoverAgents(params: { readonly projectDir: string; readonly userDir:
 
   for (const [dir, source] of [[params.userDir, "user"] as const, [params.projectDir, "project"] as const]) {
     for (const filePath of scanForAgentFiles(dir)) {
-      const { readFileSync } = require("node:fs");
       let content: string;
       try {
         content = readFileSync(filePath, "utf-8");
@@ -52,11 +54,10 @@ function discoverAgents(params: { readonly projectDir: string; readonly userDir:
 
 export default function (pi: ExtensionAPI) {
   let agents: AgentConfig[] = [];
-  // Used for resolving {{SESSION_ID}} in conversation paths when agent tool is wired
-  let _sessionId: string | undefined;
+  let sessionId = "";
 
   pi.on("session_start", async (_event, ctx) => {
-    _sessionId = randomUUID();
+    sessionId = randomUUID();
 
     const result = discoverAgents({
       projectDir: join(ctx.cwd, ".pi", "agents"),
@@ -71,7 +72,20 @@ export default function (pi: ExtensionAPI) {
 
     bootstrapKnowledge(agents);
 
+    // Resolve conversation log path and ensure it exists
+    const conversationLogPath = join(ctx.cwd, ".pi", "sessions", sessionId, "conversation.jsonl");
+    ensureLogExists(conversationLogPath);
+
+    // Register agent tool with discovered agents
     if (agents.length > 0) {
+      const tool = createAgentTool({
+        agents,
+        modelRegistry: ctx.modelRegistry,
+        cwd: ctx.cwd,
+        sessionDir: join(ctx.cwd, ".pi", "sessions", sessionId),
+        conversationLogPath,
+      });
+      pi.registerTool(tool as Parameters<typeof pi.registerTool>[0]);
       ctx.ui.notify(`[pi-agents] ${agents.length} agent(s) loaded`, "info");
     }
   });
