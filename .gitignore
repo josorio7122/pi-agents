@@ -1,3 +1,5 @@
 node_modules/
 dist/
-.pi/sessions/
+
+# Agent catalog (private repo: pi-teams-catalog)
+.pi/

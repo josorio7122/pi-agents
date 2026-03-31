@@ -11,6 +11,7 @@ A specification for how agents are defined, how they enhance themselves, and how
 | Document | Description |
 |----------|-------------|
 | [docs/agent-spec.md](docs/agent-spec.md) | Complete agent specification — the 7 required blocks, frontmatter schema, knowledge system, conversation log |
+| [docs/agent-example.md](docs/agent-example.md) | Annotated agent example with block reference, model format, variables, and invocation modes |
 | [docs/extension-design.md](docs/extension-design.md) | Extension design — discovery, invocation, SDK usage, rendering, architecture |
 | [docs/reference.md](docs/reference.md) | Technical reference — reverse-engineered from IndyDevDan's multi-team system |
 
