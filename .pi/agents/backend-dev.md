@@ -1,7 +1,7 @@
 ---
 name: backend-dev
 description: Builds APIs, databases, and infrastructure. Writes TypeScript/Node.js code, runs tests, manages dependencies.
-model: anthropic/claude-sonnet-4-5
+model: anthropic/claude-sonnet-4-6
 role: worker
 color: "#ff7edb"
 icon: "🟢"
