@@ -162,7 +162,7 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
     modelOverride ??
     (() => {
       const { provider, modelId } = parseModelId(fm.model);
-      return modelRegistry.find(provider, modelId) ?? getModel(provider as "anthropic", modelId as "claude-sonnet-4-5");
+      return modelRegistry.find(provider, modelId) ?? getModel(provider as "anthropic", modelId as "claude-sonnet-4-6");
     })();
   if (!model) {
     return { output: "", metrics: createMetricsTracker().snapshot(), error: `Model not found: ${fm.model}` };

@@ -48,13 +48,18 @@ export function createAgentTool(params: {
     label: "Agent",
     description:
       "Invoke a specialized agent to perform a task. Modes: single (agent+task), parallel (tasks array), chain (sequential with {previous}).",
-    promptSnippet: "Invoke specialized agents (single, parallel, or chain mode)",
+    promptSnippet: "Delegate tasks to specialized agents (single, parallel, or chain mode)",
     promptGuidelines: [
-      "Use this tool to delegate tasks to specialized agents.",
+      "Use this tool ONLY when a task benefits from a specialized agent. For simple questions, answer directly.",
+      "Write clear, specific tasks. Bad: 'check the code'. Good: 'list all exported functions in src/schema/'.",
+      "",
       "Available agents:",
       ...agents.map((a) => `  ${a.frontmatter.icon} ${a.frontmatter.name} — ${a.frontmatter.description}`),
-      "For independent tasks, use parallel mode (tasks array).",
-      "For dependent tasks, use chain mode with {previous} placeholder.",
+      "",
+      "Modes:",
+      "  Single: { agent: 'scout', task: 'find all files that export Zod schemas' }",
+      "  Parallel: { tasks: [{agent: 'scout', task: 'find API routes'}, {agent: 'scout', task: 'find test files'}] }",
+      "  Chain: { chain: [{agent: 'scout', task: 'find auth code'}, {agent: 'scout', task: 'analyze {previous}'}] }",
     ],
     parameters: Type.Object({
       agent: Type.Optional(Type.String({ description: "Agent name (single mode)" })),
