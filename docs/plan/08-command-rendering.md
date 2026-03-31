@@ -9,23 +9,20 @@ Register the `/agents` command. Implement `renderCall` and `renderResult` for th
 
 ## Files
 
-### `src/ui/agents-command.ts`
+### `src/command/agents-command.ts`
 Register `/agents` command. Display agent list.
 
-### `src/ui/agents-command.test.ts`
+### `src/command/agents-command.test.ts`
 Test command output format.
 
-### `src/ui/render-call.ts`
-`renderCall` for the agent tool — agent header with icon, colored name, model.
+### `src/tool/render.ts`
+`renderCall` + `renderResult` for the agent tool. Lives in `tool/` because it's part of the tool definition — not standalone UI.
 
-### `src/ui/render-result.ts`
-`renderResult` — `thinking...` while running, final output + stats when done, tool trace on expand.
+### `src/tool/format.ts`
+Pure formatting helpers: usage stats, tool call display, token formatting. Extracted from render.ts for testability.
 
-### `src/ui/format.ts`
-Pure formatting helpers: usage stats, tool call display, token formatting.
-
-### `src/ui/format.test.ts`
-Test formatting functions.
+### `src/tool/format.test.ts`
+Test formatting functions (pure — no TUI dependencies).
 
 ## Design
 

@@ -85,47 +85,62 @@ pi-agents/
 │       ├── 09-entry-point.md
 │       └── 10-gaps-and-fixes.md    # Review findings — all fixes applied to parts above
 └── src/
-    ├── index.ts                    # Extension entry point
-    ├── schema/
-    │   ├── frontmatter.ts          # Zod schemas for all 7 blocks
+    ├── index.ts                    # Extension entry point (thin glue)
+    ├── index.test.ts               # Smoke tests with faux provider
+    │
+    ├── schema/                     # Zod schemas + types (pure, no I/O)
+    │   ├── frontmatter.ts          # Zod schemas for all 7 blocks + AgentFrontmatter type
     │   ├── frontmatter.test.ts
+    │   ├── validation.ts           # Cross-field: validateRoleTools(role, tools)
+    │   ├── validation.test.ts
     │   ├── conversation.ts         # Conversation log entry schema
     │   └── conversation.test.ts
-    ├── discovery/
-    │   ├── parser.ts               # Parse .md → frontmatter + body
+    │
+    ├── common/                     # Cross-cutting pure utilities
+    │   ├── paths.ts                # expandPath("~/...") → absolute path
+    │   ├── paths.test.ts
+    │   ├── model.ts                # parseModelId("anthropic/claude-sonnet-4-6") → {provider, modelId}
+    │   └── model.test.ts
+    │
+    ├── discovery/                  # Find + validate agent .md files (I/O at edges)
+    │   ├── parser.ts               # Parse .md string → { frontmatter, body }
     │   ├── parser.test.ts
-    │   ├── scanner.ts              # Scan directories for agent .md files
+    │   ├── scanner.ts              # Scan directories → file paths
     │   ├── scanner.test.ts
-    │   ├── validator.ts            # Validate 7 blocks + role-tool alignment
+    │   ├── validator.ts            # Zod + role-tool validation → AgentConfig | errors
     │   ├── validator.test.ts
-    │   ├── bootstrap.ts            # Create empty knowledge files
+    │   ├── bootstrap.ts            # Create empty knowledge files if missing
     │   └── bootstrap.test.ts
-    ├── prompt/
-    │   ├── assembly.ts             # Assemble system prompt from all blocks
+    │
+    ├── prompt/                     # System prompt assembly (pure core)
+    │   ├── assembly.ts             # AssemblyContext → system prompt string
     │   ├── assembly.test.ts
-    │   ├── variables.ts            # Resolve {{VARIABLES}}
+    │   ├── variables.ts            # Resolve {{VARIABLES}} in template strings
     │   └── variables.test.ts
-    ├── domain/
-    │   ├── checker.ts              # Domain permission checks
+    │
+    ├── domain/                     # File-system boundary enforcement
+    │   ├── checker.ts              # checkDomain(path, operation, rules) → allowed?
     │   ├── checker.test.ts
-    │   ├── scoped-tools.ts         # Wrap Pi tools with domain checks
+    │   ├── scoped-tools.ts         # Wrap Pi tool factories with domain checks
     │   └── scoped-tools.test.ts
-    ├── invocation/
-    │   ├── session.ts              # createAgentSession wrapper
-    │   ├── session.test.ts
-    │   ├── metrics.ts              # Token/cost/turn tracking
+    │
+    ├── invocation/                 # SDK session management (the impure shell)
+    │   ├── session.ts              # runAgent() → createAgentSession + prompt + dispose
+    │   ├── session.test.ts         # Uses faux provider
+    │   ├── metrics.ts              # Event → metrics accumulator (factory + closure)
     │   ├── metrics.test.ts
-    │   ├── conversation-log.ts     # Append-only log management
+    │   ├── conversation-log.ts     # Append-only JSONL: ensureExists, append, read
     │   └── conversation-log.test.ts
-    ├── tool/
-    │   ├── agent-tool.ts           # "agent" tool definition + execute
+    │
+    ├── tool/                       # The "agent" tool the LLM calls
+    │   ├── agent-tool.ts           # Tool definition: params, execute, renderCall, renderResult
     │   ├── agent-tool.test.ts
-    │   ├── modes.ts                # Single, parallel, chain execution
-    │   └── modes.test.ts
-    └── ui/
-        ├── agents-command.ts       # /agents command
-        ├── agents-command.test.ts
-        ├── render-call.ts          # renderCall for agent tool
-        ├── render-result.ts        # renderResult (thinking → output)
-        └── format.ts               # Usage stats formatting helpers
+    │   ├── modes.ts                # executeSingle, executeParallel, executeChain
+    │   ├── modes.test.ts           # Uses injectable RunAgentFn (no LLM)
+    │   ├── render.ts               # renderCall + renderResult (Pi TUI components)
+    │   └── format.ts               # Pure: formatTokens, formatUsageStats, formatToolCall
+    │
+    └── command/                    # /agents slash command
+        ├── agents-command.ts       # Register command, format agent list
+        └── agents-command.test.ts
 ```

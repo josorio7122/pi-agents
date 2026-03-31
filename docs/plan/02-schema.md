@@ -9,16 +9,34 @@ Define Zod schemas for all 7 blocks. Parse `.md` files into validated frontmatte
 ## Files
 
 ### `src/schema/frontmatter.ts`
-Zod schemas for each block + the combined agent config.
+Zod schemas for each block + the combined `AgentFrontmatter` type.
 
 ### `src/schema/frontmatter.test.ts`
 Validate correct configs pass, invalid configs fail with clear errors.
+
+### `src/schema/validation.ts`
+Cross-field validation: `validateRoleTools(role, tools)`.
+
+### `src/schema/validation.test.ts`
+Role-tool alignment tests.
 
 ### `src/schema/conversation.ts`
 Zod schema for conversation log entries.
 
 ### `src/schema/conversation.test.ts`
 Validate entry format.
+
+### `src/common/paths.ts`
+`expandPath` — resolve `~` to home directory. Used across all features.
+
+### `src/common/paths.test.ts`
+Test `~` expansion, non-`~` passthrough.
+
+### `src/common/model.ts`
+`parseModelId` — split `provider/model-id` string.
+
+### `src/common/model.test.ts`
+Test valid split, missing slash error.
 
 ## Schema Design
 
