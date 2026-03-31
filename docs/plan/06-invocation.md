@@ -80,10 +80,10 @@ function readLog(logPath: string): string
 type RunAgentParams = Readonly<{
   agentConfig: AgentConfig;
   task: string;
+  cwd: string;
   sessionDir: string;
   conversationLogPath: string;
-  authStorage: AuthStorage;
-  modelRegistry: ModelRegistry;
+  modelRegistry: ModelRegistry;  // From ctx.modelRegistry — no separate authStorage needed
   signal?: AbortSignal;
   onUpdate?: (metrics: AgentMetrics) => void;
 }>;
@@ -105,7 +105,7 @@ Steps:
 4. Create domain-scoped tools with implicit knowledge paths (Part 5)
 5. Resolve model: `parseModelId(frontmatter.model)` → `getModel(provider, id)`
 6. Create `ResourceLoader` with assembled system prompt
-7. `createAgentSession({ model, tools, resourceLoader, sessionManager: inMemory, ... })`
+7. `createAgentSession({ cwd, model, tools, resourceLoader, modelRegistry, sessionManager: inMemory, settingsManager: inMemory })`
 8. Subscribe to events → metrics tracker + `onUpdate` callback
 9. **Append user task to conversation log:** `{ from: "user", to: agent.name, message: task }`
 10. `await session.prompt(task)`

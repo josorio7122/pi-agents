@@ -91,8 +91,8 @@ Concurrency limit: 4 simultaneous agents (same as pi-flow subagent).
 ```typescript
 function createAgentTool(params: {
   agents: readonly AgentConfig[];
-  authStorage: AuthStorage;
-  modelRegistry: ModelRegistry;
+  modelRegistry: ModelRegistry;  // From ctx.modelRegistry
+  cwd: string;
   sessionDir: string;
   conversationLogPath: string;
   runAgent: RunAgentFn;  // Injectable — allows faux provider in tests

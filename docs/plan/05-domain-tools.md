@@ -71,14 +71,25 @@ function createScopedTools(params: {
 
 Before checking domain, inject implicit entries for knowledge files:
 ```typescript
-// Agent owns its knowledge — always readable + writable
-const implicitDomain = knowledgePaths.map(p => ({
-  path: expandPath(p),
-  read: true,
-  write: true,
-  delete: false,
-}));
-const fullDomain = [...domain, ...implicitDomain];
+// Agent owns its knowledge — readable + writable only if updatable
+const implicitDomain = knowledgeEntries
+  .filter(e => e.updatable)
+  .map(e => ({
+    path: expandPath(e.path),
+    read: true,
+    write: true,
+    delete: false,
+  }));
+// Non-updatable knowledge is read-only
+const readOnlyKnowledge = knowledgeEntries
+  .filter(e => !e.updatable)
+  .map(e => ({
+    path: expandPath(e.path),
+    read: true,
+    write: false,
+    delete: false,
+  }));
+const fullDomain = [...domain, ...implicitDomain, ...readOnlyKnowledge];
 ```
 
 For each tool in the agent's `tools` list:

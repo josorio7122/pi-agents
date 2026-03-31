@@ -74,8 +74,7 @@ function registerAgentTool(params: {
 }): void {
   const tool = createAgentTool({
     agents: params.agents,
-    authStorage: params.ctx.modelRegistry,  // Access via ctx
-    modelRegistry: params.ctx.modelRegistry,
+    modelRegistry: params.ctx.modelRegistry,  // From extension context
     sessionDir: // resolved from ctx
     conversationLogPath: // resolved from agent conversation.path
   });

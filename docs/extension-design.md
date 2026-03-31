@@ -243,6 +243,7 @@ Implementation: use Pi's tool factory functions (`createReadTool`, etc.) and wra
 const { session: agentSession } = await createAgentSession({
   model: agentModel,                          // From Block 1
   tools: domainScopedTools,                   // From Block 2 + 3
+  cwd,                                        // Project working directory
   sessionManager: SessionManager.inMemory(),  // Isolated context
   settingsManager: SettingsManager.inMemory({
     compaction: { enabled: false },
@@ -258,8 +259,7 @@ const { session: agentSession } = await createAgentSession({
     extendResources: () => {},
     reload: async () => {},
   },
-  authStorage,                                // Shared with parent pi
-  modelRegistry,                              // Shared with parent pi
+  modelRegistry,                              // From ctx.modelRegistry
 });
 ```
 
@@ -559,18 +559,39 @@ These are now required as part of Block 1 (Identity). Every agent must be visual
 ```
 pi-agents/
 ├── src/
-│   ├── index.ts               # Extension entry point
-│   ├── discovery.ts           # Agent .md parsing + validation
-│   ├── invocation.ts          # createAgentSession wrapper
-│   ├── conversation.ts        # Conversation log management
-│   ├── prompt-assembly.ts     # System prompt builder (all 7 blocks)
-│   ├── domain.ts              # Domain-scoped tool wrappers
-│   ├── rendering.ts           # renderCall + renderResult
-│   └── types.ts               # Shared types (AgentConfig, Metrics, etc.)
+│   ├── index.ts                    # Extension entry point (thin glue)
+│   ├── schema/                     # Zod schemas + types (pure)
+│   │   ├── frontmatter.ts          # Zod schemas for all 7 blocks
+│   │   ├── validation.ts           # Cross-field: validateRoleTools
+│   │   └── conversation.ts         # Log entry schema
+│   ├── common/                     # Cross-cutting pure utilities
+│   │   ├── paths.ts                # expandPath
+│   │   └── model.ts                # parseModelId
+│   ├── discovery/                  # Find + validate agent .md files
+│   │   ├── parser.ts
+│   │   ├── scanner.ts
+│   │   ├── validator.ts
+│   │   └── bootstrap.ts
+│   ├── prompt/                     # System prompt assembly (pure)
+│   │   ├── assembly.ts
+│   │   └── variables.ts
+│   ├── domain/                     # File-system boundary enforcement
+│   │   ├── checker.ts
+│   │   └── scoped-tools.ts
+│   ├── invocation/                 # SDK session management
+│   │   ├── session.ts
+│   │   ├── metrics.ts
+│   │   └── conversation-log.ts
+│   ├── tool/                       # The "agent" tool + rendering
+│   │   ├── agent-tool.ts
+│   │   ├── modes.ts
+│   │   ├── render.ts
+│   │   └── format.ts
+│   └── command/                    # /agents slash command
+│       └── agents-command.ts
+├── scripts/
+│   └── test-agent.ts               # Dev tool: test an agent via SDK
 ├── docs/
-│   ├── agent-spec.md          # Agent specification
-│   ├── extension-design.md    # This document
-│   └── reference.md           # Video reverse-engineering reference
 ├── package.json
 └── README.md
 ```
@@ -603,7 +624,7 @@ pi-agents/
    ├── h. Create domain-scoped tools
    ├── i. createAgentSession({
    │       model, tools, resourceLoader, sessionManager: inMemory,
-   │       authStorage, modelRegistry
+   │       modelRegistry
    │      })
    ├── j. Subscribe to events (track metrics)
    ├── k. session.prompt(task)
