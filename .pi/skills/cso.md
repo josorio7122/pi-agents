@@ -589,7 +589,7 @@ If `.pi/` is not in `.gitignore`, note it in findings — security reports shoul
 
 ## Disclaimer
 
-**This tool is not a substitute for a professional security audit.** the security audit is an AI-assisted
+**This tool is not a substitute for a professional security audit.** The security audit is an AI-assisted
 scan that catches common vulnerability patterns — it is not comprehensive, not guaranteed, and
 not a replacement for hiring a qualified security firm. LLMs can miss subtle vulnerabilities,
 misunderstand complex auth flows, and produce false negatives. For production systems handling

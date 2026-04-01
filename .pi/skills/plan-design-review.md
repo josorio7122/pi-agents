@@ -148,7 +148,7 @@ Explain what a 10 looks like for THIS plan.
 
 ### 0B. DESIGN.md Status
 - If DESIGN.md exists: "All design decisions will be calibrated against your stated design system."
-- If no DESIGN.md: "No design system found. Recommend running /design-consultation first. Proceeding with universal design principles."
+- If no DESIGN.md: "No design system found. Recommend running the design consultation skill first. Proceeding with universal design principles."
 
 ### 0C. Existing Design Leverage
 What existing UI patterns, components, or design decisions in the codebase should this plan reuse? Don't reinvent what already works.
@@ -196,7 +196,7 @@ echo "DESIGN_DIR: $_DESIGN_DIR"
 Replace `<screen-name>` with a descriptive kebab-case name (e.g., `homepage-variants`, `settings-page`, `onboarding-flow`).
 
 **Generate mockups ONE AT A TIME in this skill.** The inline review flow generates
-fewer variants and benefits from sequential control. Note: /design-shotgun uses
+fewer variants and benefits from sequential control. Note: the design shotgun skill uses
 parallel Agent subagents for variant generation, which works at Tier 2+ (15+ RPM).
 The sequential constraint here is specific to plan-design-review's inline pattern.
 
@@ -562,7 +562,7 @@ If visual mockups were generated in Step 0.5, evaluate them against the AI slop 
 
 ### Pass 5: Design System Alignment
 Rate 0-10: Does the plan align with DESIGN.md?
-FIX TO 10: If DESIGN.md exists, annotate with specific tokens/components. If no DESIGN.md, flag the gap and recommend `/design-consultation`.
+FIX TO 10: If DESIGN.md exists, annotate with specific tokens/components. If no DESIGN.md, flag the gap and recommend the design consultation skill.
 Flag any new component — does it fit the existing vocabulary?
 **STOP.** ask the user once per issue. Do NOT batch. Recommend + WHY.
 
@@ -646,7 +646,7 @@ Then present options: **A)** Add to TODOS.md **B)** Skip — not valuable enough
   +====================================================================+
 ```
 
-If all passes 8+: "Plan is design-complete. Run /design-review after implementation for visual QA."
+If all passes 8+: "Plan is design-complete. Run the design review skill after implementation for visual QA."
 If any below 8: note what's unresolved and why (user chose to defer).
 
 ### Unresolved Decisions
@@ -671,7 +671,7 @@ Include the full path to each approved mockup (the variant the user chose), a on
 After producing the Completion Summary above, persist the review result.
 
 **PLAN MODE EXCEPTION — ALWAYS RUN:** This command writes review metadata to
-`.pi/` (user config directory, not project files). The skill preamble
+`.pi/` (user config directory, not project files). The setup step
 already writes to `.pi/sessions/` and `.pi/analytics/` — this is
 the same pattern. The review dashboard depends on this data. Skipping this
 command breaks the review readiness dashboard in the ship workflow.

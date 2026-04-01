@@ -659,7 +659,7 @@ Evaluate:
 **STOP.** ask the user once per issue. Do NOT batch. Recommend + WHY. If no issues or fix is obvious, state what you'll do and move on — don't waste a question. Do NOT proceed until user responds.
 
 ### Section 11: Design & UX Review (skip if no UI scope detected)
-The CEO calling in the designer. Not a pixel-level audit — that's the design review and /design-review. This is ensuring the plan has design intentionality.
+The CEO calling in the designer. Not a pixel-level audit — that's the design review skill. This is ensuring the plan has design intentionality.
 
 Evaluate:
 * Information architecture — what does the user see first, second, third?
@@ -822,7 +822,7 @@ agree with the outside voice. Cross-model consensus is a strong signal — prese
 such — but the user makes the decision.
 
 ## Post-Implementation Design Audit (if UI scope detected)
-After implementation, run `/design-review` on the live site to catch visual issues that can only be evaluated with rendered output.
+After implementation, run the design review skill on the live site to catch visual issues that can only be evaluated with rendered output.
 
 ## CRITICAL RULE — How to ask questions
 Follow the ask the user format from the Preamble above. Additional rules for plan reviews:
@@ -942,7 +942,7 @@ rm -f .pi/reports/*-$BRANCH-ceo-handoff-*.md 2>/dev/null || true
 After producing the Completion Summary above, persist the review result.
 
 **PLAN MODE EXCEPTION — ALWAYS RUN:** This command writes review metadata to
-`.pi/` (user config directory, not project files). The skill preamble
+`.pi/` (user config directory, not project files). The setup step
 already writes to `.pi/sessions/` and `.pi/analytics/` — this is
 the same pattern. The review dashboard depends on this data. Skipping this
 command breaks the review readiness dashboard in the ship workflow.

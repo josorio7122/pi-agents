@@ -1,6 +1,6 @@
 ---
 name: design-shotgun
-description: Design shotgun: generate multiple AI design variants, open a comparison board, collect structured feedback, and iterate. Standalone design exploration you can run anytime. Use when: "explore designs", "show me options", "design variants", "visual brainstorm", or "I don't like how this looks". Also use when the user describes a UI feature but hasn't seen what it could look like.
+description: Design shotgun: generate multiple AI design variants, open a comparison board, collect structured feedback, and iterate. Standalone design exploration for any project. Use when: "explore designs", "show me options", "design variants", "visual brainstorm", or "I don't like how this looks". Also use when the user describes a UI feature but hasn't seen what it could look like.
 ---
 
 # Design Shotgun: Visual Design Exploration

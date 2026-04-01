@@ -55,7 +55,7 @@ If `NEEDS_SETUP`:
 1. Tell the user: "playwright needs to be installed. OK to proceed?"
 2. Run: `npx playwright install`
 
-If browse is not available, that's fine — visual research is optional. The skill works without it using search tools and your built-in design knowledge.
+If browse is not available, that's fine — visual research is optional. This workflow works without it using search tools and your built-in design knowledge.
 
 **Find the design mockup tool (optional — enables AI mockup generation):**
 
