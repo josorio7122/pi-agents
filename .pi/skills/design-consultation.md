@@ -217,7 +217,7 @@ Present subagent output under a `CLAUDE SUBAGENT (design direction):` header.
 
 **Log the result:**
 ```bash
-# review logging not available in pi-agents
+# Review logging skipped
 ```
 Replace STATUS with "clean" or "issues_found", SOURCE with "subagent" or "unavailable".
 
