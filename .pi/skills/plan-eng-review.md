@@ -334,7 +334,7 @@ The plan should be complete enough that when implementation begins, every test i
 
 ### Test Plan Artifact
 
-After producing the coverage diagram, write a test plan artifact to the project directory so `/qa` and `/qa-only` can consume it as primary test input:
+After producing the coverage diagram, write a test plan artifact to the project directory so the QA skills can consume it as primary test input:
 
 ```bash
 # Project slug — use project directory name
@@ -363,7 +363,7 @@ Repo: {owner/repo}
 - {end-to-end flow that must work}
 ```
 
-This file is consumed by `/qa` and `/qa-only` as primary test input. Include only the information that helps a QA tester know **what to test and where** — not implementation details.
+This file is consumed by the QA skills as primary test input. Include only the information that helps a QA tester know **what to test and where** — not implementation details.
 
 For LLM/prompt changes: check the "Prompt/LLM changes" file patterns listed in CLAUDE.md. If this plan touches ANY of those patterns, state which eval suites must be run, which cases should be added, and what baselines to compare against. Then present options to the user to confirm the eval scope with the user.
 
@@ -619,7 +619,7 @@ Check the git log for this branch. If there are prior commits suggesting a previ
 After producing the Completion Summary above, persist the review result.
 
 **PLAN MODE EXCEPTION — ALWAYS RUN:** This command writes review metadata to
-`.pi/` (user config directory, not project files). The skill preamble
+`.pi/` (user config directory, not project files). The setup step
 already writes to `.pi/sessions/` and `.pi/analytics/` — this is
 the same pattern. The review dashboard depends on this data. Skipping this
 command breaks the review readiness dashboard in the ship workflow.

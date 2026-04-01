@@ -143,7 +143,7 @@ Apply approved changes immediately after each answer.
 This step polishes voice. It does NOT rewrite, replace, or regenerate CHANGELOG content.
 
 A real incident occurred where an agent replaced existing CHANGELOG entries when it should have
-preserved them. This skill must NEVER do that.
+preserved them. You must NEVER do that.
 
 **Rules:**
 1. Read the entire CHANGELOG.md first. Understand what is already there.
