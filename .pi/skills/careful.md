@@ -27,7 +27,8 @@ These patterns are allowed without warning:
 
 ## Rules
 
-1. Check EVERY bash command against the patterns above before executing
-2. If a match is found, state the risk and ask the user before proceeding
-3. If the user confirms, proceed — never block indefinitely
-4. Safe exceptions bypass the warning
+1. **NEVER** run a destructive command without warning the user first
+2. Check EVERY bash command against the patterns above before executing — including piped commands, subshells, and `bash -c` strings
+3. If a match is found, state the specific risk and ask the user before proceeding
+4. If the user confirms, proceed — never block indefinitely
+5. Safe exceptions bypass the warning

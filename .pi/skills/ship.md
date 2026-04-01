@@ -309,14 +309,14 @@ Only commit if there are changes. Stage all bootstrap files (config, test direct
 
 ## Step 3: Run tests (on merged code)
 
-**Do NOT run `RAILS_ENV=test bin/rails db:migrate`** — `bin/test-lane` already calls
+**Do NOT run `RAILS_ENV=test bin/rails db:migrate`** — the project test suite already calls
 `db:test:prepare` internally, which loads the schema into the correct lane database.
 Running bare test migrations without INSTANCE hits an orphan DB and corrupts structure.sql.
 
 Run both test suites in parallel:
 
 ```bash
-bin/test-lane 2>&1 | tee /tmp/ship_tests.txt &
+# Run the project test suite
 npm run test 2>&1 | tee /tmp/ship_vitest.txt &
 wait
 ```
@@ -471,12 +471,12 @@ Map runner → test file: `post_generation_eval_runner.rb` → `post_generation_
 - Changes to `config/system_prompts/*.txt` — grep eval runners for the prompt filename to find affected suites.
 - If unsure which suites are affected, run ALL suites that could plausibly be impacted. Over-testing is better than missing a regression.
 
-**3. Run affected suites at `EVAL_JUDGE_TIER=full`:**
+**3. Run affected suites with the highest tier:**
 
 The ship workflow is a pre-merge gate, so always use full tier (Sonnet structural + Opus persona judges).
 
 ```bash
-EVAL_JUDGE_TIER=full EVAL_VERBOSE=1 bin/test-lane --eval test/evals/<suite>_eval_test.rb 2>&1 | tee /tmp/ship_evals.txt
+# Run project evals if available
 ```
 
 If multiple suites need to run, run them sequentially (each needs a test lane). If the first suite fails, stop immediately — don't burn API cost on remaining suites.
@@ -492,7 +492,7 @@ If multiple suites need to run, run them sequentially (each needs a test lane). 
 | Tier | When | Speed (cached) | Cost |
 |------|------|----------------|------|
 | `fast` (Haiku) | Dev iteration, smoke tests | ~5s (14x faster) | ~$0.07/run |
-| `standard` (Sonnet) | Default dev, `bin/test-lane --eval` | ~17s (4x faster) | ~$0.37/run |
+| `standard` (Sonnet) | Default dev, `the project test command --eval` | ~17s (4x faster) | ~$0.37/run |
 | `full` (Opus persona) | **ship and pre-merge** | ~72s (baseline) | ~$1.27/run |
 
 ---
@@ -944,7 +944,7 @@ Add a `## Verification Results` section to the PR body (Step 8):
 
 Review the diff for structural issues that tests don't catch.
 
-1. Read `.pi/skills/review-checklist.md`. If the file cannot be read, **STOP** and report the error.
+1. Read `.pi/skills/review-checklist.md` if it exists. If not, apply the standard review categories: SQL & Data Safety, LLM Output Trust Boundary, conditional side effects, error handling, performance.
 
 2. Run `git diff origin/<base>` to get the full diff (scoped to feature changes against the freshly-fetched base branch).
 

@@ -48,26 +48,12 @@ If the codebase is empty and purpose is unclear, say: *"I don't have a clear pic
 ## SETUP (run this check BEFORE any browse command)
 
 ```bash
-_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
-B=""
-[ -n "$_ROOT" ] && [ -x "$_ROOT/browse/dist/browse" ] && B="$_ROOT/browse/dist/browse"
-[ -z "$B" ] && B=browse/dist/browse
-if [ -x "$B" ]; then
-  echo "READY: $B"
-else
-  echo "NEEDS_SETUP"
-fi
+command -v npx >/dev/null 2>&1 && npx playwright-cli --help >/dev/null 2>&1 && echo "READY" || echo "NEEDS_SETUP"
 ```
 
 If `NEEDS_SETUP`:
-1. Tell the user: "playwright needs to be installed. OK to proceed?" Then STOP and wait.
-2. Run: `# Setup required — install playwright`
-3. If `bun` is not installed:
-   ```bash
-   if ! command -v bun >/dev/null 2>&1; then
-     curl -fsSL https://bun.sh/install | BUN_VERSION=1.3.10 bash
-   fi
-   ```
+1. Tell the user: "playwright needs to be installed. OK to proceed?"
+2. Run: `npx playwright install`
 
 If browse is not available, that's fine — visual research is optional. The skill works without it using search tools and your built-in design knowledge.
 
@@ -76,23 +62,8 @@ If browse is not available, that's fine — visual research is optional. The ski
 ## DESIGN SETUP (run this check BEFORE any design mockup command)
 
 ```bash
-_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
-D=""
-[ -n "$_ROOT" ] && [ -x "$_ROOT/design/dist/design" ] && D="$_ROOT/design/dist/design"
-[ -z "$D" ] && D=design/dist/design
-if [ -x "$D" ]; then
-  echo "DESIGN_READY: $D"
-else
-  echo "DESIGN_NOT_AVAILABLE"
-fi
-B=""
-[ -n "$_ROOT" ] && [ -x "$_ROOT/browse/dist/browse" ] && B="$_ROOT/browse/dist/browse"
-[ -z "$B" ] && B=browse/dist/browse
-if [ -x "$B" ]; then
-  echo "BROWSE_READY: $B"
-else
-  echo "BROWSE_NOT_AVAILABLE (will use 'open' to view comparison boards)"
-fi
+# Design mockup tool not available in pi-agents
+echo "DESIGN_NOT_AVAILABLE"
 ```
 
 If `DESIGN_NOT_AVAILABLE`: skip visual mockup generation and fall back to the

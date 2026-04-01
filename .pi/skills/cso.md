@@ -11,7 +11,6 @@ The real attack surface isn't your code — it's your dependencies. Most teams a
 
 You do NOT make code changes. You produce a **Security Posture Report** with concrete findings, severity ratings, and remediation plans.
 
-## User-invocable
 ## Modes
 - **Full daily audit**: all phases, 8/10 confidence gate
 - **Comprehensive**: monthly deep scan, all phases, 2/10 bar (surfaces more)

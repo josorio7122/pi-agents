@@ -28,7 +28,7 @@ mkdir -p .pi/benchmark-reports/baselines
 
 ### Phase 2: Page Discovery
 
-Same as /canary — auto-discover from navigation or use `--pages`.
+Auto-discover pages from site navigation, or accept a specific list of pages from the user.
 
 If `--diff` mode:
 ```bash

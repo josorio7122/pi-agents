@@ -55,26 +55,12 @@ After the user chooses, execute their choice (commit or stash), then continue wi
 ## SETUP (run this check BEFORE any browse command)
 
 ```bash
-_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
-B=""
-[ -n "$_ROOT" ] && [ -x "$_ROOT/browse/dist/browse" ] && B="$_ROOT/browse/dist/browse"
-[ -z "$B" ] && B=browse/dist/browse
-if [ -x "$B" ]; then
-  echo "READY: $B"
-else
-  echo "NEEDS_SETUP"
-fi
+command -v npx >/dev/null 2>&1 && npx playwright-cli --help >/dev/null 2>&1 && echo "READY" || echo "NEEDS_SETUP"
 ```
 
 If `NEEDS_SETUP`:
-1. Tell the user: "playwright needs to be installed. OK to proceed?" Then STOP and wait.
-2. Run: `# Setup required — install playwright`
-3. If `bun` is not installed:
-   ```bash
-   if ! command -v bun >/dev/null 2>&1; then
-     curl -fsSL https://bun.sh/install | BUN_VERSION=1.3.10 bash
-   fi
-   ```
+1. Tell the user: "playwright needs to be installed. OK to proceed?"
+2. Run: `npx playwright install`
 
 **Check test framework (bootstrap if needed):**
 
@@ -237,23 +223,8 @@ Only commit if there are changes. Stage all bootstrap files (config, test direct
 ## DESIGN SETUP (run this check BEFORE any design mockup command)
 
 ```bash
-_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
-D=""
-[ -n "$_ROOT" ] && [ -x "$_ROOT/design/dist/design" ] && D="$_ROOT/design/dist/design"
-[ -z "$D" ] && D=design/dist/design
-if [ -x "$D" ]; then
-  echo "DESIGN_READY: $D"
-else
-  echo "DESIGN_NOT_AVAILABLE"
-fi
-B=""
-[ -n "$_ROOT" ] && [ -x "$_ROOT/browse/dist/browse" ] && B="$_ROOT/browse/dist/browse"
-[ -z "$B" ] && B=browse/dist/browse
-if [ -x "$B" ]; then
-  echo "BROWSE_READY: $B"
-else
-  echo "BROWSE_NOT_AVAILABLE (will use 'open' to view comparison boards)"
-fi
+# Design mockup tool not available in pi-agents
+echo "DESIGN_NOT_AVAILABLE"
 ```
 
 If `DESIGN_NOT_AVAILABLE`: skip visual mockup generation and fall back to the
