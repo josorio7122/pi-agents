@@ -172,7 +172,7 @@ Plan items: N DONE, M PARTIAL, K NOT DONE
 
 ## Step 2: Read the checklist
 
-Read `.pi/skills/review-checklist.md`.
+Read `.pi/skills/review-checklist.md` if it exists. If not, use the review categories below (SQL & Data Safety, LLM Output Trust Boundary, conditional side effects, error handling, performance).
 
 **If the file cannot be read, STOP and report the error.** Do not proceed without the checklist.
 

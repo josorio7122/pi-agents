@@ -53,29 +53,17 @@ After the user chooses, execute their choice (commit or stash), then continue wi
 
 **Find the browse binary:**
 
-## SETUP (run this check BEFORE any browse command)
+## SETUP (run this check BEFORE any browser command)
+
+Verify playwright is available:
 
 ```bash
-_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
-B=""
-[ -n "$_ROOT" ] && [ -x "$_ROOT/browse/dist/browse" ] && B="$_ROOT/browse/dist/browse"
-[ -z "$B" ] && B=browse/dist/browse
-if [ -x "$B" ]; then
-  echo "READY: $B"
-else
-  echo "NEEDS_SETUP"
-fi
+command -v npx >/dev/null 2>&1 && npx playwright-cli --help >/dev/null 2>&1 && echo "READY" || echo "NEEDS_SETUP"
 ```
 
 If `NEEDS_SETUP`:
-1. Tell the user: "playwright needs to be installed. OK to proceed?" Then STOP and wait.
-2. Run: `cd <SKILL_DIR> && ./setup`
-3. If `bun` is not installed:
-   ```bash
-   if ! command -v bun >/dev/null 2>&1; then
-     curl -fsSL https://bun.sh/install | BUN_VERSION=1.3.10 bash
-   fi
-   ```
+1. Tell the user: "playwright needs to be installed. OK to proceed?"
+2. Run: `npx playwright install`
 
 **Check test framework (bootstrap if needed):**
 
