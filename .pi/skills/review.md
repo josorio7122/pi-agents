@@ -599,7 +599,7 @@ DIFF_DEL=$(git diff origin/<base> --stat | tail -1 | grep -oE '[0-9]+ deletion' 
 DIFF_TOTAL=$((DIFF_INS + DIFF_DEL))
 # Cross-model review not available in pi-agents
 # Respect old opt-out
-OLD_CFG=$(# gstack-config not available in pi-agents
+OLD_CFG=$(# config check not available
 echo "DIFF_SIZE: $DIFF_TOTAL"
 echo "OLD_CFG: ${OLD_CFG:-not_set}"
 ```
