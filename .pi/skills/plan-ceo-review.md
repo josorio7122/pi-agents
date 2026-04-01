@@ -1,6 +1,6 @@
 ---
 name: plan-ceo-review
-description: CEO/founder-mode plan review. Rethink the problem, find the 10-star product, challenge premises, expand scope when it creates a better product. Four modes: SCOPE EXPANSION (dream big), SELECTIVE EXPANSION (hold scope + cherry-pick expansions), HOLD SCOPE (maximum rigor), SCOPE REDUCTION (strip to essentials). Use when asked to "think bigger", "expand scope", "strategy review", "rethink this", or "is this ambitious enough". Proactively suggest when the user is questioning scope or ambition of a plan, or when the plan feels like it could be thinking bigger.
+description: CEO/founder-mode plan review. Rethink the problem, find the 10-star product, challenge premises, expand scope when it creates a better product. Four modes: SCOPE EXPANSION (dream big), SELECTIVE EXPANSION (hold scope + cherry-pick expansions), HOLD SCOPE (maximum rigor), SCOPE REDUCTION (strip to essentials). Use when asked to "think bigger", "expand scope", "strategy review", "rethink this", or "is this ambitious enough". Also use when the user is questioning scope or ambition of a plan, or when the plan feels like it could be thinking bigger.
 ---
 
 # Mega Plan Review Mode
@@ -8,12 +8,12 @@ description: CEO/founder-mode plan review. Rethink the problem, find the 10-star
 ## Philosophy
 You are not here to rubber-stamp this plan. You are here to make it extraordinary, catch every landmine before it explodes, and ensure that when this ships, it ships at the highest possible standard.
 But your posture depends on what the user needs:
-* SCOPE EXPANSION: You are building a cathedral. Envision the platonic ideal. Push scope UP. Ask "what would make this 10x better for 2x the effort?" You have permission to dream — and to recommend enthusiastically. But every expansion is the user's decision. Present each scope-expanding idea as an AskUserQuestion. The user opts in or out.
-* SELECTIVE EXPANSION: You are a rigorous reviewer who also has taste. Hold the current scope as your baseline — make it bulletproof. But separately, surface every expansion opportunity you see and present each one individually as an AskUserQuestion so the user can cherry-pick. Neutral recommendation posture — present the opportunity, state effort and risk, let the user decide. Accepted expansions become part of the plan's scope for the remaining sections. Rejected ones go to "NOT in scope."
+* SCOPE EXPANSION: You are building a cathedral. Envision the platonic ideal. Push scope UP. Ask "what would make this 10x better for 2x the effort?" You have permission to dream — and to recommend enthusiastically. But every expansion is the user's decision. Present each scope-expanding idea as an ask the user. The user opts in or out.
+* SELECTIVE EXPANSION: You are a rigorous reviewer who also has taste. Hold the current scope as your baseline — make it bulletproof. But separately, surface every expansion opportunity you see and present each one individually as an ask the user so the user can cherry-pick. Neutral recommendation posture — present the opportunity, state effort and risk, let the user decide. Accepted expansions become part of the plan's scope for the remaining sections. Rejected ones go to "NOT in scope."
 * HOLD SCOPE: You are a rigorous reviewer. The plan's scope is accepted. Your job is to make it bulletproof — catch every failure mode, test every edge case, ensure observability, map every error path. Do not silently reduce OR expand.
 * SCOPE REDUCTION: You are a surgeon. Find the minimum viable version that achieves the core outcome. Cut everything else. Be ruthless.
 * COMPLETENESS IS CHEAP: AI coding compresses implementation time 10-100x. When evaluating "approach A (full, ~150 LOC) vs approach B (90%, ~80 LOC)" — always prefer A. The 70-line delta costs seconds with CC. "Ship the shortcut" is legacy thinking from when human engineering time was the bottleneck. Boil the lake.
-Critical rule: In ALL modes, the user is 100% in control. Every scope change is an explicit opt-in via AskUserQuestion — never silently add or remove scope. Once the user selects a mode, COMMIT to it. Do not silently drift toward a different mode. If EXPANSION is selected, do not argue for less work during later sections. If SELECTIVE EXPANSION is selected, surface expansions as individual decisions — do not silently include or exclude them. If REDUCTION is selected, do not sneak scope back in. Raise concerns once in Step 0 — after that, execute the chosen mode faithfully.
+Critical rule: In ALL modes, the user is 100% in control. Every scope change is an explicit opt-in by asking the user — never silently add or remove scope. Once the user selects a mode, COMMIT to it. Do not silently drift toward a different mode. If EXPANSION is selected, do not argue for less work during later sections. If SELECTIVE EXPANSION is selected, surface expansions as individual decisions — do not silently include or exclude them. If REDUCTION is selected, do not sneak scope back in. Raise concerns once in Step 0 — after that, execute the chosen mode faithfully.
 Do NOT make any code changes. Do NOT start implementation. Your only job right now is to review the plan with maximum rigor and the appropriate level of ambition.
 
 ## Prime Directives
@@ -90,7 +90,7 @@ DESIGN=$(ls -t .pi/reports/*-$BRANCH-design-*.md 2>/dev/null | head -1)
 [ -z "$DESIGN" ] && DESIGN=$(ls -t .pi/reports/*-design-*.md 2>/dev/null | head -1)
 [ -n "$DESIGN" ] && echo "Design doc found: $DESIGN" || echo "No design doc found"
 ```
-If a design doc exists (from `/office-hours`), read it. Use it as the source of truth for the problem statement, constraints, and chosen approach. If it has a `Supersedes:` field, note that this is a revised design.
+If a design doc exists (from the office-hours workflow), read it. Use it as the source of truth for the problem statement, constraints, and chosen approach. If it has a `Supersedes:` field, note that this is a revised design.
 
 **Handoff note check** (reuses $SLUG and $BRANCH from the design doc check above):
 ```bash
@@ -100,7 +100,7 @@ HANDOFF=$(ls -t .pi/reports/*-$BRANCH-ceo-handoff-*.md 2>/dev/null | head -1)
 ```
 If this block runs in a separate shell from the design doc check, recompute $SLUG and $BRANCH first using the same commands from that block.
 If a handoff note is found: read it. This contains system audit findings and discussion
-from a prior CEO review session that paused so the user could run `/office-hours`. Use it
+from a prior CEO review session that paused so the user could run the office-hours workflow. Use it
 as additional context alongside the design doc. The handoff note helps you avoid re-asking
 questions the user already answered. Do NOT skip any steps — run the full review, but use
 the handoff note to inform your analysis and avoid redundant questions.
@@ -113,23 +113,23 @@ context to pick up where we left off."
 When the design doc check above prints "No design doc found," offer the prerequisite
 skill before proceeding.
 
-Say to the user via AskUserQuestion:
+Say to the user by asking the user:
 
-> "No design doc found for this branch. `/office-hours` produces a structured problem
+> "No design doc found for this branch. the office-hours workflow produces a structured problem
 > statement, premise challenge, and explored alternatives — it gives this review much
 > sharper input to work with. Takes about 10 minutes. The design doc is per-feature,
 > not per-product — it captures the thinking behind this specific change."
 
 Options:
-- A) Run /office-hours now (we'll pick up the review right after)
+- A) Run the office-hours workflow now (we'll pick up the review right after)
 - B) Skip — proceed with standard review
 
 If they skip: "No worries — standard review. If you ever want sharper input, try
-/office-hours first next time." Then proceed normally. Do not re-offer later in the session.
+the office-hours workflow first next time." Then proceed normally. Do not re-offer later in the session.
 
 If they choose A:
 
-Say: "Running /office-hours inline. Once the design doc is ready, I'll pick up
+Say: "Running the office-hours workflow inline. Once the design doc is ready, I'll pick up
 the review right where we left off."
 
 Read the office-hours skill file from disk using the Read tool:
@@ -137,7 +137,7 @@ Read the office-hours skill file from disk using the Read tool:
 
 Follow it inline, **skipping these sections** (already handled by the parent skill):
 - Preamble (run first)
-- AskUserQuestion Format
+- ask the user Format
 - Completeness Principle — Boil the Lake
 - Search Before Building
 - Contributor Mode
@@ -145,9 +145,9 @@ Follow it inline, **skipping these sections** (already handled by the parent ski
 - Telemetry (run last)
 
 If the Read fails (file not found), say:
-"Could not load /office-hours — proceeding with standard review."
+"Could not load the office-hours workflow — proceeding with standard review."
 
-After /office-hours completes, re-run the design doc check:
+After the office-hours workflow completes, re-run the design doc check:
 ```bash
 setopt +o nomatch 2>/dev/null || true  # zsh compat
 SLUG=$(browse/bin/remote-slug 2>/dev/null || basename "$(git rev-parse --show-toplevel 2>/dev/null || pwd)")
@@ -162,20 +162,20 @@ If none was produced (user may have cancelled), proceed with standard review.
 
 **Mid-session detection:** During Step 0A (Premise Challenge), if the user can't
 articulate the problem, keeps changing the problem statement, answers with "I'm not
-sure," or is clearly exploring rather than reviewing — offer `/office-hours`:
+sure," or is clearly exploring rather than reviewing — offer the office-hours workflow:
 
 > "It sounds like you're still figuring out what to build — that's totally fine, but
-> that's what /office-hours is designed for. Want to run /office-hours right now?
+> that's what the office-hours workflow is designed for. Want to run the office-hours workflow right now?
 > We'll pick up right where we left off."
 
-Options: A) Yes, run /office-hours now. B) No, keep going.
+Options: A) Yes, run the office-hours workflow now. B) No, keep going.
 If they keep going, proceed normally — no guilt, no re-asking.
 
 If they choose A: Read the office-hours skill file from disk:
 `office-hours/SKILL.md`
 
 Follow it inline, skipping these sections (already handled by parent skill):
-Preamble, AskUserQuestion Format, Completeness Principle, Search Before Building,
+Preamble, ask the user Format, Completeness Principle, Search Before Building,
 Contributor Mode, Completion Status Protocol, Telemetry.
 
 Note current Step 0A progress so you don't re-ask questions already answered.
@@ -205,12 +205,12 @@ Report findings before proceeding to Step 0.
 
 ### Landscape Check
 
-Read ETHOS.md for the Search Before Building framework (the preamble's Search Before Building section has the path). Before challenging scope, understand the landscape. WebSearch for:
+Read ETHOS.md for the Search Before Building framework (the preamble's Search Before Building section has the path). Before challenging scope, understand the landscape. search tools for:
 - "[product category] landscape {current year}"
 - "[key feature] alternatives"
 - "why [incumbent/conventional approach] [succeeds/fails]"
 
-If WebSearch is unavailable, skip this check and note: "Search unavailable — proceeding with in-distribution knowledge only."
+If search tools are unavailable, skip this check and note: "Search unavailable — proceeding with in-distribution knowledge only."
 
 Run the three-layer synthesis:
 - **[Layer 1]** What's the tried-and-true approach in this space?
@@ -272,7 +272,7 @@ Rules:
 1. 10x check: What's the version that's 10x more ambitious and delivers 10x more value for 2x the effort? Describe it concretely.
 2. Platonic ideal: If the best engineer in the world had unlimited time and perfect taste, what would this system look like? What would the user feel when using it? Start from experience, not architecture.
 3. Delight opportunities: What adjacent 30-minute improvements would make this feature sing? Things where a user would think "oh nice, they thought of that." List at least 5.
-4. **Expansion opt-in ceremony:** Describe the vision first (10x check, platonic ideal). Then distill concrete scope proposals from those visions — individual features, components, or improvements. Present each proposal as its own AskUserQuestion. Recommend enthusiastically — explain why it's worth doing. But the user decides. Options: **A)** Add to this plan's scope **B)** Defer to TODOS.md **C)** Skip. Accepted items become plan scope for all remaining review sections. Rejected items go to "NOT in scope."
+4. **Expansion opt-in ceremony:** Describe the vision first (10x check, platonic ideal). Then distill concrete scope proposals from those visions — individual features, components, or improvements. Present each proposal as its own ask the user. Recommend enthusiastically — explain why it's worth doing. But the user decides. Options: **A)** Add to this plan's scope **B)** Defer to TODOS.md **C)** Skip. Accepted items become plan scope for all remaining review sections. Rejected items go to "NOT in scope."
 
 **For SELECTIVE EXPANSION** — run the HOLD SCOPE analysis first, then surface expansions:
 1. Complexity check: If the plan touches more than 8 files or introduces more than 2 new classes/services, treat that as a smell and challenge whether the same goal can be achieved with fewer moving parts.
@@ -281,7 +281,7 @@ Rules:
    - 10x check: What's the version that's 10x more ambitious? Describe it concretely.
    - Delight opportunities: What adjacent 30-minute improvements would make this feature sing? List at least 5.
    - Platform potential: Would any expansion turn this feature into infrastructure other features can build on?
-4. **Cherry-pick ceremony:** Present each expansion opportunity as its own individual AskUserQuestion. Neutral recommendation posture — present the opportunity, state effort (S/M/L) and risk, let the user decide without bias. Options: **A)** Add to this plan's scope **B)** Defer to TODOS.md **C)** Skip. If you have more than 8 candidates, present the top 5-6 and note the remainder as lower-priority options the user can request. Accepted items become plan scope for all remaining review sections. Rejected items go to "NOT in scope."
+4. **Cherry-pick ceremony:** Present each expansion opportunity as its own individual ask the user. Neutral recommendation posture — present the opportunity, state effort (S/M/L) and risk, let the user decide without bias. Options: **A)** Add to this plan's scope **B)** Defer to TODOS.md **C)** Skip. If you have more than 8 candidates, present the top 5-6 and note the remainder as lower-priority options the user can request. Accepted items become plan scope for all remaining review sections. Rejected items go to "NOT in scope."
 
 **For HOLD SCOPE** — run this:
 1. Complexity check: If the plan touches more than 8 files or introduces more than 2 new classes/services, treat that as a smell and challenge whether the same goal can be achieved with fewer moving parts.
@@ -313,7 +313,7 @@ Write to `.pi/reports/ceo-plans/{date}-{feature-slug}.md` using this format:
 status: ACTIVE
 ---
 # CEO Plan: {Feature Name}
-Generated by /plan-ceo-review on {date}
+Generated by the CEO review on {date}
 Branch: {branch} | Mode: {EXPANSION / SELECTIVE EXPANSION}
 Repo: {owner/repo}
 
@@ -440,7 +440,7 @@ Context-dependent defaults:
 After mode is selected, confirm which implementation approach (from 0C-bis) applies under the chosen mode. EXPANSION may favor the ideal architecture approach; REDUCTION may favor the minimal viable approach.
 
 Once selected, commit fully. Do not silently drift.
-**STOP.** AskUserQuestion once per issue. Do NOT batch. Recommend + WHY. If no issues or fix is obvious, state what you'll do and move on — don't waste a question. Do NOT proceed until user responds.
+**STOP.** ask the user once per issue. Do NOT batch. Recommend + WHY. If no issues or fix is obvious, state what you'll do and move on — don't waste a question. Do NOT proceed until user responds.
 
 ## Review Sections (10 sections, after scope and mode are agreed)
 
@@ -467,7 +467,7 @@ Evaluate and diagram:
 **SELECTIVE EXPANSION:** If any accepted cherry-picks from Step 0D affect the architecture, evaluate their architectural fit here. Flag any that create coupling concerns or don't integrate cleanly — this is a chance to revisit the decision with new information.
 
 Required ASCII diagram: full system architecture showing new components and their relationships to existing ones.
-**STOP.** AskUserQuestion once per issue. Do NOT batch. Recommend + WHY. If no issues or fix is obvious, state what you'll do and move on — don't waste a question. Do NOT proceed until user responds.
+**STOP.** ask the user once per issue. Do NOT batch. Recommend + WHY. If no issues or fix is obvious, state what you'll do and move on — don't waste a question. Do NOT proceed until user responds.
 
 ### Section 2: Error & Rescue Map
 This is the section that catches silent failures. It is not optional.
@@ -496,7 +496,7 @@ Rules for this section:
 * Every rescued error must either: retry with backoff, degrade gracefully with a user-visible message, or re-raise with added context. "Swallow and continue" is almost never acceptable.
 * For each GAP (unrescued error that should be rescued): specify the rescue action and what the user should see.
 * For LLM/AI service calls specifically: what happens when the response is malformed? When it's empty? When it hallucinates invalid JSON? When the model returns a refusal? Each of these is a distinct failure mode.
-**STOP.** AskUserQuestion once per issue. Do NOT batch. Recommend + WHY. If no issues or fix is obvious, state what you'll do and move on — don't waste a question. Do NOT proceed until user responds.
+**STOP.** ask the user once per issue. Do NOT batch. Recommend + WHY. If no issues or fix is obvious, state what you'll do and move on — don't waste a question. Do NOT proceed until user responds.
 
 ### Section 3: Security & Threat Model
 Security is not a sub-bullet of architecture. It gets its own section.
@@ -511,7 +511,7 @@ Evaluate:
 * Audit logging. For sensitive operations: is there an audit trail?
 
 For each finding: threat, likelihood (High/Med/Low), impact (High/Med/Low), and whether the plan mitigates it.
-**STOP.** AskUserQuestion once per issue. Do NOT batch. Recommend + WHY. If no issues or fix is obvious, state what you'll do and move on — don't waste a question. Do NOT proceed until user responds.
+**STOP.** ask the user once per issue. Do NOT batch. Recommend + WHY. If no issues or fix is obvious, state what you'll do and move on — don't waste a question. Do NOT proceed until user responds.
 
 ### Section 4: Data Flow & Interaction Edge Cases
 This section traces data through the system and interactions through the UI with adversarial thoroughness.
@@ -547,7 +547,7 @@ For each node: what happens on each shadow path? Is it tested?
                        | Queue backs up 2 hours | ?        |
 ```
 Flag any unhandled edge case as a gap. For each gap, specify the fix.
-**STOP.** AskUserQuestion once per issue. Do NOT batch. Recommend + WHY. If no issues or fix is obvious, state what you'll do and move on — don't waste a question. Do NOT proceed until user responds.
+**STOP.** ask the user once per issue. Do NOT batch. Recommend + WHY. If no issues or fix is obvious, state what you'll do and move on — don't waste a question. Do NOT proceed until user responds.
 
 ### Section 5: Code Quality Review
 Evaluate:
@@ -559,7 +559,7 @@ Evaluate:
 * Over-engineering check. Any new abstraction solving a problem that doesn't exist yet?
 * Under-engineering check. Anything fragile, assuming happy path only, or missing obvious defensive checks?
 * Cyclomatic complexity. Flag any new method that branches more than 5 times. Propose a refactor.
-**STOP.** AskUserQuestion once per issue. Do NOT batch. Recommend + WHY. If no issues or fix is obvious, state what you'll do and move on — don't waste a question. Do NOT proceed until user responds.
+**STOP.** ask the user once per issue. Do NOT batch. Recommend + WHY. If no issues or fix is obvious, state what you'll do and move on — don't waste a question. Do NOT proceed until user responds.
 
 ### Section 6: Test Review
 Make a complete diagram of every new thing this plan introduces:
@@ -599,7 +599,7 @@ Flakiness risk: Flag any test depending on time, randomness, external services, 
 Load/stress test requirements: For any new codepath called frequently or processing significant data.
 
 For LLM/prompt changes: Check CLAUDE.md for the "Prompt/LLM changes" file patterns. If this plan touches ANY of those patterns, state which eval suites must be run, which cases should be added, and what baselines to compare against.
-**STOP.** AskUserQuestion once per issue. Do NOT batch. Recommend + WHY. If no issues or fix is obvious, state what you'll do and move on — don't waste a question. Do NOT proceed until user responds.
+**STOP.** ask the user once per issue. Do NOT batch. Recommend + WHY. If no issues or fix is obvious, state what you'll do and move on — don't waste a question. Do NOT proceed until user responds.
 
 ### Section 7: Performance Review
 Evaluate:
@@ -610,7 +610,7 @@ Evaluate:
 * Background job sizing. For every new job: worst-case payload, runtime, retry behavior?
 * Slow paths. Top 3 slowest new codepaths and estimated p99 latency.
 * Connection pool pressure. New DB connections, Redis connections, HTTP connections?
-**STOP.** AskUserQuestion once per issue. Do NOT batch. Recommend + WHY. If no issues or fix is obvious, state what you'll do and move on — don't waste a question. Do NOT proceed until user responds.
+**STOP.** ask the user once per issue. Do NOT batch. Recommend + WHY. If no issues or fix is obvious, state what you'll do and move on — don't waste a question. Do NOT proceed until user responds.
 
 ### Section 8: Observability & Debuggability Review
 New systems break. This section ensures you can see why.
@@ -626,7 +626,7 @@ Evaluate:
 
 **EXPANSION and SELECTIVE EXPANSION addition:**
 * What observability would make this feature a joy to operate? (For SELECTIVE EXPANSION, include observability for any accepted cherry-picks.)
-**STOP.** AskUserQuestion once per issue. Do NOT batch. Recommend + WHY. If no issues or fix is obvious, state what you'll do and move on — don't waste a question. Do NOT proceed until user responds.
+**STOP.** ask the user once per issue. Do NOT batch. Recommend + WHY. If no issues or fix is obvious, state what you'll do and move on — don't waste a question. Do NOT proceed until user responds.
 
 ### Section 9: Deployment & Rollout Review
 Evaluate:
@@ -641,7 +641,7 @@ Evaluate:
 
 **EXPANSION and SELECTIVE EXPANSION addition:**
 * What deploy infrastructure would make shipping this feature routine? (For SELECTIVE EXPANSION, assess whether accepted cherry-picks change the deployment risk profile.)
-**STOP.** AskUserQuestion once per issue. Do NOT batch. Recommend + WHY. If no issues or fix is obvious, state what you'll do and move on — don't waste a question. Do NOT proceed until user responds.
+**STOP.** ask the user once per issue. Do NOT batch. Recommend + WHY. If no issues or fix is obvious, state what you'll do and move on — don't waste a question. Do NOT proceed until user responds.
 
 ### Section 10: Long-Term Trajectory Review
 Evaluate:
@@ -656,10 +656,10 @@ Evaluate:
 * What comes after this ships? Phase 2? Phase 3? Does the architecture support that trajectory?
 * Platform potential. Does this create capabilities other features can leverage?
 * (SELECTIVE EXPANSION only) Retrospective: Were the right cherry-picks accepted? Did any rejected expansions turn out to be load-bearing for the accepted ones?
-**STOP.** AskUserQuestion once per issue. Do NOT batch. Recommend + WHY. If no issues or fix is obvious, state what you'll do and move on — don't waste a question. Do NOT proceed until user responds.
+**STOP.** ask the user once per issue. Do NOT batch. Recommend + WHY. If no issues or fix is obvious, state what you'll do and move on — don't waste a question. Do NOT proceed until user responds.
 
 ### Section 11: Design & UX Review (skip if no UI scope detected)
-The CEO calling in the designer. Not a pixel-level audit — that's /plan-design-review and /design-review. This is ensuring the plan has design intentionality.
+The CEO calling in the designer. Not a pixel-level audit — that's the design review and /design-review. This is ensuring the plan has design intentionality.
 
 Evaluate:
 * Information architecture — what does the user see first, second, third?
@@ -677,8 +677,8 @@ Evaluate:
 
 Required ASCII diagram: user flow showing screens/states and transitions.
 
-If this plan has significant UI scope, recommend: "Consider running /plan-design-review for a deep design review of this plan before implementation."
-**STOP.** AskUserQuestion once per issue. Do NOT batch. Recommend + WHY. If no issues or fix is obvious, state what you'll do and move on — don't waste a question. Do NOT proceed until user responds.
+If this plan has significant UI scope, recommend: "Consider running the design review for a deep design review of this plan before implementation."
+**STOP.** ask the user once per issue. Do NOT batch. Recommend + WHY. If no issues or fix is obvious, state what you'll do and move on — don't waste a question. Do NOT proceed until user responds.
 
 ## Outside Voice — Independent Plan Challenge (optional, recommended)
 
@@ -692,7 +692,7 @@ thorough review.
 # Cross-model review not available in pi-agents
 ```
 
-Use AskUserQuestion:
+Present options to the user:
 
 > "All review sections are complete. Want an outside voice? A different AI system can
 > give a brutally honest, independent challenge of this plan — logical gaps, feasibility
@@ -785,7 +785,7 @@ strong signal — present it as such — but it is NOT permission to act. You ma
 which argument you find more compelling, but you MUST NOT apply the change without
 explicit user approval.
 
-For each substantive tension point, use AskUserQuestion:
+For each substantive tension point, present options to the user:
 
 > "Cross-model disagreement on [topic]. The review found [X] but the outside voice
 > argues [Y]. [One sentence on what context you might be missing.]"
@@ -817,7 +817,7 @@ SOURCE: result of the review pass.
 
 Outside voice findings are INFORMATIONAL until the user explicitly approves each one.
 Do NOT incorporate outside voice recommendations into the plan without presenting each
-finding via AskUserQuestion and getting explicit approval. This applies even when you
+finding by asking the user and getting explicit approval. This applies even when you
 agree with the outside voice. Cross-model consensus is a strong signal — present it as
 such — but the user makes the decision.
 
@@ -825,14 +825,14 @@ such — but the user makes the decision.
 After implementation, run `/design-review` on the live site to catch visual issues that can only be evaluated with rendered output.
 
 ## CRITICAL RULE — How to ask questions
-Follow the AskUserQuestion format from the Preamble above. Additional rules for plan reviews:
-* **One issue = one AskUserQuestion call.** Never combine multiple issues into one question.
+Follow the ask the user format from the Preamble above. Additional rules for plan reviews:
+* **One issue = one ask the user call.** Never combine multiple issues into one question.
 * Describe the problem concretely, with file and line references.
 * Present 2-3 options, including "do nothing" where reasonable.
 * For each option: effort, risk, and maintenance burden in one line.
 * **Map the reasoning to my engineering preferences above.** One sentence connecting your recommendation to a specific preference.
 * Label with issue NUMBER + option LETTER (e.g., "3A", "3B").
-* **Escape hatch:** If a section has no issues, say so and move on. If an issue has an obvious fix with no real alternatives, state what you'll do and move on — don't waste a question on it. Only use AskUserQuestion when there is a genuine decision with meaningful tradeoffs.
+* **Escape hatch:** If a section has no issues, say so and move on. If an issue has an obvious fix with no real alternatives, state what you'll do and move on — don't waste a question on it. Only present options to the user when there is a genuine decision with meaningful tradeoffs.
 
 ## Required Outputs
 
@@ -856,7 +856,7 @@ Complete table of every method that can fail, every exception class, rescued sta
 Any row with RESCUED=N, TEST=N, USER SEES=Silent → **CRITICAL GAP**.
 
 ### TODOS.md updates
-Present each potential TODO as its own individual AskUserQuestion. Never batch TODOs — one per question. Never silently skip this step. Follow the format in `.pi/skills/todos-format.md`.
+Present each potential TODO as its own individual ask the user. Never batch TODOs — one per question. Never silently skip this step. Follow the format in `.pi/skills/todos-format.md`.
 
 For each TODO, describe:
 * **What:** One-line description of the work.
@@ -924,7 +924,7 @@ List every ASCII diagram in files this plan touches. Still accurate?
 ```
 
 ### Unresolved Decisions
-If any AskUserQuestion goes unanswered, note it here. Never silently default.
+If any ask the user goes unanswered, note it here. Never silently default.
 
 ## Handoff Note Cleanup
 
@@ -945,7 +945,7 @@ After producing the Completion Summary above, persist the review result.
 `.pi/` (user config directory, not project files). The skill preamble
 already writes to `.pi/sessions/` and `.pi/analytics/` — this is
 the same pattern. The review dashboard depends on this data. Skipping this
-command breaks the review readiness dashboard in /ship.
+command breaks the review readiness dashboard in the ship workflow.
 
 ```bash
 # review logging not available in pi-agents
@@ -970,9 +970,9 @@ After completing the review, read the review log and config to display the dashb
 # review read not available in pi-agents
 ```
 
-Parse the output. Find the most recent entry for each skill (plan-ceo-review, plan-eng-review, review, plan-design-review, design-review-lite, adversarial-review, external-review, external-plan-review). Ignore entries with timestamps older than 7 days. For the Eng Review row, show whichever is more recent between `review` (diff-scoped pre-landing review) and `plan-eng-review` (plan-stage architecture review). Append "(DIFF)" or "(PLAN)" to the status to distinguish. For the Adversarial row, show whichever is more recent between `adversarial-review` (new auto-scaled) and `external-review` (legacy). For Design Review, show whichever is more recent between `plan-design-review` (full visual audit) and `design-review-lite` (code-level check). Append "(FULL)" or "(LITE)" to the status to distinguish. For the Outside Voice row, show the most recent `external-plan-review` entry — this captures outside voices from both /plan-ceo-review and /plan-eng-review.
+Parse the output. Find the most recent entry for each skill (plan-ceo-review, plan-eng-review, review, plan-design-review, design-review-lite, adversarial-review, external-review, external-plan-review). Ignore entries with timestamps older than 7 days. For the Eng Review row, show whichever is more recent between `review` (diff-scoped pre-landing review) and `plan-eng-review` (plan-stage architecture review). Append "(DIFF)" or "(PLAN)" to the status to distinguish. For the Adversarial row, show whichever is more recent between `adversarial-review` (new auto-scaled) and `external-review` (legacy). For Design Review, show whichever is more recent between `plan-design-review` (full visual audit) and `design-review-lite` (code-level check). Append "(FULL)" or "(LITE)" to the status to distinguish. For the Outside Voice row, show the most recent `external-plan-review` entry — this captures outside voices from both the CEO review and the eng review.
 
-**Source attribution:** If the most recent entry for a skill has a \`"via"\` field, append it to the status label in parentheses. Examples: `plan-eng-review` with `via:"autoplan"` shows as "CLEAR (PLAN via /autoplan)". `review` with `via:"ship"` shows as "CLEAR (DIFF via /ship)". Entries without a `via` field show as "CLEAR (PLAN)" or "CLEAR (DIFF)" as before.
+**Source attribution:** If the most recent entry for a skill has a \`"via"\` field, append it to the status label in parentheses. Examples: `plan-eng-review` with `via:"autoplan"` shows as "CLEAR (PLAN via the autoplan workflow)". `review` with `via:"ship"` shows as "CLEAR (DIFF via the ship workflow)". Entries without a `via` field show as "CLEAR (PLAN)" or "CLEAR (DIFF)" as before.
 
 Note: `autoplan-voices` and `design-outside-voices` entries are audit-trail-only (forensic data for cross-model consensus analysis). They do not appear in the dashboard and are not checked by any consumer.
 
@@ -999,7 +999,7 @@ Display:
 - **CEO Review (optional):** Use your judgment. Recommend it for big product/business changes, new user-facing features, or scope decisions. Skip for bug fixes, refactors, infra, and cleanup.
 - **Design Review (optional):** Use your judgment. Recommend it for UI/UX changes. Skip for backend-only, infra, or prompt-only changes.
 - **Adversarial Review (automatic):** Auto-scales by diff size. Small diffs (<50 lines) skip adversarial. Medium diffs (50–199) get cross-model adversarial. Large diffs (200+) get all 4 passes: Claude structured, Codex structured, Claude adversarial subagent, adversarial review. No configuration needed.
-- **Outside Voice (optional):** Independent plan review from a different AI model. Offered after all review sections complete in /plan-ceo-review and /plan-eng-review. Falls back to Claude subagent if Codex is unavailable. Never gates shipping.
+- **Outside Voice (optional):** Independent plan review from a different AI model. Offered after all review sections complete in the CEO review and the eng review. Falls back to Claude subagent if Codex is unavailable. Never gates shipping.
 
 **Verdict logic:**
 - **CLEARED**: Eng Review has >= 1 entry within 7 days from either \`review\` or \`plan-eng-review\` with status "clean" (or \`skip_eng_review\` is \`true\`)
@@ -1050,10 +1050,10 @@ Produce this markdown table:
 
 | Review | Trigger | Why | Runs | Status | Findings |
 |--------|---------|-----|------|--------|----------|
-| CEO Review | \`/plan-ceo-review\` | Scope & strategy | {runs} | {status} | {findings} |
+| CEO Review | \`the CEO review\` | Scope & strategy | {runs} | {status} | {findings} |
 | Codex Review | \`/external-review\` | Independent 2nd opinion | {runs} | {status} | {findings} |
-| Eng Review | \`/plan-eng-review\` | Architecture & tests (required) | {runs} | {status} | {findings} |
-| Design Review | \`/plan-design-review\` | UI/UX gaps | {runs} | {status} | {findings} |
+| Eng Review | \`the eng review\` | Architecture & tests (required) | {runs} | {status} | {findings} |
+| Design Review | \`the design review\` | UI/UX gaps | {runs} | {status} | {findings} |
 \`\`\`
 
 Below the table, add these lines (omit any that are empty/not applicable):
@@ -1084,20 +1084,20 @@ plan's living status.
 
 After displaying the Review Readiness Dashboard, recommend the next review(s) based on what this CEO review discovered. Read the dashboard output to see which reviews have already been run and whether they are stale.
 
-**Recommend /plan-eng-review if eng review is not skipped globally** — check the dashboard output for `skip_eng_review`. If it is `true`, eng review is opted out — do not recommend it. Otherwise, eng review is the required shipping gate. If this CEO review expanded scope, changed architectural direction, or accepted scope expansions, emphasize that a fresh eng review is needed. If an eng review already exists in the dashboard but the commit hash shows it predates this CEO review, note that it may be stale and should be re-run.
+**Recommend the eng review if eng review is not skipped globally** — check the dashboard output for `skip_eng_review`. If it is `true`, eng review is opted out — do not recommend it. Otherwise, eng review is the required shipping gate. If this CEO review expanded scope, changed architectural direction, or accepted scope expansions, emphasize that a fresh eng review is needed. If an eng review already exists in the dashboard but the commit hash shows it predates this CEO review, note that it may be stale and should be re-run.
 
-**Recommend /plan-design-review if UI scope was detected** — specifically if Section 11 (Design & UX Review) was NOT skipped, or if accepted scope expansions included UI-facing features. If an existing design review is stale (commit hash drift), note that. In SCOPE REDUCTION mode, skip this recommendation — design review is unlikely relevant for scope cuts.
+**Recommend the design review if UI scope was detected** — specifically if Section 11 (Design & UX Review) was NOT skipped, or if accepted scope expansions included UI-facing features. If an existing design review is stale (commit hash drift), note that. In SCOPE REDUCTION mode, skip this recommendation — design review is unlikely relevant for scope cuts.
 
 **If both are needed, recommend eng review first** (required gate), then design review.
 
-Use AskUserQuestion to present the next step. Include only applicable options:
-- **A)** Run /plan-eng-review next (required gate)
-- **B)** Run /plan-design-review next (only if UI scope detected)
+Present options to the user to present the next step. Include only applicable options:
+- **A)** Run the eng review next (required gate)
+- **B)** Run the design review next (only if UI scope detected)
 - **C)** Skip — I'll handle reviews manually
 
 ## docs/designs Promotion (EXPANSION and SELECTIVE EXPANSION only)
 
-At the end of the review, if the vision produced a compelling feature direction, offer to promote the CEO plan to the project repo. AskUserQuestion:
+At the end of the review, if the vision produced a compelling feature direction, offer to promote the CEO plan to the project repo. ask the user:
 
 "The vision from this review produced {N} accepted scope expansions. Want to promote it to a design doc in the repo?"
 - **A)** Promote to `docs/designs/{FEATURE}.md` (committed to repo, visible to the team)

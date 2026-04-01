@@ -1,9 +1,9 @@
 ---
 name: design-shotgun
-description: Design shotgun: generate multiple AI design variants, open a comparison board, collect structured feedback, and iterate. Standalone design exploration you can run anytime. Use when: "explore designs", "show me options", "design variants", "visual brainstorm", or "I don't like how this looks". Proactively suggest when the user describes a UI feature but hasn't seen what it could look like.
+description: Design shotgun: generate multiple AI design variants, open a comparison board, collect structured feedback, and iterate. Standalone design exploration you can run anytime. Use when: "explore designs", "show me options", "design variants", "visual brainstorm", or "I don't like how this looks". Also use when the user describes a UI feature but hasn't seen what it could look like.
 ---
 
-# /design-shotgun: Visual Design Exploration
+# Design Shotgun: Visual Design Exploration
 
 You are a design brainstorming partner. Generate multiple AI design variants, open them
 side-by-side in the user's browser, and iterate until they approve a direction. This is
@@ -65,7 +65,7 @@ echo "$_PREV"
 ```
 
 **If `PREVIOUS_SESSIONS_FOUND`:** Read each `approved.json`, display a summary, then
-AskUserQuestion:
+ask the user:
 
 > "Previous design explorations for this project:
 > - [date]: [screen] — chose variant [X], feedback: '[summary]'
@@ -79,9 +79,9 @@ If B: proceed to Step 1.
 
 **If `NO_PREVIOUS_SESSIONS`:** Show the first-time message:
 
-"This is /design-shotgun — your visual brainstorming tool. I'll generate multiple AI
+"This is the design shotgun — your visual brainstorming tool. I'll generate multiple AI
 design directions, open them side-by-side in your browser, and you pick your favorite.
-You can run /design-shotgun anytime during development to explore design directions for
+You can run the design shotgun anytime during development to explore design directions for
 any part of your product. Let's start."
 
 ## Step 1: Context Gathering
@@ -128,7 +128,7 @@ If a local site is running AND the user referenced a URL or said something like 
 like how this looks," screenshot the current page and use `# Design tool not available: evolve` instead of
 `# Design variant generation not available in pi-agents` to generate improvement variants from the existing design.
 
-**AskUserQuestion with pre-filled context:** Pre-fill what you inferred from the codebase,
+**ask the user with pre-filled context:** Pre-fill what you inferred from the codebase,
 DESIGN.md, and office-hours output. Then ask for what's missing. Frame as ONE question
 covering all gaps:
 
@@ -187,7 +187,7 @@ Draw on DESIGN.md, taste memory, and the user's request to make each concept dis
 
 ### Step 3b: Concept Confirmation
 
-Use AskUserQuestion to confirm before spending API credits:
+Present options to the user to confirm before spending API credits:
 
 > "These are the {N} directions I'll generate. Each takes ~60s, but I'll run them all
 > in parallel so total time is ~60 seconds regardless of count."
@@ -342,7 +342,7 @@ The feedback JSON has this shape:
 1. Read `preferred`, `ratings`, `comments`, `overall` from the JSON
 2. Proceed with the approved variant
 
-**If `# Design serve not available in pi-agents` fails or no feedback within 10 minutes:** Fall back to AskUserQuestion:
+**If `# Design serve not available in pi-agents` fails or no feedback within 10 minutes:** Fall back to ask the user:
 "I've opened the design board. Which variant do you prefer? Any feedback?"
 
 **After receiving feedback (any path):** Output a clear summary confirming
@@ -356,7 +356,7 @@ DIRECTION: [overall]
 
 Is this right?"
 
-Use AskUserQuestion to verify before proceeding.
+Present options to the user to verify before proceeding.
 
 **Save the approved choice:**
 ```bash
@@ -365,7 +365,7 @@ echo '{"approved_variant":"<V>","feedback":"<FB>","date":"'$(date -u +%Y-%m-%dT%
 
 ## Step 5: Feedback Confirmation
 
-After receiving feedback (via HTTP POST or AskUserQuestion fallback), output a clear
+After receiving feedback (via HTTP POST or ask the user fallback), output a clear
 summary confirming what was understood:
 
 "Here's what I understood from your feedback:
@@ -377,7 +377,7 @@ DIRECTION: [regenerate action if any]
 
 Is this right?"
 
-Use AskUserQuestion to confirm before saving.
+Present options to the user to confirm before saving.
 
 ## Step 6: Save & Next Steps
 
@@ -386,7 +386,7 @@ Write `approved.json` to `$_DESIGN_DIR/` (handled by the loop above).
 If invoked from another skill: return the structured feedback for that skill to consume.
 The calling skill reads `approved.json` and the approved variant PNG.
 
-If standalone, offer next steps via AskUserQuestion:
+If standalone, offer next steps by asking the user:
 
 > "Design direction locked in. What's next?
 > A) Iterate more — refine the approved variant with specific feedback

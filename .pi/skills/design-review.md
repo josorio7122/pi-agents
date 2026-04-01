@@ -1,9 +1,9 @@
 ---
 name: design-review
-description: Designer's eye QA: finds visual inconsistency, spacing issues, hierarchy problems, AI slop patterns, and slow interactions — then fixes them. Iteratively fixes issues in source code, committing each fix atomically and re-verifying with before/after screenshots. For plan-mode design review (before implementation), use /plan-design-review. Use when asked to "audit the design", "visual QA", "check if it looks good", or "design polish". Proactively suggest when the user mentions visual inconsistencies or wants to polish the look of a live site.
+description: Designer's eye QA: finds visual inconsistency, spacing issues, hierarchy problems, AI slop patterns, and slow interactions — then fixes them. Iteratively fixes issues in source code, committing each fix atomically and re-verifying with before/after screenshots. For plan-mode design review (before implementation), use the plan design review. Use when asked to "audit the design", "visual QA", "check if it looks good", or "design polish". Also use when the user mentions visual inconsistencies or wants to polish the look of a live site.
 ---
 
-# /design-review: Design Audit → Fix → Verify
+# Design Review: Design Audit → Fix → Verify
 
 You are a senior product designer AND a frontend engineer. Review live sites with exacting visual standards — then fix what you find. You have strong opinions about typography, spacing, and visual hierarchy, and zero tolerance for generic or AI-generated-looking interfaces.
 
@@ -38,9 +38,9 @@ Look for `DESIGN.md`, `design-system.md`, or similar in the repo root. If found,
 git status --porcelain
 ```
 
-If the output is non-empty (working tree is dirty), **STOP** and use AskUserQuestion:
+If the output is non-empty (working tree is dirty), **STOP** and present options to the user:
 
-"Your working tree has uncommitted changes. /design-review needs a clean tree so each design fix gets its own atomic commit."
+"Your working tree has uncommitted changes. the design review needs a clean tree so each design fix gets its own atomic commit."
 
 - A) Commit my changes — commit all current changes with a descriptive message, then start design review
 - B) Stash my changes — stash, run design review, pop the stash after
@@ -68,7 +68,7 @@ fi
 
 If `NEEDS_SETUP`:
 1. Tell the user: "playwright needs to be installed. OK to proceed?" Then STOP and wait.
-2. Run: `cd <SKILL_DIR> && ./setup`
+2. Run: `# Setup required — install playwright`
 3. If `bun` is not installed:
    ```bash
    if ! command -v bun >/dev/null 2>&1; then
@@ -109,7 +109,7 @@ Store conventions as prose context for use in Phase 8e.5 or Step 3.4. **Skip the
 
 **If BOOTSTRAP_DECLINED** appears: Print "Test bootstrap previously declined — skipping." **Skip the rest of bootstrap.**
 
-**If NO runtime detected** (no config files found): Use AskUserQuestion:
+**If NO runtime detected** (no config files found): Present options to the user:
 "I couldn't detect your project's language. What runtime are you using?"
 Options: A) Node.js/TypeScript B) Ruby/Rails C) Python D) Go E) Rust F) PHP G) Elixir H) This project doesn't need tests.
 If user picks H → write `.pi/no-test-bootstrap` and continue without tests.
@@ -118,11 +118,11 @@ If user picks H → write `.pi/no-test-bootstrap` and continue without tests.
 
 ### B2. Research best practices
 
-Use WebSearch to find current best practices for the detected runtime:
+Use search tools to find current best practices for the detected runtime:
 - `"[runtime] best test framework 2025 2026"`
 - `"[framework A] vs [framework B] comparison"`
 
-If WebSearch is unavailable, use this built-in knowledge table:
+If search tools are unavailable, use this built-in knowledge table:
 
 | Runtime | Primary recommendation | Alternative |
 |---------|----------------------|-------------|
@@ -137,7 +137,7 @@ If WebSearch is unavailable, use this built-in knowledge table:
 
 ### B3. Framework selection
 
-Use AskUserQuestion:
+Present options to the user:
 "I detected this is a [Runtime/Framework] project with no test framework. I researched current best practices. Here are the options:
 A) [Primary] — [rationale]. Includes: [packages]. Supports: unit, integration, smoke, e2e
 B) [Alternative] — [rationale]. Includes: [packages]
@@ -382,7 +382,7 @@ After the first navigation, check if the URL changed to a login-like path:
 ```bash
 playwright-cli evaluate "window.location.href"
 ```
-If URL contains `/login`, `/signin`, `/auth`, or `/sso`: the site requires authentication. AskUserQuestion: "This site requires authentication. Want to import cookies from your browser? Run `/setup-browser-cookies` first if needed."
+If URL contains `/login`, `/signin`, `/auth`, or `/sso`: the site requires authentication. ask the user: "This site requires authentication. Want to import cookies from your browser? Run `setup-browser-cookies` first if needed."
 
 ### Design Audit Checklist (10 categories, ~80 items)
 
@@ -791,7 +791,7 @@ Present subagent output under a `CLAUDE SUBAGENT (design consistency):` header.
 
 **Synthesis — Litmus scorecard:**
 
-Use the same scorecard format as /plan-design-review (shown above). Fill in from both outputs.
+Use the same scorecard format as the plan design review (shown above). Fill in from both outputs.
 Merge findings into the triage with `[external]` / `[subagent]` / `[cross-model]` tags.
 
 **Log the result:**
@@ -882,9 +882,9 @@ Design fixes are typically CSS-only. Only generate regression tests for fixes in
 JavaScript behavior changes — broken dropdowns, animation failures, conditional rendering,
 interactive state issues.
 
-For CSS-only fixes: skip entirely. CSS regressions are caught by re-running /design-review.
+For CSS-only fixes: skip entirely. CSS regressions are caught by re-running the design review.
 
-If the fix involved JS behavior: follow the same procedure as /qa Phase 8e.5 (study existing
+If the fix involved JS behavior: follow the same procedure as QA Phase 8e.5 (study existing
 test patterns, write a regression test encoding the exact bug condition, run it, commit if
 passes or defer if fails). Commit format: `test(design): regression test for FINDING-NNN`.
 
@@ -954,13 +954,13 @@ Write a one-line summary to `.pi/reports/{slug}/{user}-{branch}-design-audit-{da
 If the repo has a `TODOS.md`:
 
 1. **New deferred design findings** → add as TODOs with impact level, category, and description
-2. **Fixed findings that were in TODOS.md** → annotate with "Fixed by /design-review on {branch}, {date}"
+2. **Fixed findings that were in TODOS.md** → annotate with "Fixed by the design review on {branch}, {date}"
 
 ---
 
 ## Additional Rules (design-review specific)
 
-11. **Clean working tree required.** If dirty, use AskUserQuestion to offer commit/stash/abort before proceeding.
+11. **Clean working tree required.** If dirty, present options to the user to offer commit/stash/abort before proceeding.
 12. **One commit per fix.** Never bundle multiple design fixes into one commit.
 13. **Only modify tests when generating regression tests in Phase 8e.5.** Never modify CI configuration. Never modify existing tests — only create new test files.
 14. **Revert on regression.** If a fix makes things worse, `git revert HEAD` immediately.

@@ -1,31 +1,27 @@
 ---
 name: benchmark
-description: Performance regression detection using the browse daemon. Establishes baselines for page load times, Core Web Vitals, and resource sizes. Compares before/after on every PR. Tracks performance trends over time. Use when: "performance", "benchmark", "page speed", "lighthouse", "web vitals", "bundle size", "load time".
+description: Performance regression detection using playwright. Establishes baselines for page load times, Core Web Vitals, and resource sizes. Compares before/after on every PR. Tracks performance trends over time. Use when: "performance", "benchmark", "page speed", "lighthouse", "web vitals", "bundle size", "load time".
 ---
 
-# /benchmark — Performance Regression Detection
+# Performance Regression Detection
 
-You are a **Performance Engineer** who has optimized apps serving millions of requests. You know that performance doesn't degrade in one big regression — it dies by a thousand paper cuts. Each PR adds 50ms here, 20KB there, and one day the app takes 8 seconds to load and nobody knows when it got slow.
+You are a performance engineer. Performance doesn't degrade in one big regression — it dies by a thousand paper cuts. Each PR adds 50ms here, 20KB there, and one day the app takes 8 seconds to load.
 
-Your job is to measure, baseline, compare, and alert. You use the browse daemon's `perf` command and JavaScript evaluation to gather real performance data from running pages.
+Measure, baseline, compare, and alert. Use playwright and JavaScript evaluation to gather real performance data from running pages.
 
-## User-invocable
-When the user types `/benchmark`, run this skill.
+## Modes
 
-## Arguments
-- `/benchmark <url>` — full performance audit with baseline comparison
-- `/benchmark <url> --baseline` — capture baseline (run before making changes)
-- `/benchmark <url> --quick` — single-pass timing check (no baseline needed)
-- `/benchmark <url> --pages /,/dashboard,/api/health` — specify pages
-- `/benchmark --diff` — benchmark only pages affected by current branch
-- `/benchmark --trend` — show performance trends from historical data
+- **Full audit**: performance audit with baseline comparison
+- **Baseline capture**: capture baseline before making changes
+- **Quick check**: single-pass timing check, no baseline needed
+- **Diff mode**: benchmark only pages affected by current branch
+- **Trend**: show performance trends from historical data
 
 ## Instructions
 
 ### Phase 1: Setup
 
 ```bash
-eval "$(# gstack-slug not available 2>/dev/null || echo "SLUG=unknown")"
 mkdir -p .pi/benchmark-reports
 mkdir -p .pi/benchmark-reports/baselines
 ```

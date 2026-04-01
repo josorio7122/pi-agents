@@ -1,56 +1,28 @@
 ---
 name: guard
-description: Full safety mode: destructive command warnings + directory-scoped edits. Combines /careful (warns before rm -rf, DROP TABLE, force-push, etc.) with /freeze (blocks edits outside a specified directory). Use for maximum safety when touching prod or debugging live systems. Use when asked to "guard mode", "full safety", "lock it down", or "maximum safety".
+description: Full safety mode — destructive command warnings plus strict domain enforcement. Combines careful (warns before rm -rf, DROP TABLE, force-push) with explicit scope restriction. Use for maximum safety when touching prod or debugging live systems. Use when asked to "guard mode", "full safety", "lock it down", or "maximum safety".
 ---
 
-<!-- AUTO-GENERATED from SKILL.md.tmpl — do not edit directly -->
-<!-- Regenerate: bun run gen:skill-docs -->
+# Full Safety Mode
 
-# /guard — Full Safety Mode
+Two protections active simultaneously:
 
-Activates both destructive command warnings and directory-scoped edit restrictions.
-This is the combination of `/careful` + `/freeze` in a single command.
+## 1. Destructive Command Warnings
 
-**Dependency note:** This skill references hook scripts from the sibling `/careful`
-and `/freeze` skill directories. Both must be installed (they are installed together
-by setup).
+Before running any bash command, check against the careful skill's protected patterns (rm -rf, DROP TABLE, force-push, git reset --hard, kubectl delete, docker prune, etc.). Warn the user and explain the risk before proceeding.
 
-```bash
-mkdir -p .pi/analytics
-echo '{"skill":"guard","ts":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'","repo":"'$(basename "$(git rev-parse --show-toplevel 2>/dev/null)" 2>/dev/null || echo "unknown")'"}'  >> .pi/analytics/skill-usage.jsonl 2>/dev/null || true
-```
+## 2. Strict Domain Enforcement
 
-## Setup
+Only read, write, or edit files within your assigned domain paths. Before ANY file operation:
 
-Ask the user which directory to restrict edits to. Use AskUserQuestion:
+1. Check the target path against your domain configuration
+2. If outside your domain — STOP and tell the user: "This path is outside my domain. I cannot modify it."
+3. Never attempt workarounds (symlinks, bash redirection, etc.)
 
-- Question: "Guard mode: which directory should edits be restricted to? Destructive command warnings are always on. Files outside the chosen path will be blocked from editing."
-- Text input (not multiple choice) — the user types a path.
+## Rules
 
-Once the user provides a directory path:
-
-1. Resolve it to an absolute path:
-```bash
-FREEZE_DIR=$(cd "<user-provided-path>" 2>/dev/null && pwd)
-echo "$FREEZE_DIR"
-```
-
-2. Ensure trailing slash and save to the freeze state file:
-```bash
-FREEZE_DIR="${FREEZE_DIR%/}/"
-STATE_DIR="${PI_DATA_DIR:-$HOME/.pi}"
-mkdir -p "$STATE_DIR"
-echo "$FREEZE_DIR" > "$STATE_DIR/freeze-dir.txt"
-echo "Freeze boundary set: $FREEZE_DIR"
-```
-
-Tell the user:
-- "**Guard mode active.** Two protections are now running:"
-- "1. **Destructive command warnings** — rm -rf, DROP TABLE, force-push, etc. will warn before executing (you can override)"
-- "2. **Edit boundary** — file edits restricted to `<path>/`. Edits outside this directory are blocked."
-- "To remove the edit boundary, run `/unfreeze`. To deactivate everything, end the session."
-
-## What's protected
-
-See `/careful` for the full list of destructive command patterns and safe exceptions.
-See `/freeze` for how edit boundary enforcement works.
+1. Check EVERY bash command against destructive patterns before executing
+2. Check EVERY file operation against your domain before executing
+3. When in doubt, ask the user — never proceed silently
+4. If the user asks you to operate outside your domain, explain the restriction
+5. Log what you blocked and why in your response

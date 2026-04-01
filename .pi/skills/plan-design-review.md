@@ -1,9 +1,9 @@
 ---
 name: plan-design-review
-description: Designer's eye plan review — interactive, like CEO and Eng review. Rates each design dimension 0-10, explains what would make it a 10, then fixes the plan to get there. Works in plan mode. For live site visual audits, use /design-review. Use when asked to "review the design plan" or "design critique". Proactively suggest when the user has a plan with UI/UX components that should be reviewed before implementation.
+description: Designer's eye plan review — interactive, like CEO and Eng review. Rates each design dimension 0-10, explains what would make it a 10, then fixes the plan to get there. Works in plan mode. For live site visual audits, use /design-review. Use when asked to "review the design plan" or "design critique". Also use when the user has a plan with UI/UX components that should be reviewed before implementation.
 ---
 
-# /plan-design-review: Designer's Eye Plan Review
+# Plan Design Review: Designer's Eye Plan Review
 
 You are a senior product designer reviewing a PLAN — not a live site. Your job is
 to find missing design decisions and ADD THEM TO THE PLAN before implementation.
@@ -169,7 +169,7 @@ Explain what a 10 looks like for THIS plan.
 What existing UI patterns, components, or design decisions in the codebase should this plan reuse? Don't reinvent what already works.
 
 ### 0D. Focus Areas
-AskUserQuestion: "I've rated this plan {N}/10 on design completeness. The biggest gaps are {X, Y, Z}. I'll generate visual mockups next, then review all 7 dimensions. Want me to focus on specific areas instead of all 7?"
+ask the user: "I've rated this plan {N}/10 on design completeness. The biggest gaps are {X, Y, Z}. I'll generate visual mockups next, then review all 7 dimensions. Want me to focus on specific areas instead of all 7?"
 
 **STOP.** Do NOT proceed until user responds.
 
@@ -299,7 +299,7 @@ The feedback JSON has this shape:
 1. Read `preferred`, `ratings`, `comments`, `overall` from the JSON
 2. Proceed with the approved variant
 
-**If `# Design serve not available in pi-agents` fails or no feedback within 10 minutes:** Fall back to AskUserQuestion:
+**If `# Design serve not available in pi-agents` fails or no feedback within 10 minutes:** Fall back to ask the user:
 "I've opened the design board. Which variant do you prefer? Any feedback?"
 
 **After receiving feedback (any path):** Output a clear summary confirming
@@ -313,14 +313,14 @@ DIRECTION: [overall]
 
 Is this right?"
 
-Use AskUserQuestion to verify before proceeding.
+Present options to the user to verify before proceeding.
 
 **Save the approved choice:**
 ```bash
 echo '{"approved_variant":"<V>","feedback":"<FB>","date":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'","screen":"<SCREEN>","branch":"'$(git branch --show-current 2>/dev/null)'"}' > "$_DESIGN_DIR/approved.json"
 ```
 
-**Do NOT use AskUserQuestion to ask which variant the user picked.** Read `feedback.json` — it already contains their preferred variant, ratings, comments, and overall feedback. Only use AskUserQuestion to confirm you understood the feedback correctly, never to re-ask what they chose.
+**Do NOT present options to the user to ask which variant the user picked.** Read `feedback.json` — it already contains their preferred variant, ratings, comments, and overall feedback. Only present options to the user to confirm you understood the feedback correctly, never to re-ask what they chose.
 
 Note which direction was approved. This becomes the visual reference for all subsequent review passes.
 
@@ -330,7 +330,7 @@ Note which direction was approved. This becomes the visual reference for all sub
 
 ## Design Outside Voices (parallel)
 
-Use AskUserQuestion:
+Present options to the user:
 > "Want outside design voices before the detailed review? Codex evaluates against OpenAI's design hard rules + litmus checks; Claude subagent does an independent completeness review."
 >
 > A) Yes — run outside design voices
@@ -445,10 +445,10 @@ Pattern:
 2. Gap: "It's a 4 because the plan doesn't define content hierarchy. A 10 would have clear primary/secondary/tertiary for every screen."
 3. Fix: Edit the plan to add what's missing
 4. Re-rate: "Now 8/10 — still missing mobile nav hierarchy"
-5. AskUserQuestion if there's a genuine design choice to resolve
+5. ask the user if there's a genuine design choice to resolve
 6. Fix again → repeat until 10 or user says "good enough, move on"
 
-Re-run loop: invoke /plan-design-review again → re-rate → sections at 8+ get a quick pass, sections below 8 get full treatment.
+Re-run loop: invoke the design review again → re-rate → sections at 8+ get a quick pass, sections below 8 get full treatment.
 
 ### "Show me what 10/10 looks like" (requires design binary)
 
@@ -470,7 +470,7 @@ descriptions of what 10/10 looks like.
 ### Pass 1: Information Architecture
 Rate 0-10: Does the plan define what the user sees first, second, third?
 FIX TO 10: Add information hierarchy to the plan. Include ASCII diagram of screen/page structure and navigation flow. Apply "constraint worship" — if you can only show 3 things, which 3?
-**STOP.** AskUserQuestion once per issue. Do NOT batch. Recommend + WHY. If no issues, say so and move on. Do NOT proceed until user responds.
+**STOP.** ask the user once per issue. Do NOT batch. Recommend + WHY. If no issues, say so and move on. Do NOT proceed until user responds.
 
 ### Pass 2: Interaction State Coverage
 Rate 0-10: Does the plan specify loading, empty, error, success, partial states?
@@ -482,7 +482,7 @@ FIX TO 10: Add interaction state table to the plan:
 ```
 For each state: describe what the user SEES, not backend behavior.
 Empty states are features — specify warmth, primary action, context.
-**STOP.** AskUserQuestion once per issue. Do NOT batch. Recommend + WHY.
+**STOP.** ask the user once per issue. Do NOT batch. Recommend + WHY.
 
 ### Pass 3: User Journey & Emotional Arc
 Rate 0-10: Does the plan consider the user's emotional experience?
@@ -494,7 +494,7 @@ FIX TO 10: Add user journey storyboard:
   ...
 ```
 Apply time-horizon design: 5-sec visceral, 5-min behavioral, 5-year reflective.
-**STOP.** AskUserQuestion once per issue. Do NOT batch. Recommend + WHY.
+**STOP.** ask the user once per issue. Do NOT batch. Recommend + WHY.
 
 ### Pass 4: AI Slop Risk
 Rate 0-10: Does the plan describe specific, intentional UI — or generic patterns?
@@ -573,18 +573,18 @@ Source: [OpenAI "Designing Delightful Frontends with GPT-5.4"](https://developer
 - "Clean, modern UI" → meaningless. Replace with actual design decisions.
 - "Dashboard with widgets" → what makes this NOT every other dashboard?
 If visual mockups were generated in Step 0.5, evaluate them against the AI slop blacklist above. Read each mockup image using the Read tool. Does the mockup fall into generic patterns (3-column grid, centered hero, stock-photo feel)? If so, flag it and offer to regenerate with more specific direction via `# Design iterate not available in pi-agents --feedback "..."`.
-**STOP.** AskUserQuestion once per issue. Do NOT batch. Recommend + WHY.
+**STOP.** ask the user once per issue. Do NOT batch. Recommend + WHY.
 
 ### Pass 5: Design System Alignment
 Rate 0-10: Does the plan align with DESIGN.md?
 FIX TO 10: If DESIGN.md exists, annotate with specific tokens/components. If no DESIGN.md, flag the gap and recommend `/design-consultation`.
 Flag any new component — does it fit the existing vocabulary?
-**STOP.** AskUserQuestion once per issue. Do NOT batch. Recommend + WHY.
+**STOP.** ask the user once per issue. Do NOT batch. Recommend + WHY.
 
 ### Pass 6: Responsive & Accessibility
 Rate 0-10: Does the plan specify mobile/tablet, keyboard nav, screen readers?
 FIX TO 10: Add responsive specs per viewport — not "stacked on mobile" but intentional layout changes. Add a11y: keyboard nav patterns, ARIA landmarks, touch target sizes (44px min), color contrast requirements.
-**STOP.** AskUserQuestion once per issue. Do NOT batch. Recommend + WHY.
+**STOP.** ask the user once per issue. Do NOT batch. Recommend + WHY.
 
 ### Pass 7: Unresolved Design Decisions
 Surface ambiguities that will haunt implementation:
@@ -596,24 +596,24 @@ Surface ambiguities that will haunt implementation:
   ...
 ```
 If visual mockups were generated in Step 0.5, reference them as evidence when surfacing unresolved decisions. A mockup makes decisions concrete — e.g., "Your approved mockup shows a sidebar nav, but the plan doesn't specify mobile behavior. What happens to this sidebar on 375px?"
-Each decision = one AskUserQuestion with recommendation + WHY + alternatives. Edit the plan with each decision as it's made.
+Each decision = one ask the user with recommendation + WHY + alternatives. Edit the plan with each decision as it's made.
 
 ### Post-Pass: Update Mockups (if generated)
 
 If mockups were generated in Step 0.5 and review passes changed significant design decisions (information architecture restructure, new states, layout changes), offer to regenerate (one-shot, not a loop):
 
-AskUserQuestion: "The review passes changed [list major design changes]. Want me to regenerate mockups to reflect the updated plan? This ensures the visual reference matches what we're actually building."
+ask the user: "The review passes changed [list major design changes]. Want me to regenerate mockups to reflect the updated plan? This ensures the visual reference matches what we're actually building."
 
 If yes, use `# Design iterate not available in pi-agents` with feedback summarizing the changes, or `# Design variant generation not available in pi-agents` with an updated brief. Save to the same `$_DESIGN_DIR` directory.
 
 ## CRITICAL RULE — How to ask questions
-Follow the AskUserQuestion format from the Preamble above. Additional rules for plan design reviews:
-* **One issue = one AskUserQuestion call.** Never combine multiple issues into one question.
+Follow the ask the user format from the Preamble above. Additional rules for plan design reviews:
+* **One issue = one ask the user call.** Never combine multiple issues into one question.
 * Describe the design gap concretely — what's missing, what the user will experience if it's not specified.
 * Present 2-3 options. For each: effort to specify now, risk if deferred.
 * **Map to Design Principles above.** One sentence connecting your recommendation to a specific principle.
 * Label with issue NUMBER + option LETTER (e.g., "3A", "3B").
-* **Escape hatch:** If a section has no issues, say so and move on. If a gap has an obvious fix, state what you'll add and move on — don't waste a question on it. Only use AskUserQuestion when there is a genuine design choice with meaningful tradeoffs.
+* **Escape hatch:** If a section has no issues, say so and move on. If a gap has an obvious fix, state what you'll add and move on — don't waste a question on it. Only present options to the user when there is a genuine design choice with meaningful tradeoffs.
 
 ## Required Outputs
 
@@ -624,7 +624,7 @@ Design decisions considered and explicitly deferred, with one-line rationale eac
 Existing DESIGN.md, UI patterns, and components that the plan should reuse.
 
 ### TODOS.md updates
-After all review passes are complete, present each potential TODO as its own individual AskUserQuestion. Never batch TODOs — one per question. Never silently skip this step.
+After all review passes are complete, present each potential TODO as its own individual ask the user. Never batch TODOs — one per question. Never silently skip this step.
 
 For design debt: missing a11y, unresolved responsive behavior, deferred empty states. Each TODO gets:
 * **What:** One-line description of the work.
@@ -665,7 +665,7 @@ If all passes 8+: "Plan is design-complete. Run /design-review after implementat
 If any below 8: note what's unresolved and why (user chose to defer).
 
 ### Unresolved Decisions
-If any AskUserQuestion goes unanswered, note it here. Never silently default to an option.
+If any ask the user goes unanswered, note it here. Never silently default to an option.
 
 ### Approved Mockups
 
@@ -689,7 +689,7 @@ After producing the Completion Summary above, persist the review result.
 `.pi/` (user config directory, not project files). The skill preamble
 already writes to `.pi/sessions/` and `.pi/analytics/` — this is
 the same pattern. The review dashboard depends on this data. Skipping this
-command breaks the review readiness dashboard in /ship.
+command breaks the review readiness dashboard in the ship workflow.
 
 ```bash
 # review logging not available in pi-agents
@@ -712,9 +712,9 @@ After completing the review, read the review log and config to display the dashb
 # review read not available in pi-agents
 ```
 
-Parse the output. Find the most recent entry for each skill (plan-ceo-review, plan-eng-review, review, plan-design-review, design-review-lite, adversarial-review, external-review, external-plan-review). Ignore entries with timestamps older than 7 days. For the Eng Review row, show whichever is more recent between `review` (diff-scoped pre-landing review) and `plan-eng-review` (plan-stage architecture review). Append "(DIFF)" or "(PLAN)" to the status to distinguish. For the Adversarial row, show whichever is more recent between `adversarial-review` (new auto-scaled) and `external-review` (legacy). For Design Review, show whichever is more recent between `plan-design-review` (full visual audit) and `design-review-lite` (code-level check). Append "(FULL)" or "(LITE)" to the status to distinguish. For the Outside Voice row, show the most recent `external-plan-review` entry — this captures outside voices from both /plan-ceo-review and /plan-eng-review.
+Parse the output. Find the most recent entry for each skill (plan-ceo-review, plan-eng-review, review, plan-design-review, design-review-lite, adversarial-review, external-review, external-plan-review). Ignore entries with timestamps older than 7 days. For the Eng Review row, show whichever is more recent between `review` (diff-scoped pre-landing review) and `plan-eng-review` (plan-stage architecture review). Append "(DIFF)" or "(PLAN)" to the status to distinguish. For the Adversarial row, show whichever is more recent between `adversarial-review` (new auto-scaled) and `external-review` (legacy). For Design Review, show whichever is more recent between `plan-design-review` (full visual audit) and `design-review-lite` (code-level check). Append "(FULL)" or "(LITE)" to the status to distinguish. For the Outside Voice row, show the most recent `external-plan-review` entry — this captures outside voices from both the CEO review and the eng review.
 
-**Source attribution:** If the most recent entry for a skill has a \`"via"\` field, append it to the status label in parentheses. Examples: `plan-eng-review` with `via:"autoplan"` shows as "CLEAR (PLAN via /autoplan)". `review` with `via:"ship"` shows as "CLEAR (DIFF via /ship)". Entries without a `via` field show as "CLEAR (PLAN)" or "CLEAR (DIFF)" as before.
+**Source attribution:** If the most recent entry for a skill has a \`"via"\` field, append it to the status label in parentheses. Examples: `plan-eng-review` with `via:"autoplan"` shows as "CLEAR (PLAN via the autoplan workflow)". `review` with `via:"ship"` shows as "CLEAR (DIFF via the ship workflow)". Entries without a `via` field show as "CLEAR (PLAN)" or "CLEAR (DIFF)" as before.
 
 Note: `autoplan-voices` and `design-outside-voices` entries are audit-trail-only (forensic data for cross-model consensus analysis). They do not appear in the dashboard and are not checked by any consumer.
 
@@ -741,7 +741,7 @@ Display:
 - **CEO Review (optional):** Use your judgment. Recommend it for big product/business changes, new user-facing features, or scope decisions. Skip for bug fixes, refactors, infra, and cleanup.
 - **Design Review (optional):** Use your judgment. Recommend it for UI/UX changes. Skip for backend-only, infra, or prompt-only changes.
 - **Adversarial Review (automatic):** Auto-scales by diff size. Small diffs (<50 lines) skip adversarial. Medium diffs (50–199) get cross-model adversarial. Large diffs (200+) get all 4 passes: Claude structured, Codex structured, Claude adversarial subagent, adversarial review. No configuration needed.
-- **Outside Voice (optional):** Independent plan review from a different AI model. Offered after all review sections complete in /plan-ceo-review and /plan-eng-review. Falls back to Claude subagent if Codex is unavailable. Never gates shipping.
+- **Outside Voice (optional):** Independent plan review from a different AI model. Offered after all review sections complete in the CEO review and the eng review. Falls back to Claude subagent if Codex is unavailable. Never gates shipping.
 
 **Verdict logic:**
 - **CLEARED**: Eng Review has >= 1 entry within 7 days from either \`review\` or \`plan-eng-review\` with status "clean" (or \`skip_eng_review\` is \`true\`)
@@ -792,10 +792,10 @@ Produce this markdown table:
 
 | Review | Trigger | Why | Runs | Status | Findings |
 |--------|---------|-----|------|--------|----------|
-| CEO Review | \`/plan-ceo-review\` | Scope & strategy | {runs} | {status} | {findings} |
+| CEO Review | \`the CEO review\` | Scope & strategy | {runs} | {status} | {findings} |
 | Codex Review | \`/external-review\` | Independent 2nd opinion | {runs} | {status} | {findings} |
-| Eng Review | \`/plan-eng-review\` | Architecture & tests (required) | {runs} | {status} | {findings} |
-| Design Review | \`/plan-design-review\` | UI/UX gaps | {runs} | {status} | {findings} |
+| Eng Review | \`the eng review\` | Architecture & tests (required) | {runs} | {status} | {findings} |
+| Design Review | \`the design review\` | UI/UX gaps | {runs} | {status} | {findings} |
 \`\`\`
 
 Below the table, add these lines (omit any that are empty/not applicable):
@@ -826,15 +826,15 @@ plan's living status.
 
 After displaying the Review Readiness Dashboard, recommend the next review(s) based on what this design review discovered. Read the dashboard output to see which reviews have already been run and whether they are stale.
 
-**Recommend /plan-eng-review if eng review is not skipped globally** — check the dashboard output for `skip_eng_review`. If it is `true`, eng review is opted out — do not recommend it. Otherwise, eng review is the required shipping gate. If this design review added significant interaction specifications, new user flows, or changed the information architecture, emphasize that eng review needs to validate the architectural implications. If an eng review already exists but the commit hash shows it predates this design review, note that it may be stale and should be re-run.
+**Recommend the eng review if eng review is not skipped globally** — check the dashboard output for `skip_eng_review`. If it is `true`, eng review is opted out — do not recommend it. Otherwise, eng review is the required shipping gate. If this design review added significant interaction specifications, new user flows, or changed the information architecture, emphasize that eng review needs to validate the architectural implications. If an eng review already exists but the commit hash shows it predates this design review, note that it may be stale and should be re-run.
 
-**Consider recommending /plan-ceo-review** — but only if this design review revealed fundamental product direction gaps. Specifically: if the overall design score started below 4/10, if the information architecture had major structural problems, or if the review surfaced questions about whether the right problem is being solved. AND no CEO review exists in the dashboard. This is a selective recommendation — most design reviews should NOT trigger a CEO review.
+**Consider recommending the CEO review** — but only if this design review revealed fundamental product direction gaps. Specifically: if the overall design score started below 4/10, if the information architecture had major structural problems, or if the review surfaced questions about whether the right problem is being solved. AND no CEO review exists in the dashboard. This is a selective recommendation — most design reviews should NOT trigger a CEO review.
 
 **If both are needed, recommend eng review first** (required gate).
 
-Use AskUserQuestion to present the next step. Include only applicable options:
-- **A)** Run /plan-eng-review next (required gate)
-- **B)** Run /plan-ceo-review (only if fundamental product gaps found)
+Present options to the user to present the next step. Include only applicable options:
+- **A)** Run the eng review next (required gate)
+- **B)** Run the CEO review (only if fundamental product gaps found)
 - **C)** Skip — I'll handle reviews manually
 
 ## Formatting Rules
