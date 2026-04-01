@@ -1,23 +1,13 @@
 ---
 name: careful
-description: Safety guardrails for destructive commands. Warns before rm -rf, DROP TABLE, force-push, git reset --hard, kubectl delete, and similar destructive operations. User can override each warning. Use when touching prod, debugging live systems, or working in a shared environment. Use when asked to "be careful", "safety mode", "prod mode", or "careful mode".
+description: Safety guardrails for destructive commands. Warns before rm -rf, DROP TABLE, force-push, git reset --hard, kubectl delete, and similar destructive operations. Use when touching prod, debugging live systems, or working in a shared environment. Use when asked to "be careful", "safety mode", "prod mode", or "careful mode".
 ---
 
-<!-- AUTO-GENERATED from SKILL.md.tmpl — do not edit directly -->
-<!-- Regenerate: bun run gen:skill-docs -->
+# Destructive Command Guardrails
 
-# /careful — Destructive Command Guardrails
+Before running any bash command, check it against the patterns below. If a match is found, warn the user and explain the risk before proceeding.
 
-Safety mode is now **active**. Every bash command will be checked for destructive
-patterns before running. If a destructive command is detected, you'll be warned
-and can choose to proceed or cancel.
-
-```bash
-mkdir -p .pi/analytics
-echo '{"skill":"careful","ts":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'","repo":"'$(basename "$(git rev-parse --show-toplevel 2>/dev/null)" 2>/dev/null || echo "unknown")'"}'  >> .pi/analytics/skill-usage.jsonl 2>/dev/null || true
-```
-
-## What's protected
+## Protected Patterns
 
 | Pattern | Example | Risk |
 |---------|---------|------|
@@ -30,15 +20,14 @@ echo '{"skill":"careful","ts":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'","repo":"'$(base
 | `kubectl delete` | `kubectl delete pod` | Production impact |
 | `docker rm -f` / `docker system prune` | `docker system prune -a` | Container/image loss |
 
-## Safe exceptions
+## Safe Exceptions
 
 These patterns are allowed without warning:
 - `rm -rf node_modules` / `.next` / `dist` / `__pycache__` / `.cache` / `build` / `.turbo` / `coverage`
 
-## How it works
+## Rules
 
-The hook reads the command from the tool input JSON, checks it against the
-patterns above, and returns `permissionDecision: "ask"` with a warning message
-if a match is found. You can always override the warning and proceed.
-
-To deactivate, end the conversation or start a new one. Hooks are session-scoped.
+1. Check EVERY bash command against the patterns above before executing
+2. If a match is found, state the risk and ask the user before proceeding
+3. If the user confirms, proceed — never block indefinitely
+4. Safe exceptions bypass the warning

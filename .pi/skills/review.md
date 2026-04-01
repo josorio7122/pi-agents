@@ -1,11 +1,11 @@
 ---
 name: review
-description: Pre-landing PR review. Analyzes diff against the base branch for SQL safety, LLM trust boundary violations, conditional side effects, and other structural issues. Use when asked to "review this PR", "code review", "pre-landing review", or "check my diff". Proactively suggest when the user is about to merge or land code changes.
+description: Pre-landing PR review. Analyzes diff against the base branch for SQL safety, LLM trust boundary violations, conditional side effects, and other structural issues. Use when asked to "review this PR", "code review", "pre-landing review", or "check my diff". Also use when the user is about to merge or land code changes.
 ---
 
 # Pre-Landing PR Review
 
-You are running the `/review` workflow. Analyze the current branch's diff against the base branch for structural issues that tests don't catch.
+Analyze the current branch's diff against the base branch for structural issues that tests don't catch.
 
 ---
 
@@ -23,7 +23,7 @@ Before reviewing code quality, check: **did they build what was requested — no
 
 1. Read `TODOS.md` (if it exists). Read PR description (`gh pr view --json body --jq .body 2>/dev/null || true`).
    Read commit messages (`git log origin/<base>..HEAD --oneline`).
-   **If no PR exists:** rely on commit messages and TODOS.md for stated intent — this is the common case since /review runs before /ship creates the PR.
+   **If no PR exists:** rely on commit messages and TODOS.md for stated intent — this is the common case since this review runs before the PR is created.
 2. Identify the **stated intent** — what was this branch supposed to accomplish?
 3. Run `git diff origin/<base>...HEAD --stat` and compare the files changed against the stated intent.
 
@@ -214,7 +214,7 @@ Apply the checklist against the diff in two passes:
 - Check if a built-in solution exists in newer versions before recommending a workaround
 - Verify API signatures against current docs (APIs change between versions)
 
-Takes seconds, prevents recommending outdated patterns. If WebSearch is unavailable, note it and proceed with in-distribution knowledge.
+Takes seconds, prevents recommending outdated patterns. If search tools are unavailable, proceed with existing knowledge.
 
 Follow the output format specified in the checklist. Respect the suppressions — do NOT flag items listed in the "DO NOT flag" section.
 
@@ -382,7 +382,7 @@ When checking each branch, also determine whether a unit test or E2E/integration
 
 ### REGRESSION RULE (mandatory)
 
-**IRON RULE:** When the coverage audit identifies a REGRESSION — code that previously worked but the diff broke — a regression test is written immediately. No AskUserQuestion. No skipping. Regressions are the highest-priority test because they prove something broke.
+**IRON RULE:** When the coverage audit identifies a REGRESSION — code that previously worked but the diff broke — a regression test is written immediately. No ask the user. No skipping. Regressions are the highest-priority test because they prove something broke.
 
 A regression is when:
 - The diff modifies existing behavior (not new code)
@@ -464,10 +464,10 @@ If coverage is below the minimum threshold, output a prominent warning **before*
 
 ```
 ⚠️ COVERAGE WARNING: AI-assessed coverage is {X}%. {N} code paths untested.
-Consider writing tests before running /ship.
+Consider writing tests before shipping.
 ```
 
-This is INFORMATIONAL — does not block /review. But it makes low coverage visible early so the developer can address it before reaching the /ship coverage gate.
+This is INFORMATIONAL — does not block the review. But it makes low coverage visible early so the developer can address it before shipping.
 
 If coverage percentage cannot be determined, skip the warning silently.
 
@@ -494,7 +494,7 @@ Apply each fix directly. For each one, output a one-line summary:
 
 ### Step 5c: Batch-ask about ASK items
 
-If there are ASK items remaining, present them in ONE AskUserQuestion:
+If there are ASK items remaining, present them in ONE ask the user:
 
 - List each item with a number, the severity label, the problem, and a recommended fix
 - For each item, provide options: A) Fix as recommended, B) Skip
@@ -515,7 +515,7 @@ I auto-fixed 5 issues. 2 need your input:
 RECOMMENDATION: Fix both — #1 is a real race condition, #2 prevents silent data corruption.
 ```
 
-If 3 or fewer ASK items, you may use individual AskUserQuestion calls instead of batching.
+If 3 or fewer ASK items, you may use individual ask the user calls instead of batching.
 
 ### Step 5d: Apply user-approved fixes
 
@@ -543,7 +543,7 @@ Before replying to any comment, run the **Escalation Detection** algorithm from 
 
 1. **VALID & ACTIONABLE comments:** These are included in your findings — they follow the Fix-First flow (auto-fixed if mechanical, batched into ASK if not) (A: Fix it now, B: Acknowledge, C: False positive). If the user chooses A (fix), reply using the **Fix reply template** from greptile-triage.md (include inline diff + explanation). If the user chooses C (false positive), reply using the **False Positive reply template** (include evidence + suggested re-rank), save to both per-project and global greptile-history.
 
-2. **FALSE POSITIVE comments:** Present each one via AskUserQuestion:
+2. **FALSE POSITIVE comments:** Present each one by asking the user:
    - Show the Greptile comment: file:line (or [top-level]) + body summary + permalink URL
    - Explain concisely why it's a false positive
    - Options:
@@ -553,7 +553,7 @@ Before replying to any comment, run the **Escalation Detection** algorithm from 
 
    If the user chooses A, reply using the **False Positive reply template** from greptile-triage.md (include evidence + suggested re-rank), save to both per-project and global greptile-history.
 
-3. **VALID BUT ALREADY FIXED comments:** Reply using the **Already Fixed reply template** from greptile-triage.md — no AskUserQuestion needed:
+3. **VALID BUT ALREADY FIXED comments:** Reply using the **Already Fixed reply template** from greptile-triage.md — no ask the user needed:
    - Include what was done and the fixing commit SHA
    - Save to both per-project and global greptile-history
 
@@ -679,7 +679,7 @@ cd "$_REPO_ROOT"
 Set the Bash tool's `timeout` parameter to `300000` (5 minutes). Do NOT use the `timeout` shell command — it doesn't exist on macOS. Present output under `EXTERNAL REVIEW:` header.
 Check for `[P1]` markers: found → `GATE: FAIL`, not found → `GATE: PASS`.
 
-If GATE is FAIL, use AskUserQuestion:
+If GATE is FAIL, present options to the user:
 ```
 Codex found N critical issues in the diff.
 
@@ -728,7 +728,7 @@ High-confidence findings (agreed on by multiple sources) should be prioritized f
 
 ## Step 5.8: Persist Eng Review result
 
-After all review passes complete, persist the final `/review` outcome so `/ship` can
+After all review passes complete, persist the final review outcome so the ship workflow can
 recognize that Eng Review was run on this branch.
 
 Run:
@@ -750,7 +750,7 @@ If the review exits early before a real review completes (for example, no diff a
 ## Important Rules
 
 - **Read the FULL diff before commenting.** Do not flag issues already addressed in the diff.
-- **Fix-first, not read-only.** AUTO-FIX items are applied directly. ASK items are only applied after user approval. Never commit, push, or create PRs — that's /ship's job.
+- **Fix-first, not read-only.** AUTO-FIX items are applied directly. ASK items are only applied after user approval. Never commit, push, or create PRs — that's the ship workflow's job.
 - **Be terse.** One line problem, one line fix. No preamble.
 - **Only flag real problems.** Skip anything that's fine.
 - **Use Greptile reply templates from greptile-triage.md.** Every reply includes evidence. Never post vague replies.

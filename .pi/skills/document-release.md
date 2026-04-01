@@ -1,12 +1,11 @@
 ---
 name: document-release
-description: Post-ship documentation update. Reads all project docs, cross-references the diff, updates README/ARCHITECTURE/CONTRIBUTING/CLAUDE.md to match what shipped, polishes CHANGELOG voice, cleans up TODOS, and optionally bumps VERSION. Use when asked to "update the docs", "sync documentation", or "post-ship docs". Proactively suggest after a PR is merged or code is shipped.
+description: Post-ship documentation update. Reads all project docs, cross-references the diff, updates README/ARCHITECTURE/CONTRIBUTING/CLAUDE.md to match what shipped, polishes CHANGELOG voice, cleans up TODOS, and optionally bumps VERSION. Use when asked to "update the docs", "sync documentation", or "post-ship docs". Also use after a PR is merged or code is shipped.
 ---
 
 # Document Release: Post-Ship Documentation Update
 
-You are running the `/document-release` workflow. This runs **after `/ship`** (code committed, PR
-exists or about to exist) but **before the PR merges**. Your job: ensure every documentation file
+This workflow runs after code is committed and a PR exists (or is about to exist), but before the PR merges. Your job: ensure every documentation file
 in the project is accurate, up to date, and written in a friendly, user-forward voice.
 
 You are mostly automated. Make obvious factual updates directly. Stop and ask only for risky or
@@ -29,7 +28,7 @@ subjective decisions.
 
 **NEVER do:**
 - Overwrite, replace, or regenerate CHANGELOG entries — polish wording only, preserve all content
-- Bump VERSION without asking — always use AskUserQuestion for version changes
+- Bump VERSION without asking — always ask the user for version changes
 - Use `Write` tool on CHANGELOG.md — always use `Edit` with exact `old_string` matches
 
 ---
@@ -128,11 +127,10 @@ from 9 to 10."
 
 ## Step 4: Ask About Risky/Questionable Changes
 
-For each risky or questionable update identified in Step 2, use AskUserQuestion with:
-- Context: project name, branch, which doc file, what we're reviewing
-- The specific documentation decision
-- `RECOMMENDATION: Choose [X] because [one-line reason]`
-- Options including C) Skip — leave as-is
+For each risky or questionable update identified in Step 2, present the decision to the user:
+- State the context: which doc file, what section, what the decision is
+- Recommend an option with a one-line reason
+- Include a "skip" option
 
 Apply approved changes immediately after each answer.
 
@@ -153,7 +151,7 @@ preserved them. This skill must NEVER do that.
 3. Never regenerate a CHANGELOG entry from scratch. The entry was written by `/ship` from the
    actual diff and commit history. It is the source of truth. You are polishing prose, not
    rewriting history.
-4. If an entry looks wrong or incomplete, use AskUserQuestion — do NOT silently fix it.
+4. If an entry looks wrong or incomplete, ask the user — do NOT silently fix it.
 5. Use Edit tool with exact `old_string` matches — never use Write to overwrite CHANGELOG.md.
 
 **If CHANGELOG was not modified in this branch:** skip this step.
@@ -166,7 +164,7 @@ preserved them. This skill must NEVER do that.
 - "You can now..." not "Refactored the..."
 - Flag and rewrite any entry that reads like a commit message.
 - Internal/contributor changes belong in a separate "### For contributors" subsection.
-- Auto-fix minor voice adjustments. Use AskUserQuestion if a rewrite would alter meaning.
+- Auto-fix minor voice adjustments. Ask the user if a rewrite would alter meaning.
 
 ---
 
@@ -181,7 +179,7 @@ After auditing each file individually, do a cross-doc consistency pass:
    ARCHITECTURE.md exists but neither README nor CLAUDE.md links to it, flag it. Every doc
    should be discoverable from one of the two entry-point files.
 5. Flag any contradictions between documents. Auto-fix clear factual inconsistencies (e.g., a
-   version mismatch). Use AskUserQuestion for narrative contradictions.
+   version mismatch). Ask the user for narrative contradictions.
 
 ---
 
@@ -198,12 +196,12 @@ If TODOS.md does not exist, skip this step.
    evidence in the diff.
 
 2. **Items needing description updates:** If a TODO references files or components that were
-   significantly changed, its description may be stale. Use AskUserQuestion to confirm whether
+   significantly changed, its description may be stale. Ask the user to confirm whether
    the TODO should be updated, completed, or left as-is.
 
 3. **New deferred work:** Check the diff for `TODO`, `FIXME`, `HACK`, and `XXX` comments. For
    each one that represents meaningful deferred work (not a trivial inline note), use
-   AskUserQuestion to ask whether it should be captured in TODOS.md.
+   asking the user to ask whether it should be captured in TODOS.md.
 
 ---
 
@@ -219,7 +217,7 @@ If TODOS.md does not exist, skip this step.
 git diff <base>...HEAD -- VERSION
 ```
 
-3. **If VERSION was NOT bumped:** Use AskUserQuestion:
+3. **If VERSION was NOT bumped:** Ask the user:
    - RECOMMENDATION: Choose C (Skip) because docs-only changes rarely warrant a version bump
    - A) Bump PATCH (X.Y.Z+1) — if doc changes ship alongside code changes
    - B) Bump MINOR (X.Y+1.0) — if this is a significant standalone release
@@ -234,7 +232,7 @@ git diff <base>...HEAD -- VERSION
       that are NOT mentioned in the CHANGELOG entry for the current version?
    c. **If the CHANGELOG entry covers everything:** Skip — output "VERSION: Already bumped to
       vX.Y.Z, covers all changes."
-   d. **If there are significant uncovered changes:** Use AskUserQuestion explaining what the
+   d. **If there are significant uncovered changes:** Ask the user explaining what the
       current version covers vs what's new, and ask:
       - RECOMMENDATION: Choose A because the new changes warrant their own version
       - A) Bump to next patch (X.Y.Z+1) — give the new changes their own version
@@ -261,7 +259,7 @@ committing.
 git commit -m "$(cat <<'EOF'
 docs: update project documentation for vX.Y.Z.W
 
-Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
+Updated documentation for vX.Y.Z.W
 EOF
 )"
 ```

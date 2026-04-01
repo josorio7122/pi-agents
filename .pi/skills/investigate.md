@@ -1,6 +1,6 @@
 ---
 name: investigate
-description: Systematic debugging with root cause investigation. Four phases: investigate, analyze, hypothesize, implement. Iron Law: no fixes without root cause. Use when asked to "debug this", "fix this bug", "why is this broken", "investigate this error", or "root cause analysis". Proactively suggest when the user reports errors, unexpected behavior, or is troubleshooting why something stopped working.
+description: Systematic debugging with root cause investigation. Four phases: investigate, analyze, hypothesize, implement. Iron Law: no fixes without root cause. Use when asked to "debug this", "fix this bug", "why is this broken", "investigate this error", or "root cause analysis". Also use when the user reports errors, unexpected behavior, or is troubleshooting why something stopped working.
 ---
 
 # Systematic Debugging
@@ -17,7 +17,7 @@ Fixing symptoms creates whack-a-mole debugging. Every fix that doesn't address r
 
 Gather context before forming any hypothesis.
 
-1. **Collect symptoms:** Read the error messages, stack traces, and reproduction steps. If the user hasn't provided enough context, ask ONE question at a time via AskUserQuestion.
+1. **Collect symptoms:** Read the error messages, stack traces, and reproduction steps. If the user hasn't provided enough context, ask ONE question at a time.
 
 2. **Read the code:** Trace the code path from the symptom back to potential causes. Use Grep to find all references, Read to understand the logic.
 
@@ -35,26 +35,11 @@ Output: **"Root cause hypothesis: ..."** — a specific, testable claim about wh
 
 ## Scope Lock
 
-After forming your root cause hypothesis, lock edits to the affected module to prevent scope creep.
+After forming your root cause hypothesis, restrict your edits to the affected module only. Do NOT touch files outside the suspected root cause area.
 
-```bash
-[ -x "freeze/bin/check-freeze.sh" ] && echo "FREEZE_AVAILABLE" || echo "FREEZE_UNAVAILABLE"
-```
+Identify the narrowest directory containing the affected files (e.g., `src/auth/`). Tell the user: "Restricting my edits to `<dir>/` for this debug session to prevent scope creep."
 
-**If FREEZE_AVAILABLE:** Identify the narrowest directory containing the affected files. Write it to the freeze state file:
-
-```bash
-STATE_DIR="${PI_DATA_DIR:-$HOME/.pi}"
-mkdir -p "$STATE_DIR"
-echo "<detected-directory>/" > "$STATE_DIR/freeze-dir.txt"
-echo "Debug scope locked to: <detected-directory>/"
-```
-
-Substitute `<detected-directory>` with the actual directory path (e.g., `src/auth/`). Tell the user: "Edits restricted to `<dir>/` for this debug session. This prevents changes to unrelated code. Run `/unfreeze` to remove the restriction."
-
-If the bug spans the entire repo or the scope is genuinely unclear, skip the lock and note why.
-
-**If FREEZE_UNAVAILABLE:** Skip scope lock. Edits are unrestricted.
+If the bug spans the entire repo or the scope is genuinely unclear, note why and proceed carefully.
 
 ---
 
@@ -75,11 +60,11 @@ Also check:
 - `TODOS.md` for related known issues
 - `git log` for prior fixes in the same area — **recurring bugs in the same files are an architectural smell**, not a coincidence
 
-**External pattern search:** If the bug doesn't match a known pattern above, WebSearch for:
+**External pattern search:** If the bug doesn't match a known pattern above and you have search tools available, search for:
 - "{framework} {generic error type}" — **sanitize first:** strip hostnames, IPs, file paths, SQL, customer data. Search the error category, not the raw message.
 - "{library} {component} known issues"
 
-If WebSearch is unavailable, skip this search and proceed with hypothesis testing. If a documented solution or known dependency bug surfaces, present it as a candidate hypothesis in Phase 3.
+If a documented solution or known dependency bug surfaces, present it as a candidate hypothesis in Phase 3.
 
 ---
 
@@ -89,17 +74,11 @@ Before writing ANY fix, verify your hypothesis.
 
 1. **Confirm the hypothesis:** Add a temporary log statement, assertion, or debug output at the suspected root cause. Run the reproduction. Does the evidence match?
 
-2. **If the hypothesis is wrong:** Before forming the next hypothesis, consider searching for the error. **Sanitize first** — strip hostnames, IPs, file paths, SQL fragments, customer identifiers, and any internal/proprietary data from the error message. Search only the generic error type and framework context: "{component} {sanitized error type} {framework version}". If the error message is too specific to sanitize safely, skip the search. If WebSearch is unavailable, skip and proceed. Then return to Phase 1. Gather more evidence. Do not guess.
+2. **If the hypothesis is wrong:** Return to Phase 1. Gather more evidence. Do not guess. If search tools are available, search for the sanitized error type (strip hostnames, IPs, file paths, SQL, customer data).
 
-3. **3-strike rule:** If 3 hypotheses fail, **STOP**. Use AskUserQuestion:
-   ```
-   3 hypotheses tested, none match. This may be an architectural issue
-   rather than a simple bug.
-
-   A) Continue investigating — I have a new hypothesis: [describe]
-   B) Escalate for human review — this needs someone who knows the system
-   C) Add logging and wait — instrument the area and catch it next time
-   ```
+3. **3-strike rule:** If 3 hypotheses fail, **STOP**. Tell the user:
+   - 3 hypotheses tested, none match. This may be an architectural issue rather than a simple bug.
+   - Present options: continue with a new hypothesis, escalate for human review, or add logging and wait.
 
 **Red flags** — if you see any of these, slow down:
 - "Quick fix for now" — there is no "for now." Fix it right or escalate.
@@ -122,13 +101,7 @@ Once root cause is confirmed:
 
 4. **Run the full test suite.** Paste the output. No regressions allowed.
 
-5. **If the fix touches >5 files:** Use AskUserQuestion to flag the blast radius:
-   ```
-   This fix touches N files. That's a large blast radius for a bug fix.
-   A) Proceed — the root cause genuinely spans these files
-   B) Split — fix the critical path now, defer the rest
-   C) Rethink — maybe there's a more targeted approach
-   ```
+5. **If the fix touches >5 files:** Flag the blast radius to the user. Present options: proceed if the root cause genuinely spans these files, split into critical path now + defer the rest, or rethink for a more targeted approach.
 
 ---
 
@@ -159,7 +132,7 @@ Status:          DONE | DONE_WITH_CONCERNS | BLOCKED
 - **3+ failed fix attempts → STOP and question the architecture.** Wrong architecture, not failed hypothesis.
 - **Never apply a fix you cannot verify.** If you can't reproduce and confirm, don't ship it.
 - **Never say "this should fix it."** Verify and prove it. Run the tests.
-- **If fix touches >5 files → AskUserQuestion** about blast radius before proceeding.
+- **If fix touches >5 files → warn the user** about blast radius before proceeding.
 - **Completion status:**
   - DONE — root cause found, fix applied, regression test written, all tests pass
   - DONE_WITH_CONCERNS — fixed but cannot fully verify (e.g., intermittent bug, requires staging)

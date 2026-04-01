@@ -1,11 +1,11 @@
 ---
 name: ship
-description: Ship workflow: detect + merge base branch, run tests, review diff, bump VERSION, update CHANGELOG, commit, push, create PR. Use when asked to "ship", "deploy", "push to main", "create a PR", or "merge and push". Proactively suggest when the user says code is ready or asks about deploying.
+description: Ship workflow: detect + merge base branch, run tests, review diff, bump VERSION, update CHANGELOG, commit, push, create PR. Use when asked to "ship", "deploy", "push to main", "create a PR", or "merge and push". Also use when the user says code is ready or asks about deploying.
 ---
 
 # Ship: Fully Automated Ship Workflow
 
-You are running the `/ship` workflow. This is a **non-interactive, fully automated** workflow. Do NOT ask for confirmation at any step. The user said `/ship` which means DO IT. Run straight through and output the PR URL at the end.
+This is a non-interactive, fully automated workflow. Do NOT ask for confirmation at any step. Run straight through and output the PR URL at the end.
 
 **Only stop for:**
 - On the base branch (abort)
@@ -52,7 +52,7 @@ After completing the review, read the review log and config to display the dashb
 
 Parse the output. Find the most recent entry for each skill (plan-ceo-review, plan-eng-review, review, plan-design-review, design-review-lite, adversarial-review, external-review, external-plan-review). Ignore entries with timestamps older than 7 days. For the Eng Review row, show whichever is more recent between `review` (diff-scoped pre-landing review) and `plan-eng-review` (plan-stage architecture review). Append "(DIFF)" or "(PLAN)" to the status to distinguish. For the Adversarial row, show whichever is more recent between `adversarial-review` (new auto-scaled) and `external-review` (legacy). For Design Review, show whichever is more recent between `plan-design-review` (full visual audit) and `design-review-lite` (code-level check). Append "(FULL)" or "(LITE)" to the status to distinguish. For the Outside Voice row, show the most recent `external-plan-review` entry — this captures outside voices from both /plan-ceo-review and /plan-eng-review.
 
-**Source attribution:** If the most recent entry for a skill has a \`"via"\` field, append it to the status label in parentheses. Examples: `plan-eng-review` with `via:"autoplan"` shows as "CLEAR (PLAN via /autoplan)". `review` with `via:"ship"` shows as "CLEAR (DIFF via /ship)". Entries without a `via` field show as "CLEAR (PLAN)" or "CLEAR (DIFF)" as before.
+**Source attribution:** If the most recent entry for a skill has a \`"via"\` field, append it to the status label in parentheses. Examples: `plan-eng-review` with `via:"autoplan"` shows as "CLEAR (PLAN via autoplan)". `review` with `via:"ship"` shows as "CLEAR (DIFF via ship)". Entries without a `via` field show as "CLEAR (PLAN)" or "CLEAR (DIFF)" as before.
 
 Note: `autoplan-voices` and `design-outside-voices` entries are audit-trail-only (forensic data for cross-model consensus analysis). They do not appear in the dashboard and are not checked by any consumer.
 
@@ -123,7 +123,7 @@ service with existing deployment — verify that a distribution pipeline exists.
    grep -qE 'release|publish|deploy' .gitlab-ci.yml 2>/dev/null && echo "GITLAB_CI_RELEASE"
    ```
 
-3. **If no release pipeline exists and a new artifact was added:** Use AskUserQuestion:
+3. **If no release pipeline exists and a new artifact was added:** Present options to the user:
    - "This PR adds a new binary/tool but there's no CI/CD pipeline to build and publish it.
      Users won't be able to download the artifact after merge."
    - A) Add a release workflow now (CI/CD release pipeline — GitHub Actions or GitLab CI depending on platform)
@@ -182,7 +182,7 @@ Store conventions as prose context for use in Phase 8e.5 or Step 3.4. **Skip the
 
 **If BOOTSTRAP_DECLINED** appears: Print "Test bootstrap previously declined — skipping." **Skip the rest of bootstrap.**
 
-**If NO runtime detected** (no config files found): Use AskUserQuestion:
+**If NO runtime detected** (no config files found): Present options to the user:
 "I couldn't detect your project's language. What runtime are you using?"
 Options: A) Node.js/TypeScript B) Ruby/Rails C) Python D) Go E) Rust F) PHP G) Elixir H) This project doesn't need tests.
 If user picks H → write `.pi/no-test-bootstrap` and continue without tests.
@@ -191,11 +191,11 @@ If user picks H → write `.pi/no-test-bootstrap` and continue without tests.
 
 ### B2. Research best practices
 
-Use WebSearch to find current best practices for the detected runtime:
+Use search tools to find current best practices for the detected runtime:
 - `"[runtime] best test framework 2025 2026"`
 - `"[framework A] vs [framework B] comparison"`
 
-If WebSearch is unavailable, use this built-in knowledge table:
+If search tools are unavailable, use this built-in knowledge table:
 
 | Runtime | Primary recommendation | Alternative |
 |---------|----------------------|-------------|
@@ -210,7 +210,7 @@ If WebSearch is unavailable, use this built-in knowledge table:
 
 ### B3. Framework selection
 
-Use AskUserQuestion:
+Present options to the user:
 "I detected this is a [Runtime/Framework] project with no test framework. I researched current best practices. Here are the options:
 A) [Primary] — [rationale]. Includes: [packages]. Supports: unit, integration, smoke, e2e
 B) [Alternative] — [rationale]. Includes: [packages]
@@ -355,7 +355,7 @@ Check `REPO_MODE` from the preamble output.
 
 **If REPO_MODE is `solo`:**
 
-Use AskUserQuestion:
+Present options to the user:
 
 > These test failures appear pre-existing (not caused by your branch changes):
 >
@@ -370,7 +370,7 @@ Use AskUserQuestion:
 
 **If REPO_MODE is `collaborative` or `unknown`:**
 
-Use AskUserQuestion:
+Present options to the user:
 
 > These test failures appear pre-existing (not caused by your branch changes):
 >
@@ -473,7 +473,7 @@ Map runner → test file: `post_generation_eval_runner.rb` → `post_generation_
 
 **3. Run affected suites at `EVAL_JUDGE_TIER=full`:**
 
-`/ship` is a pre-merge gate, so always use full tier (Sonnet structural + Opus persona judges).
+The ship workflow is a pre-merge gate, so always use full tier (Sonnet structural + Opus persona judges).
 
 ```bash
 EVAL_JUDGE_TIER=full EVAL_VERBOSE=1 bin/test-lane --eval test/evals/<suite>_eval_test.rb 2>&1 | tee /tmp/ship_evals.txt
@@ -488,12 +488,12 @@ If multiple suites need to run, run them sequentially (each needs a test lane). 
 
 **5. Save eval output** — include eval results and cost dashboard in the PR body (Step 8).
 
-**Tier reference (for context — /ship always uses `full`):**
+**Tier reference (for context — the ship workflow always uses `full`):**
 | Tier | When | Speed (cached) | Cost |
 |------|------|----------------|------|
 | `fast` (Haiku) | Dev iteration, smoke tests | ~5s (14x faster) | ~$0.07/run |
 | `standard` (Sonnet) | Default dev, `bin/test-lane --eval` | ~17s (4x faster) | ~$0.37/run |
-| `full` (Opus persona) | **`/ship` and pre-merge** | ~72s (baseline) | ~$1.27/run |
+| `full` (Opus persona) | **ship and pre-merge** | ~72s (baseline) | ~$1.27/run |
 
 ---
 
@@ -606,7 +606,7 @@ When checking each branch, also determine whether a unit test or E2E/integration
 
 ### REGRESSION RULE (mandatory)
 
-**IRON RULE:** When the coverage audit identifies a REGRESSION — code that previously worked but the diff broke — a regression test is written immediately. No AskUserQuestion. No skipping. Regressions are the highest-priority test because they prove something broke.
+**IRON RULE:** When the coverage audit identifies a REGRESSION — code that previously worked but the diff broke — a regression test is written immediately. No ask the user. No skipping. Regressions are the highest-priority test because they prove something broke.
 
 A regression is when:
 - The diff modifies existing behavior (not new code)
@@ -700,18 +700,18 @@ Before proceeding, check CLAUDE.md for a `## Test Coverage` section with `Minimu
 Using the coverage percentage from the diagram in substep 4 (the `COVERAGE: X/Y (Z%)` line):
 
 - **>= target:** Pass. "Coverage gate: PASS ({X}%)." Continue.
-- **>= minimum, < target:** Use AskUserQuestion:
+- **>= minimum, < target:** Present options to the user:
   - "AI-assessed coverage is {X}%. {N} code paths are untested. Target is {target}%."
   - RECOMMENDATION: Choose A because untested code paths are where production bugs hide.
   - Options:
     A) Generate more tests for remaining gaps (recommended)
     B) Ship anyway — I accept the coverage risk
     C) These paths don't need tests — mark as intentionally uncovered
-  - If A: Loop back to substep 5 (generate tests) targeting the remaining gaps. After second pass, if still below target, present AskUserQuestion again with updated numbers. Maximum 2 generation passes total.
+  - If A: Loop back to substep 5 (generate tests) targeting the remaining gaps. After second pass, if still below target, present ask the user again with updated numbers. Maximum 2 generation passes total.
   - If B: Continue. Include in PR body: "Coverage gate: {X}% — user accepted risk."
   - If C: Continue. Include in PR body: "Coverage gate: {X}% — {N} paths intentionally uncovered."
 
-- **< minimum:** Use AskUserQuestion:
+- **< minimum:** Present options to the user:
   - "AI-assessed coverage is critically low ({X}%). {N} of {M} code paths have no tests. Minimum threshold is {minimum}%."
   - RECOMMENDATION: Choose A because less than {minimum}% means more code is untested than tested.
   - Options:
@@ -728,7 +728,7 @@ Using the coverage percentage from the diagram in substep 4 (the `COVERAGE: X/Y 
 
 ### Test Plan Artifact
 
-After producing the coverage diagram, write a test plan artifact so `/qa` and `/qa-only` can consume it:
+After producing the coverage diagram, write a test plan artifact so the QA workflow can consume it:
 
 ```bash
 # Project slug — use project directory name
@@ -740,7 +740,7 @@ Write to `.pi/reports/{slug}/{user}-{branch}-ship-test-plan-{datetime}.md`:
 
 ```markdown
 # Test Plan
-Generated by /ship on {date}
+Generated by the ship workflow on {date}
 Branch: {branch}
 Repo: {owner/repo}
 
@@ -862,7 +862,7 @@ After producing the completion checklist:
 
 - **All DONE or CHANGED:** Pass. "Plan completion: PASS — all items addressed." Continue.
 - **Only PARTIAL items (no NOT DONE):** Continue with a note in the PR body. Not blocking.
-- **Any NOT DONE items:** Use AskUserQuestion:
+- **Any NOT DONE items:** Present options to the user:
   - Show the completion checklist above
   - "{N} items from the plan are NOT DONE. These were part of the original plan but are missing from the implementation."
   - RECOMMENDATION: depends on item count and severity. If 1-2 minor items (docs, config), recommend B. If core functionality is missing, recommend A.
@@ -882,7 +882,7 @@ After producing the completion checklist:
 
 ## Step 3.47: Plan Verification
 
-Automatically verify the plan's testing/verification steps using the `/qa-only` skill.
+Automatically verify the plan's testing/verification steps using the qa-only skill.
 
 ### 1. Check for verification section
 
@@ -902,29 +902,29 @@ curl -s -o /dev/null -w '%{http_code}' http://localhost:5173 2>/dev/null || \
 curl -s -o /dev/null -w '%{http_code}' http://localhost:4000 2>/dev/null || echo "NO_SERVER"
 ```
 
-**If NO_SERVER:** Skip with "No dev server detected — skipping plan verification. Run /qa separately after deploying."
+**If NO_SERVER:** Skip with "No dev server detected — skipping plan verification. Run QA separately after deploying."
 
 ### 3. Invoke /qa-only inline
 
-Read the `/qa-only` skill from disk:
+Read the qa-only skill from disk:
 
 ```bash
 cat qa-only/SKILL.md
 ```
 
-**If unreadable:** Skip with "Could not load /qa-only — skipping plan verification."
+**If unreadable:** Skip with "Could not load qa-only skill — skipping plan verification."
 
-Follow the /qa-only workflow with these modifications:
-- **Skip the preamble** (already handled by /ship)
+Follow the qa-only workflow with these modifications:
+- **Skip the preamble** (already handled by the ship workflow)
 - **Use the plan's verification section as the primary test input** — treat each verification item as a test case
 - **Use the detected dev server URL** as the base URL
-- **Skip the fix loop** — this is report-only verification during /ship
+- **Skip the fix loop** — this is report-only verification during shipping
 - **Cap at the verification items from the plan** — do not expand into general site QA
 
 ### 4. Gate logic
 
 - **All verification items PASS:** Continue silently. "Plan verification: PASS."
-- **Any FAIL:** Use AskUserQuestion:
+- **Any FAIL:** Present options to the user:
   - Show the failures with screenshot evidence
   - RECOMMENDATION: Choose A if failures indicate broken functionality. Choose B if cosmetic only.
   - Options:
@@ -973,7 +973,7 @@ source <(# diff-scope not available in pi-agents <base> 2>/dev/null)
 4. **Apply the design checklist** against the changed files. For each item:
    - **[HIGH] mechanical CSS fix** (`outline: none`, `!important`, `font-size < 16px`): classify as AUTO-FIX
    - **[HIGH/MEDIUM] design judgment needed**: classify as ASK
-   - **[LOW] intent-based detection**: present as "Possible — verify visually or run /design-review"
+   - **[LOW] intent-based detection**: present as "Possible — verify visually or run a design review"
 
 5. **Include findings** in the review output under a "Design Review" header, following the output format in the checklist. Design findings merge with code review findings into the same Fix-First flow.
 
@@ -1016,14 +1016,14 @@ Present Codex output under a `CODEX (design):` header, merged with the checklist
 5. **Auto-fix all AUTO-FIX items.** Apply each fix. Output one line per fix:
    `[AUTO-FIXED] [file:line] Problem → what you did`
 
-6. **If ASK items remain,** present them in ONE AskUserQuestion:
+6. **If ASK items remain,** present them in ONE ask the user:
    - List each with number, severity, problem, recommended fix
    - Per-item options: A) Fix  B) Skip
    - Overall RECOMMENDATION
-   - If 3 or fewer ASK items, you may use individual AskUserQuestion calls instead
+   - If 3 or fewer ASK items, you may use individual ask the user calls instead
 
 7. **After all fixes (auto + user-approved):**
-   - If ANY fixes were applied: commit fixed files by name (`git add <fixed-files> && git commit -m "fix: pre-landing review fixes"`), then **STOP** and tell the user to run `/ship` again to re-test.
+   - If ANY fixes were applied: commit fixed files by name (`git add <fixed-files> && git commit -m "fix: pre-landing review fixes"`), then **STOP** and tell the user to run the ship workflow again to re-test.
    - If no fixes applied (all ASK items skipped, or no issues found): continue to Step 4.
 
 8. Output summary: `Pre-Landing Review: N issues — M auto-fixed, K asked (J fixed, L skipped)`
@@ -1035,7 +1035,7 @@ Present Codex output under a `CODEX (design):` header, merged with the checklist
 # review logging not available in pi-agents
 ```
 Substitute TIMESTAMP (ISO 8601), STATUS ("clean" if no issues, "issues_found" otherwise),
-and N values from the summary counts above. The `via:"ship"` distinguishes from standalone `/review` runs.
+and N values from the summary counts above. The `via:"ship"` distinguishes from standalone review runs.
 
 Save the review output — it goes into the PR body in Step 8.
 
@@ -1055,18 +1055,18 @@ Before replying to any comment, run the **Escalation Detection** algorithm from 
 
 For each classified comment:
 
-**VALID & ACTIONABLE:** Use AskUserQuestion with:
+**VALID & ACTIONABLE:** Present options to the user with:
 - The comment (file:line or [top-level] + body summary + permalink URL)
 - `RECOMMENDATION: Choose A because [one-line reason]`
 - Options: A) Fix now, B) Acknowledge and ship anyway, C) It's a false positive
 - If user chooses A: apply the fix, commit the fixed files (`git add <fixed-files> && git commit -m "fix: address Greptile review — <brief description>"`), reply using the **Fix reply template** from greptile-triage.md (include inline diff + explanation), and save to both per-project and global greptile-history (type: fix).
 - If user chooses C: reply using the **False Positive reply template** from greptile-triage.md (include evidence + suggested re-rank), save to both per-project and global greptile-history (type: fp).
 
-**VALID BUT ALREADY FIXED:** Reply using the **Already Fixed reply template** from greptile-triage.md — no AskUserQuestion needed:
+**VALID BUT ALREADY FIXED:** Reply using the **Already Fixed reply template** from greptile-triage.md — no ask the user needed:
 - Include what was done and the fixing commit SHA
 - Save to both per-project and global greptile-history (type: already-fixed)
 
-**FALSE POSITIVE:** Use AskUserQuestion:
+**FALSE POSITIVE:** Present options to the user:
 - Show the comment and why you think it's wrong (file:line or [top-level] + body summary + permalink URL)
 - Options:
   - A) Reply to Greptile explaining the false positive (recommended if clearly wrong)
@@ -1172,7 +1172,7 @@ cd "$_REPO_ROOT"
 Set the Bash tool's `timeout` parameter to `300000` (5 minutes). Do NOT use the `timeout` shell command — it doesn't exist on macOS. Present output under `EXTERNAL REVIEW:` header.
 Check for `[P1]` markers: found → `GATE: FAIL`, not found → `GATE: PASS`.
 
-If GATE is FAIL, use AskUserQuestion:
+If GATE is FAIL, present options to the user:
 ```
 Codex found N critical issues in the diff.
 
@@ -1289,7 +1289,7 @@ Read `.pi/skills/todos-format.md` for the canonical format reference.
 
 **1. Check if TODOS.md exists** in the repository root.
 
-**If TODOS.md does not exist:** Use AskUserQuestion:
+**If TODOS.md does not exist:** Present options to the user:
 - Message: "GStack recommends maintaining a TODOS.md organized by skill/component, then priority (P0 at top through P4, then Completed at bottom). See TODOS-format.md for the full format. Would you like to create one?"
 - Options: A) Create it now, B) Skip for now
 - If A: Create `TODOS.md` with a skeleton (# TODOS heading + ## Completed section). Continue to step 3.
@@ -1302,7 +1302,7 @@ Read TODOS.md and verify it follows the recommended structure:
 - Each item has `**Priority:**` field with P0-P4 value
 - A `## Completed` section at the bottom
 
-**If disorganized** (missing priority fields, no component groupings, no Completed section): Use AskUserQuestion:
+**If disorganized** (missing priority fields, no component groupings, no Completed section): Present options to the user:
 - Message: "TODOS.md doesn't follow the recommended structure (skill/component groupings, P0-P4 priority, Completed section). Would you like to reorganize it?"
 - Options: A) Reorganize now (recommended), B) Leave as-is
 - If A: Reorganize in-place following TODOS-format.md. Preserve all content — only restructure, never delete items.
@@ -1367,7 +1367,7 @@ Save this summary — it goes into the PR body in Step 8.
 git commit -m "$(cat <<'EOF'
 chore: bump version and changelog (vX.Y.Z.W)
 
-Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
+Bump version and changelog
 EOF
 )"
 ```
@@ -1505,7 +1505,7 @@ execute its full workflow:
 4. If no docs needed updating, say "Documentation is current — no updates needed."
 
 This step is automatic. Do not ask the user for confirmation. The goal is zero-friction
-doc updates — the user runs `/ship` and documentation stays current without a separate command.
+doc updates — the user runs ship and documentation stays current without a separate command.
 
 ---
 
@@ -1548,4 +1548,4 @@ This step is automatic — never skip it, never ask for confirmation.
 - **Use Greptile reply templates from greptile-triage.md.** Every reply includes evidence (inline diff, code references, re-rank suggestion). Never post vague replies.
 - **Never push without fresh verification evidence.** If code changed after Step 3 tests, re-run before pushing.
 - **Step 3.4 generates coverage tests.** They must pass before committing. Never commit failing tests.
-- **The goal is: user says `/ship`, next thing they see is the review + PR URL + auto-synced docs.**
+- **The goal is: user runs ship, next thing they see is the review + PR URL + auto-synced docs.**

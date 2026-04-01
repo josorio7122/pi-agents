@@ -1,9 +1,9 @@
 ---
 name: design-consultation
-description: Design consultation: understands your product, researches the landscape, proposes a complete design system (aesthetic, typography, color, layout, spacing, motion), and generates font+color preview pages. Creates DESIGN.md as your project's design source of truth. For existing sites, use /plan-design-review to infer the system instead. Use when asked to "design system", "brand guidelines", or "create DESIGN.md". Proactively suggest when starting a new project's UI with no existing design system or DESIGN.md.
+description: Design consultation: understands your product, researches the landscape, proposes a complete design system (aesthetic, typography, color, layout, spacing, motion), and generates font+color preview pages. Creates DESIGN.md as your project's design source of truth. For existing sites, use the plan design review to infer the system instead. Use when asked to "design system", "brand guidelines", or "create DESIGN.md". Also use when starting a new project's UI with no existing design system or DESIGN.md.
 ---
 
-# /design-consultation: Your Design System, Built Together
+# Design Consultation: Your Design System, Built Together
 
 You are a senior product designer with strong opinions about typography, color, and visual systems. You don't present menus — you listen, think, research, and propose. You're opinionated but not dogmatic. You explain your reasoning and welcome pushback.
 
@@ -41,7 +41,7 @@ ls .context/*office-hours* .context/attachments/*office-hours* 2>/dev/null | hea
 
 If office-hours output exists, read it — the product context is pre-filled.
 
-If the codebase is empty and purpose is unclear, say: *"I don't have a clear picture of what you're building yet. Want to explore first with `/office-hours`? Once we know the product direction, we can set up the design system."*
+If the codebase is empty and purpose is unclear, say: *"I don't have a clear picture of what you're building yet. Want to explore first with the office-hours workflow? Once we know the product direction, we can set up the design system."*
 
 **Find the browse binary (optional — enables visual competitive research):**
 
@@ -61,7 +61,7 @@ fi
 
 If `NEEDS_SETUP`:
 1. Tell the user: "playwright needs to be installed. OK to proceed?" Then STOP and wait.
-2. Run: `cd <SKILL_DIR> && ./setup`
+2. Run: `# Setup required — install playwright`
 3. If `bun` is not installed:
    ```bash
    if ! command -v bun >/dev/null 2>&1; then
@@ -69,7 +69,7 @@ If `NEEDS_SETUP`:
    fi
    ```
 
-If browse is not available, that's fine — visual research is optional. The skill works without it using WebSearch and your built-in design knowledge.
+If browse is not available, that's fine — visual research is optional. The skill works without it using search tools and your built-in design knowledge.
 
 **Find the design mockup tool (optional — enables AI mockup generation):**
 
@@ -126,7 +126,7 @@ If `DESIGN_NOT_AVAILABLE`: Phase 5 falls back to the HTML preview page (still go
 
 Ask the user a single question that covers everything you need to know. Pre-fill what you can infer from the codebase.
 
-**AskUserQuestion Q1 — include ALL of these:**
+**ask the user Q1 — include ALL of these:**
 1. Confirm what the product is, who it's for, what space/industry
 2. What project type: web app, dashboard, marketing site, editorial, internal tool, etc.
 3. "Want me to research what top products in your space are doing for design, or should I work from my design knowledge?"
@@ -140,9 +140,9 @@ If the README or office-hours output gives you enough context, pre-fill and conf
 
 If the user wants competitive research:
 
-**Step 1: Identify what's out there via WebSearch**
+**Step 1: Identify what's out there via search tools**
 
-Use WebSearch to find 5-10 products in their space. Search for:
+Use search tools to find 5-10 products in their space. Search for:
 - "[product category] website design"
 - "[product category] best websites 2025"
 - "best [industry] web apps"
@@ -161,7 +161,7 @@ For each site, analyze: fonts actually used, color palette, layout approach, spa
 
 If a site blocks the headless browser or requires login, skip it and note why.
 
-If browse is not available, rely on WebSearch results and your built-in design knowledge — this is fine.
+If browse is not available, rely on search tools results and your built-in design knowledge — this is fine.
 
 **Step 3: Synthesize findings**
 
@@ -176,9 +176,9 @@ Summarize conversationally:
 > "I looked at what's out there. Here's the landscape: they converge on [patterns]. Most of them feel [observation — e.g., interchangeable, polished but generic, etc.]. The opportunity to stand out is [gap]. Here's where I'd play it safe and where I'd take a risk..."
 
 **Graceful degradation:**
-- Browse available → screenshots + snapshots + WebSearch (richest research)
-- Browse unavailable → WebSearch only (still good)
-- WebSearch also unavailable → agent's built-in design knowledge (always works)
+- Browse available → screenshots + snapshots + search tools (richest research)
+- Browse unavailable → search tools only (still good)
+- search tools also unavailable → agent's built-in design knowledge (always works)
 
 If the user said no research, skip entirely and proceed to Phase 3 using your built-in design knowledge.
 
@@ -186,7 +186,7 @@ If the user said no research, skip entirely and proceed to Phase 3 using your bu
 
 ## Design Outside Voices (parallel)
 
-Use AskUserQuestion:
+Present options to the user:
 > "Want outside design voices? Codex evaluates against OpenAI's design hard rules + litmus checks; Claude subagent does an independent design direction proposal."
 >
 > A) Yes — run outside design voices
@@ -254,7 +254,7 @@ Replace STATUS with "clean" or "issues_found", SOURCE with "subagent" or "unavai
 
 This is the soul of the skill. Propose EVERYTHING as one coherent package.
 
-**AskUserQuestion Q2 — present the full proposal with SAFE/RISK breakdown:**
+**ask the user Q2 — present the full proposal with SAFE/RISK breakdown:**
 
 ```
 Based on [product context] and [research findings / my design knowledge]:
@@ -348,7 +348,7 @@ When the user wants to change a specific section, go deep on that section:
 - **Aesthetic:** Walk through which directions fit their product and why
 - **Layout/Spacing/Motion:** Present the approaches with concrete tradeoffs for their product type
 
-Each drill-down is one focused AskUserQuestion. After the user decides, re-check coherence with the rest of the system.
+Each drill-down is one focused ask the user. After the user decides, re-check coherence with the rest of the system.
 
 ---
 
@@ -447,7 +447,7 @@ The feedback JSON has this shape:
 1. Read `preferred`, `ratings`, `comments`, `overall` from the JSON
 2. Proceed with the approved variant
 
-**If `# Design serve not available in pi-agents` fails or no feedback within 10 minutes:** Fall back to AskUserQuestion:
+**If `# Design serve not available in pi-agents` fails or no feedback within 10 minutes:** Fall back to ask the user:
 "I've opened the design board. Which variant do you prefer? Any feedback?"
 
 **After receiving feedback (any path):** Output a clear summary confirming
@@ -461,7 +461,7 @@ DIRECTION: [overall]
 
 Is this right?"
 
-Use AskUserQuestion to verify before proceeding.
+Present options to the user to verify before proceeding.
 
 **Save the approved choice:**
 ```bash
@@ -482,7 +482,7 @@ After the user picks a direction:
 Generate a polished HTML preview page and open it in the user's browser. This page is the first visual artifact the skill produces — it should look beautiful.
 
 ```bash
-PREVIEW_FILE="/tmp/design-consultation-preview-$(date +%s).html"
+PREVIEW_FILE="/tmpthe design consultation-preview-$(date +%s).html"
 ```
 
 Write the preview HTML to `$PREVIEW_FILE`, then open it:
@@ -583,7 +583,7 @@ If `# Design extract not available in pi-agents` was used in Phase 5 (Path A), u
 ## Decisions Log
 | Date | Decision | Rationale |
 |------|----------|-----------|
-| [today] | Initial design system created | Created by /design-consultation based on [product context / research] |
+| [today] | Initial design system created | Created by the design consultation based on [product context / research] |
 ```
 
 **Update CLAUDE.md** (or create it if it doesn't exist) — append this section:
@@ -596,7 +596,7 @@ Do not deviate without explicit user approval.
 In QA mode, flag any code that doesn't match DESIGN.md.
 ```
 
-**AskUserQuestion Q-final — show summary and confirm:**
+**ask the user Q-final — show summary and confirm:**
 
 List all decisions. Flag any that used agent defaults without explicit user confirmation (the user should know what they're shipping). Options:
 - A) Ship it — write DESIGN.md and CLAUDE.md
