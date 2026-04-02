@@ -9,7 +9,6 @@ import { parseAgentFile } from "./discovery/parser.js";
 import { scanForAgentFiles } from "./discovery/scanner.js";
 import type { AgentConfig, DiscoveryDiagnostic } from "./discovery/validator.js";
 import { validateAgent } from "./discovery/validator.js";
-import { ensureLogExists } from "./invocation/conversation-log.js";
 import { createAgentTool } from "./tool/agent-tool.js";
 
 function discoverAgents(params: { readonly projectDir: string; readonly userDir: string }) {
@@ -72,9 +71,7 @@ export default function (pi: ExtensionAPI) {
 
     bootstrapKnowledge(agents);
 
-    // Resolve conversation log path and ensure it exists
     const conversationLogPath = join(ctx.cwd, ".pi", "sessions", sessionId, "conversation.jsonl");
-    ensureLogExists(conversationLogPath);
 
     // Register agent tool with discovered agents
     if (agents.length > 0) {
@@ -85,7 +82,7 @@ export default function (pi: ExtensionAPI) {
         sessionDir: join(ctx.cwd, ".pi", "sessions", sessionId),
         conversationLogPath,
       });
-      pi.registerTool(tool as Parameters<typeof pi.registerTool>[0]);
+      pi.registerTool(tool);
       ctx.ui.notify(`[pi-agents] ${agents.length} agent(s) loaded`, "info");
     }
   });

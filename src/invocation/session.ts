@@ -1,9 +1,10 @@
 import { readFileSync } from "node:fs";
-import { getModel } from "@mariozechner/pi-ai";
+import type { Api, Model } from "@mariozechner/pi-ai";
 import {
   createAgentSession,
   createExtensionRuntime,
   type ModelRegistry,
+  type ResourceLoader,
   SessionManager,
   SettingsManager,
 } from "@mariozechner/pi-coding-agent";
@@ -24,7 +25,7 @@ type RunAgentParams = Readonly<{
   sessionDir: string;
   conversationLogPath: string;
   modelRegistry: ModelRegistry;
-  modelOverride?: unknown; // For testing with faux provider
+  modelOverride?: Model<Api>;
   signal?: AbortSignal;
   onUpdate?: (metrics: AgentMetrics) => void;
 }>;
@@ -69,12 +70,8 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
   });
 
   // Resolve model (override for testing, otherwise from registry)
-  const model =
-    modelOverride ??
-    (() => {
-      const { provider, modelId } = parseModelId(fm.model);
-      return modelRegistry.find(provider, modelId) ?? getModel(provider as "anthropic", modelId as "claude-sonnet-4-6");
-    })();
+  const { provider, modelId } = parseModelId(fm.model);
+  const model: Model<Api> | undefined = modelOverride ?? modelRegistry.find(provider, modelId);
   if (!model) {
     return { output: "", metrics: createMetricsTracker().snapshot(), error: `Model not found: ${fm.model}` };
   }
@@ -94,13 +91,15 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
     { path: expandPath(fm.knowledge.general.path), maxLines: fm.knowledge.general["max-lines"] },
   ];
 
-  // Create domain-scoped tools
+  // Create domain-scoped tools.
+  // createToolForAgent wraps AgentTool with domain checks, erasing the schema generic.
+  // The structural shape is compatible with Tool (AgentTool<any>) at runtime.
   const tools = fm.tools
     .filter((t) => t !== "delegate") // No delegation in pi-agents scope
     .map((t) =>
       createToolForAgent({ name: t, cwd, domain: fullDomain, conversationLogPath, agentName: fm.name, knowledgeFiles }),
     )
-    .filter(Boolean);
+    .filter((t): t is NonNullable<typeof t> => t != null);
 
   // Write user task to conversation log BEFORE invocation
   appendToLog(conversationLogPath, {
@@ -113,8 +112,8 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
   // Create agent session
   const { session } = await createAgentSession({
     cwd,
-    model: model as never,
-    tools: tools as never,
+    model,
+    tools,
     sessionManager: SessionManager.inMemory(),
     settingsManager: SettingsManager.inMemory({ compaction: { enabled: false } }),
     modelRegistry,
@@ -128,13 +127,13 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
       getAppendSystemPrompt: () => [],
       extendResources: () => {},
       reload: async () => {},
-    },
+    } satisfies ResourceLoader,
   });
 
   // Track metrics
   const tracker = createMetricsTracker();
   session.subscribe((event) => {
-    tracker.handle(event as Record<string, unknown>);
+    tracker.handle(event);
     onUpdate?.(tracker.snapshot());
   });
 

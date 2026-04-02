@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
+import type { RenderTheme } from "./render.js";
 import { renderAgentCall, renderAgentResult } from "./render.js";
 
-const mockTheme = {
-  fg: (_color: string, text: string) => text,
-  bold: (text: string) => text,
+const mockTheme: RenderTheme = {
+  fg: (_color, text) => text,
+  bold: (text) => text,
 };
 
 const agents: Record<string, { icon: string; name: string; color: string; model: string }> = {

@@ -1,5 +1,6 @@
 import { resolve } from "node:path";
 import {
+  type AgentToolResult,
   createBashTool,
   createEditTool,
   createFindTool,
@@ -9,10 +10,28 @@ import {
   createWriteTool,
   withFileMutationQueue,
 } from "@mariozechner/pi-coding-agent";
+// Each create*Tool factory returns AgentTool<SpecificSchema> — the schema generic
+// varies per tool. We forward params opaquely through the domain-check wrapper,
+// so we erase the schema to match AgentTool<TSchema, any> structurally.
+import type { TSchema } from "@sinclair/typebox";
 import { checkDomain } from "../domain/checker.js";
 import { enforceMaxLines } from "../domain/max-lines.js";
 import type { buildDomainWithKnowledge } from "../domain/scoped-tools.js";
 import { appendToLog } from "./conversation-log.js";
+
+interface WrappableTool {
+  readonly name: string;
+  readonly label: string;
+  readonly description: string;
+  readonly parameters: TSchema;
+  prepareArguments?: (args: unknown) => unknown;
+  execute(
+    toolCallId: string,
+    params: unknown,
+    signal?: AbortSignal,
+    onUpdate?: unknown,
+  ): Promise<AgentToolResult<unknown>>;
+}
 
 export function createToolForAgent(params: {
   readonly name: string;
@@ -23,24 +42,29 @@ export function createToolForAgent(params: {
   readonly knowledgeFiles: ReadonlyArray<{ path: string; maxLines: number }>;
 }) {
   const { name, cwd, domain, conversationLogPath, agentName, knowledgeFiles } = params;
-  const factories: Record<string, (c: string) => unknown> = {
-    read: createReadTool,
-    write: createWriteTool,
-    edit: createEditTool,
-    grep: createGrepTool,
-    find: createFindTool,
-    ls: createLsTool,
-    bash: createBashTool,
-  };
+  function createTool(toolName: string, cwd: string): WrappableTool | undefined {
+    switch (toolName) {
+      case "read":
+        return createReadTool(cwd);
+      case "write":
+        return createWriteTool(cwd);
+      case "edit":
+        return createEditTool(cwd);
+      case "grep":
+        return createGrepTool(cwd);
+      case "find":
+        return createFindTool(cwd);
+      case "ls":
+        return createLsTool(cwd);
+      case "bash":
+        return createBashTool(cwd);
+      default:
+        return undefined;
+    }
+  }
 
-  const factory = factories[name];
-  if (!factory) return undefined;
-
-  const baseTool = factory(cwd) as {
-    name: string;
-    execute: (...args: unknown[]) => Promise<unknown>;
-    [key: string]: unknown;
-  };
+  const baseTool = createTool(name, cwd);
+  if (!baseTool) return undefined;
 
   // bash is not domain-checked
   if (name === "bash") return baseTool;
@@ -49,7 +73,7 @@ export function createToolForAgent(params: {
   const originalExecute = baseTool.execute;
   return {
     ...baseTool,
-    async execute(toolCallId: unknown, toolParams: unknown, ...rest: unknown[]) {
+    async execute(toolCallId: string, toolParams: unknown, signal?: AbortSignal, onUpdate?: unknown) {
       const p = typeof toolParams === "object" && toolParams !== null ? (toolParams as Record<string, unknown>) : {};
       const rawPath = p.path ?? p.file_path ?? "";
       const filePath = typeof rawPath === "string" ? rawPath : "";
@@ -76,7 +100,7 @@ export function createToolForAgent(params: {
 
       if (knowledgeMatch && (name === "write" || name === "edit")) {
         return withFileMutationQueue(resolved, async () => {
-          const result = await originalExecute.call(baseTool, toolCallId, toolParams, ...rest);
+          const result = await originalExecute(toolCallId, toolParams, signal, onUpdate);
           const truncated = enforceMaxLines({ filePath: resolved, maxLines: knowledgeMatch.maxLines });
           if (truncated) {
             appendToLog(conversationLogPath, {
@@ -91,7 +115,7 @@ export function createToolForAgent(params: {
         });
       }
 
-      return originalExecute.call(baseTool, toolCallId, toolParams, ...rest);
+      return originalExecute(toolCallId, toolParams, signal, onUpdate);
     },
   };
 }

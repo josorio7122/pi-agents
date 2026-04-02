@@ -16,6 +16,7 @@ export function ensureLogExists(logPath: string) {
 }
 
 export function appendToLog(logPath: string, entry: ConversationEntry) {
+  ensureLogExists(logPath);
   appendFileSync(logPath, `${JSON.stringify(entry)}\n`, "utf-8");
 }
 

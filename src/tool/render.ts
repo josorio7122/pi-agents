@@ -1,11 +1,15 @@
+import type { ThemeColor } from "@mariozechner/pi-coding-agent";
 import { Container, Spacer, Text } from "@mariozechner/pi-tui";
+import { colorize } from "../common/color.js";
 import type { AgentMetrics } from "../invocation/metrics.js";
 import { formatUsageStats } from "./format.js";
 import type { RunAgentResult } from "./modes.js";
 import { aggregateMetrics } from "./modes.js";
 
-type RenderTheme = Readonly<{
-  fg: (color: string, text: string) => string;
+// Structural subset of Theme used by render functions.
+// Accepts Pi's Theme class and lightweight test fakes alike.
+export type RenderTheme = Readonly<{
+  fg: (color: ThemeColor, text: string) => string;
   bold: (text: string) => string;
 }>;
 
@@ -31,11 +35,8 @@ export function toResultEntry(params: {
   readonly step?: number;
 }): AgentResultEntry {
   const { agentName, result, step } = params;
-  const base = {
-    agent: agentName,
-    status: (result.error ? "error" : "done") as AgentResultEntry["status"],
-    metrics: result.metrics,
-  };
+  const status: AgentResultEntry["status"] = result.error ? "error" : "done";
+  const base = { agent: agentName, status, metrics: result.metrics };
   return { ...base, ...(result.error ? { error: result.error } : {}), ...(step !== undefined ? { step } : {}) };
 }
 
@@ -66,9 +67,10 @@ export function renderAgentCall(params: {
   const agent = agentName !== "..." ? findAgent(agentName) : undefined;
   const icon = agent?.icon ?? "●";
   const name = agent?.name ?? agentName;
+  const styledName = agent?.color ? colorize(agent.color, theme.bold(name)) : theme.bold(name);
   const model = agent?.model ?? "";
   const modelSuffix = model ? ` ${theme.fg("dim", `(${model})`)}` : "";
-  return new Text(`${icon} ${theme.bold(name)}${modelSuffix}`, 0, 0);
+  return new Text(`${icon} ${styledName}${modelSuffix}`, 0, 0);
 }
 
 // ── renderResult ────────────────────────────────────────────
@@ -135,12 +137,13 @@ function renderCard(params: {
   const agent = findAgent(entry.agent);
   const icon = agent?.icon ?? "●";
 
+  const styledName = agent?.color ? colorize(agent.color, entry.agent) : entry.agent;
   const statusIcon = statusIndicator(entry.status, theme);
   const stats = entry.metrics ? ` ${theme.fg("dim", formatUsageStats(entry.metrics))}` : "";
   const errorSuffix = entry.error ? ` ${theme.fg("error", entry.error)}` : "";
   const stepPrefix = showStep && entry.step ? `${theme.fg("dim", `${entry.step}.`)} ` : "";
 
-  return new Text(`${stepPrefix}${icon} ${entry.agent} ${statusIcon}${stats}${errorSuffix}`, 0, 0);
+  return new Text(`${stepPrefix}${icon} ${styledName} ${statusIcon}${stats}${errorSuffix}`, 0, 0);
 }
 
 const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
@@ -148,6 +151,6 @@ const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", 
 function statusIndicator(status: AgentResultEntry["status"], theme: RenderTheme) {
   if (status === "done") return theme.fg("success", "✓");
   if (status === "error") return theme.fg("error", "✗");
-  const frame = SPINNER_FRAMES[Math.floor(Date.now() / 250) % SPINNER_FRAMES.length]!;
+  const frame = SPINNER_FRAMES[Math.floor(Date.now() / 80) % SPINNER_FRAMES.length]!;
   return theme.fg("accent", frame);
 }

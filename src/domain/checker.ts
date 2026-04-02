@@ -28,6 +28,15 @@ export function checkDomain(params: {
   let bestLength = -1;
 
   for (const entry of domain) {
+    // "." matches all paths (wildcard) — lowest specificity
+    if (entry.path === ".") {
+      if (bestLength < 0) {
+        bestLength = 0;
+        bestMatch = entry;
+      }
+      continue;
+    }
+
     const normalized = entry.path.endsWith("/") ? entry.path : `${entry.path}/`;
     const relWithSlash = rel.endsWith("/") ? rel : `${rel}/`;
 

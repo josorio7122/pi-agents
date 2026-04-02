@@ -66,4 +66,31 @@ describe("checkDomain", () => {
     const result = checkDomain({ filePath: "apps/backend/index.ts", operation: "read", domain: noSlashDomain, cwd });
     expect(result.allowed).toBe(true);
   });
+
+  it("treats '.' as wildcard matching all paths", () => {
+    const wildcardDomain = [{ path: ".", read: true, write: true, delete: false }];
+    expect(checkDomain({ filePath: "src/index.ts", operation: "read", domain: wildcardDomain, cwd })).toEqual({
+      allowed: true,
+    });
+    expect(checkDomain({ filePath: "package.json", operation: "write", domain: wildcardDomain, cwd })).toEqual({
+      allowed: true,
+    });
+    expect(checkDomain({ filePath: "deep/nested/file.ts", operation: "read", domain: wildcardDomain, cwd })).toEqual({
+      allowed: true,
+    });
+    const deleteResult = checkDomain({ filePath: "src/foo.ts", operation: "delete", domain: wildcardDomain, cwd });
+    expect(deleteResult.allowed).toBe(false);
+  });
+
+  it("more specific domain overrides '.' wildcard", () => {
+    const mixedDomain = [
+      { path: ".", read: true, write: false, delete: false },
+      { path: "src/", read: true, write: true, delete: true },
+    ];
+    expect(checkDomain({ filePath: "src/index.ts", operation: "write", domain: mixedDomain, cwd })).toEqual({
+      allowed: true,
+    });
+    const rootWrite = checkDomain({ filePath: "package.json", operation: "write", domain: mixedDomain, cwd });
+    expect(rootWrite.allowed).toBe(false);
+  });
 });

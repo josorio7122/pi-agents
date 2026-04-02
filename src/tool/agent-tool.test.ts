@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { AgentConfig } from "../discovery/validator.js";
 import type { AgentMetrics } from "../invocation/metrics.js";
 import { createAgentTool } from "./agent-tool.js";
+import type { RenderTheme } from "./render.js";
 
 const emptyMetrics: AgentMetrics = { turns: 0, inputTokens: 0, outputTokens: 0, cost: 0, toolCalls: [] };
 
@@ -83,8 +84,8 @@ describe("createAgentTool", () => {
       sessionDir: "/tmp/sessions/abc",
       conversationLogPath: "/tmp/sessions/abc/conversation.jsonl",
     });
-    const mockTheme = { fg: (_c: string, t: string) => t, bold: (t: string) => t };
-    const rendered = tool.renderCall({ agent: "scout", task: "test" }, mockTheme);
+    const mockTheme: RenderTheme = { fg: (_c, t) => t, bold: (t) => t };
+    const rendered = tool.renderCall({ agent: "scout", task: "test" }, mockTheme as any);
     const text = rendered.render(120).join("\n");
     expect(text).toContain("scout");
   });
@@ -97,11 +98,11 @@ describe("createAgentTool", () => {
       sessionDir: "/tmp/sessions/abc",
       conversationLogPath: "/tmp/sessions/abc/conversation.jsonl",
     });
-    const mockTheme = { fg: (_c: string, t: string) => t, bold: (t: string) => t };
+    const mockTheme: RenderTheme = { fg: (_c, t) => t, bold: (t) => t };
     const rendered = tool.renderResult(
       { content: [{ type: "text", text: "" }] },
       { expanded: false, isPartial: false },
-      mockTheme,
+      mockTheme as any,
     );
     const text = rendered.render(120).join("\n");
     expect(text).toContain("running...");
@@ -115,7 +116,7 @@ describe("createAgentTool", () => {
       sessionDir: "/tmp/sessions/abc",
       conversationLogPath: "/tmp/sessions/abc/conversation.jsonl",
     });
-    const mockTheme = { fg: (_c: string, t: string) => t, bold: (t: string) => t };
+    const mockTheme: RenderTheme = { fg: (_c, t) => t, bold: (t) => t };
     const rendered = tool.renderResult(
       {
         content: [{ type: "text", text: "done" }],
@@ -131,7 +132,7 @@ describe("createAgentTool", () => {
         },
       },
       { expanded: false, isPartial: false },
-      mockTheme,
+      mockTheme as any,
     );
     const text = rendered.render(120).join("\n");
     expect(text).toContain("✓");
@@ -145,7 +146,9 @@ describe("createAgentTool", () => {
       sessionDir: "/tmp/sessions/abc",
       conversationLogPath: "/tmp/sessions/abc/conversation.jsonl",
     });
-    await expect(tool.execute("call-1", {}, undefined, undefined)).rejects.toThrow("No mode specified");
+    await expect(tool.execute("call-1", {}, undefined, undefined, undefined as any)).rejects.toThrow(
+      "No mode specified",
+    );
   });
 
   it("execute throws on unknown agent in single mode", async () => {
@@ -157,7 +160,7 @@ describe("createAgentTool", () => {
       conversationLogPath: "/tmp/sessions/abc/conversation.jsonl",
     });
     await expect(
-      tool.execute("call-1", { agent: "nonexistent", task: "do stuff" }, undefined, undefined),
+      tool.execute("call-1", { agent: "nonexistent", task: "do stuff" }, undefined, undefined, undefined as any),
     ).rejects.toThrow('Unknown agent: "nonexistent"');
   });
 
@@ -180,6 +183,7 @@ describe("createAgentTool", () => {
         },
         undefined,
         undefined,
+        undefined as any,
       ),
     ).rejects.toThrow("Unknown agent");
   });
@@ -195,7 +199,7 @@ describe("createAgentTool", () => {
     const controller = new AbortController();
     controller.abort();
     await expect(
-      tool.execute("call-1", { agent: "scout", task: "do stuff" }, controller.signal, undefined),
+      tool.execute("call-1", { agent: "scout", task: "do stuff" }, controller.signal, undefined, undefined as any),
     ).rejects.toThrow("cancelled");
   });
 
@@ -218,6 +222,7 @@ describe("createAgentTool", () => {
         },
         undefined,
         undefined,
+        undefined as any,
       ),
     ).rejects.toThrow("Unknown agent");
   });

@@ -31,7 +31,8 @@ export function createMetricsTracker() {
   const toolCalls: Array<{ name: string; args: Record<string, unknown> }> = [];
 
   return {
-    handle(event: Record<string, unknown>) {
+    // Accepts AgentSessionEvent or any record — we duck-type the fields we need
+    handle(event: Readonly<Record<string, unknown>>) {
       if (event.type === "turn_end") {
         turns++;
       }

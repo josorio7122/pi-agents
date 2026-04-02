@@ -1,4 +1,4 @@
-import type { ModelRegistry } from "@mariozechner/pi-coding-agent";
+import type { ExtensionContext, ModelRegistry, Theme, ToolRenderResultOptions } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
 import { createThrottle } from "../common/throttle.js";
 import type { AgentConfig } from "../discovery/validator.js";
@@ -66,7 +66,10 @@ export function createAgentTool(params: {
       _toolCallId: string,
       toolParams: Record<string, unknown>,
       signal: AbortSignal | undefined,
-      onUpdate: ((partial: unknown) => void) | undefined,
+      onUpdate:
+        | ((partial: { content: Array<{ type: "text"; text: string }>; details: AgentResultDetails }) => void)
+        | undefined,
+      _ctx: ExtensionContext,
     ) {
       if (signal?.aborted) throw new Error("Agent execution cancelled");
 
@@ -90,13 +93,24 @@ export function createAgentTool(params: {
         onUpdate?.({ content: [{ type: "text" as const, text: "" }], details });
       };
 
+      // Animation interval — drives spinner re-renders at 80ms (same as Pi's Loader)
+      let lastDetails: AgentResultDetails | undefined;
+      const animationInterval = setInterval(() => {
+        if (lastDetails) emitProgress(lastDetails);
+      }, 80);
+      const stopAnimation = () => clearInterval(animationInterval);
+
       if (mode.mode === "single") {
         const config = findAgentConfig(mode.agent)!;
 
         const singleEntry: AgentResultEntry[] = [runningEntry({ agentName: mode.agent })];
-        emitProgress({ mode: "single", results: [...singleEntry] });
+        lastDetails = { mode: "single", results: [...singleEntry] };
+        emitProgress(lastDetails);
 
-        const throttled = createThrottle(() => emitProgress({ mode: "single", results: [...singleEntry] }));
+        const throttled = createThrottle(() => {
+          lastDetails = { mode: "single", results: [...singleEntry] };
+          emitProgress(lastDetails);
+        });
         const result = await executeSingle({
           task: mode.task,
           runAgent: makeRunAgent(config, signal),
@@ -106,6 +120,7 @@ export function createAgentTool(params: {
           },
         });
         throttled.flush();
+        stopAnimation();
         const details = {
           mode: "single",
           results: [toResultEntry({ agentName: mode.agent, result })],
@@ -121,9 +136,13 @@ export function createAgentTool(params: {
         }));
 
         const entries: AgentResultEntry[] = taskDefs.map((t) => runningEntry({ agentName: t.agent }));
-        emitProgress({ mode: "parallel", results: [...entries] });
+        lastDetails = { mode: "parallel", results: [...entries] };
+        emitProgress(lastDetails);
 
-        const throttled = createThrottle(() => emitProgress({ mode: "parallel", results: [...entries] }));
+        const throttled = createThrottle(() => {
+          lastDetails = { mode: "parallel", results: [...entries] };
+          emitProgress(lastDetails);
+        });
         const results = await executeParallel({
           tasks: taskDefs.map((t) => ({ task: t.task, runAgent: t.runAgent })),
           maxConcurrency: 4,
@@ -137,6 +156,7 @@ export function createAgentTool(params: {
           },
         });
         throttled.flush();
+        stopAnimation();
 
         const finalEntries = results.map((r, i) => toResultEntry({ agentName: taskDefs[i]!.agent, result: r }));
         const combined = results.map((r) => r.output).join("\n\n---\n\n");
@@ -154,9 +174,13 @@ export function createAgentTool(params: {
       const chainEntries: AgentResultEntry[] = stepDefs.map((s, i) =>
         runningEntry({ agentName: s.agent, step: i + 1 }),
       );
-      emitProgress({ mode: "chain", results: [...chainEntries] });
+      lastDetails = { mode: "chain", results: [...chainEntries] };
+      emitProgress(lastDetails);
 
-      const throttled = createThrottle(() => emitProgress({ mode: "chain", results: [...chainEntries] }));
+      const throttled = createThrottle(() => {
+        lastDetails = { mode: "chain", results: [...chainEntries] };
+        emitProgress(lastDetails);
+      });
       const chainResult = await executeChain({
         steps: stepDefs.map((s) => ({ task: s.task, runAgent: s.runAgent })),
         onStepComplete: (stepIdx, r) => {
@@ -173,6 +197,7 @@ export function createAgentTool(params: {
         },
       });
       throttled.flush();
+      stopAnimation();
 
       const finalEntries = chainResult.steps.map((r, i) =>
         toResultEntry({ agentName: stepDefs[i]!.agent, result: r, step: i + 1 }),
@@ -181,18 +206,16 @@ export function createAgentTool(params: {
       return { content: [{ type: "text" as const, text: truncateOutput(chainResult.output) }], details };
     },
 
-    renderCall(args: Record<string, unknown>, theme: unknown) {
-      type CallTheme = Parameters<typeof renderAgentCall>[0]["theme"];
-      return renderAgentCall({ args, theme: theme as CallTheme, findAgent: findAgentDisplay });
+    renderCall(args: Record<string, unknown>, theme: Theme) {
+      return renderAgentCall({ args, theme, findAgent: findAgentDisplay });
     },
 
-    renderResult(result: unknown, _options: { expanded: boolean; isPartial: boolean }, theme: unknown) {
-      type ResultParams = Parameters<typeof renderAgentResult>[0];
-      return renderAgentResult({
-        result: result as ResultParams["result"],
-        theme: theme as ResultParams["theme"],
-        findAgent: findAgentDisplay,
-      });
+    renderResult(
+      result: { details?: unknown; content: Array<{ type: string; text?: string }> },
+      _options: ToolRenderResultOptions,
+      theme: Theme,
+    ) {
+      return renderAgentResult({ result, theme, findAgent: findAgentDisplay });
     },
   };
 }

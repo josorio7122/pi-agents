@@ -1,16 +1,27 @@
 import type { AgentConfig } from "../discovery/validator.js";
 
+const TEMPLATE = `Each agent runs in an isolated session. It ONLY sees the task string you write — not this conversation.
+
+Delegate tasks requiring specialized expertise or multi-file work. Answer simple questions directly.
+
+Tasks must be self-contained. Include: what to do, where (file paths), what to return.
+
+Available agents:
+{{AGENTS}}
+
+Modes:
+  Single: { agent: '{{FIRST_AGENT}}', task: 'describe what to do' }
+  Parallel: { tasks: [{agent, task}, ...] } — independent tasks, run concurrently
+  Chain: { chain: [{agent, task}, ...] } — sequential, use {previous} for prior output`;
+
+function describeAgent(a: AgentConfig) {
+  const fm = a.frontmatter;
+  const access = fm.domain.some((d) => d.write) ? "read/write" : "read-only";
+  return `  ${fm.icon} ${fm.name} (${access}) — ${fm.description}`;
+}
+
 export function buildPromptGuidelines(agents: ReadonlyArray<AgentConfig>) {
-  return [
-    "Use this tool ONLY when a task benefits from a specialized agent. For simple questions, answer directly.",
-    "Write clear, specific tasks. Bad: 'check the code'. Good: 'list all exported functions in src/schema/'.",
-    "",
-    "Available agents:",
-    ...agents.map((a) => `  ${a.frontmatter.icon} ${a.frontmatter.name} — ${a.frontmatter.description}`),
-    "",
-    "Modes:",
-    "  Single: { agent: 'scout', task: 'find all files that export Zod schemas' }",
-    "  Parallel: { tasks: [{agent: 'scout', task: 'find API routes'}, {agent: 'scout', task: 'find test files'}] }",
-    "  Chain: { chain: [{agent: 'scout', task: 'find auth code'}, {agent: 'scout', task: 'analyze {previous}'}] }",
-  ];
+  const agentLines = agents.map(describeAgent).join("\n");
+  const firstName = agents[0]?.frontmatter.name ?? "agent";
+  return TEMPLATE.replace("{{AGENTS}}", agentLines).replace("{{FIRST_AGENT}}", firstName).split("\n");
 }
