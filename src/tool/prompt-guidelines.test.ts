@@ -55,8 +55,8 @@ describe("buildPromptGuidelines", () => {
       }),
     ];
     const text = buildPromptGuidelines(agents).join("\n");
-    expect(text).toContain("🔍 scout (read-only) — Reads code");
-    expect(text).toContain("💻 dev (read/write) — Writes code");
+    expect(text).toContain("🔍 scout (read-only, worker) — Reads code");
+    expect(text).toContain("💻 dev (read/write, worker) — Writes code");
   });
 
   it("uses first agent name in mode examples", () => {
@@ -76,6 +76,19 @@ describe("buildPromptGuidelines", () => {
   it("falls back to 'agent' when no agents", () => {
     const text = buildPromptGuidelines([]).join("\n");
     expect(text).toContain("agent: 'agent'");
+  });
+
+  it("includes agent role", () => {
+    const agents = [
+      fakeAgent({
+        name: "scout",
+        description: "test",
+        icon: "🔍",
+        domain: [{ path: "src/", read: true, write: false, delete: false }],
+      }),
+    ];
+    const text = buildPromptGuidelines(agents).join("\n");
+    expect(text).toContain("worker");
   });
 
   it("does not expose model information", () => {

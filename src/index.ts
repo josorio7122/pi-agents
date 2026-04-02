@@ -4,6 +4,7 @@ import { join } from "node:path";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { getAgentDir } from "@mariozechner/pi-coding-agent";
 import { formatAgentList } from "./command/agents-command.js";
+import { resolveConversationPath } from "./common/paths.js";
 import { bootstrapKnowledge } from "./discovery/bootstrap.js";
 import { parseAgentFile } from "./discovery/parser.js";
 import { scanForAgentFiles } from "./discovery/scanner.js";
@@ -71,7 +72,10 @@ export default function (pi: ExtensionAPI) {
 
     bootstrapKnowledge(agents);
 
-    const conversationLogPath = join(ctx.cwd, ".pi", "sessions", sessionId, "conversation.jsonl");
+    const conversationTemplate = agents[0]?.frontmatter.conversation.path;
+    const conversationLogPath = conversationTemplate
+      ? resolveConversationPath({ template: conversationTemplate, sessionId, cwd: ctx.cwd })
+      : join(ctx.cwd, ".pi", "sessions", sessionId, "conversation.jsonl");
 
     // Register agent tool with discovered agents
     if (agents.length > 0) {

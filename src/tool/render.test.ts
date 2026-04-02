@@ -128,7 +128,28 @@ describe("renderAgentResult", () => {
     expect(text).not.toContain("🔍");
   });
 
-  it("renders running agents with spinner indicator", () => {
+  it("renders running agents with spinner when metrics present", () => {
+    const metrics = { turns: 1, inputTokens: 100, outputTokens: 50, cost: 0.001, toolCalls: [] };
+    const c = renderAgentResult({
+      result: {
+        content: [{ type: "text", text: "" }],
+        details: {
+          mode: "parallel",
+          results: [
+            { agent: "scout", status: "running", metrics },
+            { agent: "scout", status: "running", metrics },
+          ],
+        },
+      },
+      theme: mockTheme,
+      findAgent: mockFindAgent,
+    });
+    const lines = c.render(120);
+    const running = lines.filter((l) => l.match(/[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/));
+    expect(running).toHaveLength(2);
+  });
+
+  it("hides spinner for running agents with no metrics", () => {
     const c = renderAgentResult({
       result: {
         content: [{ type: "text", text: "" }],
@@ -145,7 +166,7 @@ describe("renderAgentResult", () => {
     });
     const lines = c.render(120);
     const running = lines.filter((l) => l.match(/[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/));
-    expect(running).toHaveLength(2);
+    expect(running).toHaveLength(0);
   });
 
   it("renders parallel cards separated by spacer", () => {
@@ -247,7 +268,8 @@ describe("renderAgentResult", () => {
     });
     const lines = c.render(120);
     expect(lines.some((l) => l.includes("✓"))).toBe(true);
-    expect(lines.some((l) => l.match(/[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/))).toBe(true);
+    // Running entry with no metrics shows name only, no spinner
+    expect(lines.some((l) => l.includes("scout"))).toBe(true);
   });
 
   it("shows aggregate stats for parallel with multiple cards", () => {

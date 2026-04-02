@@ -54,16 +54,7 @@
     "includes": ["src/**/*.ts"]
   },
   "overrides": [
-    {
-      "includes": ["src/tool/agent-tool.ts", "src/invocation/tool-wrapper.ts", "src/tool/render.ts"],
-      "linter": {
-        "rules": {
-          "complexity": {
-            "useMaxParams": "off"
-          }
-        }
-      }
-    },
+
     {
       "includes": ["**/*.test.ts"],
       "linter": {

@@ -29,8 +29,8 @@ const theme = {
 // ── Agent catalog ───────────────────────────────────────────
 
 const AGENTS: Record<string, { icon: string; name: string; color: string; model: string }> = {
-  scout: { icon: "🔍", name: "scout", color: "#a8e6cf", model: "anthropic/claude-haiku-3" },
-  investigator: { icon: "🔬", name: "investigator", color: "#ff8b94", model: "anthropic/claude-opus-4-6" },
+  scout: { icon: "🔍", name: "scout", color: "#36f9f6", model: "anthropic/claude-haiku-3" },
+  investigator: { icon: "🔬", name: "investigator", color: "#ff8c42", model: "anthropic/claude-opus-4-6" },
   "backend-dev": { icon: "💻", name: "backend-dev", color: "#36f9f6", model: "anthropic/claude-sonnet-4-6" },
   "code-reviewer": { icon: "📋", name: "code-reviewer", color: "#ffd700", model: "anthropic/claude-opus-4-6" },
 };
@@ -69,6 +69,22 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function animatedWait(
+  ms: number,
+  getFrame: () => ReadonlyArray<string>,
+  prevLineCount: { value: number },
+) {
+  return new Promise<void>((resolve) => {
+    const interval = setInterval(() => {
+      prevLineCount.value = clearAndPrint(getFrame(), prevLineCount.value);
+    }, 80);
+    setTimeout(() => {
+      clearInterval(interval);
+      resolve();
+    }, ms);
+  });
+}
+
 function randomMetrics(turns: number, scale: number): AgentMetrics {
   const toolNames = ["read", "bash", "grep", "find", "edit", "write"];
   const toolCount = Math.floor(Math.random() * scale * 3) + 1;
@@ -91,22 +107,22 @@ async function simulateSingle() {
 
   const callArgs = { agent: "scout", task: "analyze the project structure and list all modules" };
   const agentName = "scout";
+  const lc = { value: 0 };
 
   // Phase 1: running, no metrics yet
   let entry: AgentResultEntry = { agent: agentName, status: "running" };
-  let lineCount = clearAndPrint(renderFrame(callArgs, { mode: "single", results: [entry] }), 0);
-  await sleep(800);
+  const getFrame = () => renderFrame(callArgs, { mode: "single", results: [entry] });
+  await animatedWait(800, getFrame, lc);
 
   // Phase 2-5: streaming metrics updates
   for (let turn = 1; turn <= 4; turn++) {
     entry = { agent: agentName, status: "running", metrics: randomMetrics(turn, turn * 0.5) };
-    lineCount = clearAndPrint(renderFrame(callArgs, { mode: "single", results: [entry] }), lineCount);
-    await sleep(600);
+    await animatedWait(600, getFrame, lc);
   }
 
   // Phase 6: done
   entry = { agent: agentName, status: "done", metrics: randomMetrics(5, 3) };
-  lineCount = clearAndPrint(renderFrame(callArgs, { mode: "single", results: [entry] }), lineCount);
+  lc.value = clearAndPrint(getFrame(), lc.value);
   await sleep(500);
 }
 
@@ -122,17 +138,17 @@ async function simulateParallel() {
     ],
   };
 
-  // Phase 1: all running
   const entries: AgentResultEntry[] = [
     { agent: "scout", status: "running" },
     { agent: "scout", status: "running" },
     { agent: "scout", status: "running" },
     { agent: "scout", status: "running" },
   ];
-  let lineCount = clearAndPrint(renderFrame(callArgs, { mode: "parallel", results: [...entries] }), 0);
-  await sleep(800);
+  const lc = { value: 0 };
+  const getFrame = () => renderFrame(callArgs, { mode: "parallel", results: [...entries] });
 
-  // Phase 2: metrics start streaming for all
+  await animatedWait(800, getFrame, lc);
+
   for (let tick = 0; tick < 3; tick++) {
     for (let i = 0; i < 4; i++) {
       if (entries[i]!.status === "running") {
@@ -141,25 +157,19 @@ async function simulateParallel() {
         entries[i] = { agent: "scout", status: "running", metrics: randomMetrics(Math.max(1, turns), tick + 1) };
       }
     }
-    lineCount = clearAndPrint(renderFrame(callArgs, { mode: "parallel", results: [...entries] }), lineCount);
-    await sleep(500);
+    await animatedWait(500, getFrame, lc);
   }
 
-  // Phase 3: first two finish
   entries[0] = { agent: "scout", status: "done", metrics: randomMetrics(3, 2) };
   entries[1] = { agent: "scout", status: "done", metrics: randomMetrics(4, 2.5) };
-  lineCount = clearAndPrint(renderFrame(callArgs, { mode: "parallel", results: [...entries] }), lineCount);
-  await sleep(700);
+  await animatedWait(700, getFrame, lc);
 
-  // Phase 4: third finishes, fourth still running
   entries[2] = { agent: "scout", status: "done", metrics: randomMetrics(2, 1.5) };
   entries[3] = { agent: "scout", status: "running", metrics: randomMetrics(5, 3) };
-  lineCount = clearAndPrint(renderFrame(callArgs, { mode: "parallel", results: [...entries] }), lineCount);
-  await sleep(600);
+  await animatedWait(600, getFrame, lc);
 
-  // Phase 5: all done
   entries[3] = { agent: "scout", status: "done", metrics: randomMetrics(6, 3.5) };
-  lineCount = clearAndPrint(renderFrame(callArgs, { mode: "parallel", results: [...entries] }), lineCount);
+  lc.value = clearAndPrint(getFrame(), lc.value);
   await sleep(500);
 }
 
@@ -174,49 +184,39 @@ async function simulateChain() {
     ],
   };
 
-  // Phase 1: all running
   const entries: AgentResultEntry[] = [
     { agent: "scout", status: "running", step: 1 },
     { agent: "investigator", status: "running", step: 2 },
     { agent: "code-reviewer", status: "running", step: 3 },
   ];
-  let lineCount = clearAndPrint(renderFrame(callArgs, { mode: "chain", results: [...entries] }), 0);
-  await sleep(800);
+  const lc = { value: 0 };
+  const getFrame = () => renderFrame(callArgs, { mode: "chain", results: [...entries] });
 
-  // Phase 2: step 1 gets metrics
+  await animatedWait(800, getFrame, lc);
+
   for (let tick = 0; tick < 3; tick++) {
     entries[0] = { agent: "scout", status: "running", step: 1, metrics: randomMetrics(tick + 1, tick + 1) };
-    lineCount = clearAndPrint(renderFrame(callArgs, { mode: "chain", results: [...entries] }), lineCount);
-    await sleep(400);
+    await animatedWait(400, getFrame, lc);
   }
 
-  // Phase 3: step 1 done
   entries[0] = { agent: "scout", status: "done", step: 1, metrics: randomMetrics(3, 2) };
-  lineCount = clearAndPrint(renderFrame(callArgs, { mode: "chain", results: [...entries] }), lineCount);
-  await sleep(600);
+  await animatedWait(600, getFrame, lc);
 
-  // Phase 4: step 2 gets metrics
   for (let tick = 0; tick < 4; tick++) {
     entries[1] = { agent: "investigator", status: "running", step: 2, metrics: randomMetrics(tick + 1, (tick + 1) * 1.5) };
-    lineCount = clearAndPrint(renderFrame(callArgs, { mode: "chain", results: [...entries] }), lineCount);
-    await sleep(400);
+    await animatedWait(400, getFrame, lc);
   }
 
-  // Phase 5: step 2 done
   entries[1] = { agent: "investigator", status: "done", step: 2, metrics: randomMetrics(5, 4) };
-  lineCount = clearAndPrint(renderFrame(callArgs, { mode: "chain", results: [...entries] }), lineCount);
-  await sleep(600);
+  await animatedWait(600, getFrame, lc);
 
-  // Phase 6: step 3 gets metrics
   for (let tick = 0; tick < 3; tick++) {
     entries[2] = { agent: "code-reviewer", status: "running", step: 3, metrics: randomMetrics(tick + 1, (tick + 1) * 2) };
-    lineCount = clearAndPrint(renderFrame(callArgs, { mode: "chain", results: [...entries] }), lineCount);
-    await sleep(400);
+    await animatedWait(400, getFrame, lc);
   }
 
-  // Phase 7: all done
   entries[2] = { agent: "code-reviewer", status: "done", step: 3, metrics: randomMetrics(4, 5) };
-  lineCount = clearAndPrint(renderFrame(callArgs, { mode: "chain", results: [...entries] }), lineCount);
+  lc.value = clearAndPrint(getFrame(), lc.value);
   await sleep(500);
 }
 
@@ -234,19 +234,18 @@ async function simulateError() {
     { agent: "scout", status: "running" },
     { agent: "backend-dev", status: "running" },
   ];
-  let lineCount = clearAndPrint(renderFrame(callArgs, { mode: "parallel", results: [...entries] }), 0);
-  await sleep(800);
+  const lc = { value: 0 };
+  const getFrame = () => renderFrame(callArgs, { mode: "parallel", results: [...entries] });
 
-  // Metrics streaming
+  await animatedWait(800, getFrame, lc);
+
   entries[0] = { agent: "scout", status: "running", metrics: randomMetrics(2, 1) };
   entries[1] = { agent: "backend-dev", status: "running", metrics: randomMetrics(1, 0.5) };
-  lineCount = clearAndPrint(renderFrame(callArgs, { mode: "parallel", results: [...entries] }), lineCount);
-  await sleep(600);
+  await animatedWait(600, getFrame, lc);
 
-  // Scout finishes, backend-dev errors
   entries[0] = { agent: "scout", status: "done", metrics: randomMetrics(3, 2) };
   entries[1] = { agent: "backend-dev", status: "error", error: "Domain violation: write to /etc/hosts blocked", metrics: randomMetrics(2, 1) };
-  lineCount = clearAndPrint(renderFrame(callArgs, { mode: "parallel", results: [...entries] }), lineCount);
+  lc.value = clearAndPrint(getFrame(), lc.value);
   await sleep(500);
 }
 

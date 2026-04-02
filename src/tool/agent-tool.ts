@@ -62,6 +62,7 @@ export function createAgentTool(params: {
       ),
     }),
 
+    // biome-ignore lint/complexity/useMaxParams: implements Pi's ToolDefinition.execute (5 positional params)
     async execute(
       _toolCallId: string,
       toolParams: Record<string, unknown>,
@@ -210,6 +211,7 @@ export function createAgentTool(params: {
       return renderAgentCall({ args, theme, findAgent: findAgentDisplay });
     },
 
+    // biome-ignore lint/complexity/useMaxParams: implements Pi's ToolDefinition.renderResult (4 positional params)
     renderResult(
       result: { details?: unknown; content: Array<{ type: string; text?: string }> },
       _options: ToolRenderResultOptions,

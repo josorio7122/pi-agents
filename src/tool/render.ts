@@ -124,6 +124,8 @@ function renderCompactCard(entry: AgentResultEntry, theme: RenderTheme) {
   const statusIcon = statusIndicator(entry.status, theme);
   const stats = entry.metrics ? ` ${theme.fg("dim", formatUsageStats(entry.metrics))}` : "";
   const errorSuffix = entry.error ? ` ${theme.fg("error", entry.error)}` : "";
+  // Hide card entirely when running with no metrics — spinner in header is enough
+  if (entry.status === "running" && !entry.metrics) return new Text("", 0, 0);
   return new Text(`${statusIcon}${stats}${errorSuffix}`, 0, 0);
 }
 
@@ -138,10 +140,16 @@ function renderCard(params: {
   const icon = agent?.icon ?? "●";
 
   const styledName = agent?.color ? colorize(agent.color, entry.agent) : entry.agent;
-  const statusIcon = statusIndicator(entry.status, theme);
-  const stats = entry.metrics ? ` ${theme.fg("dim", formatUsageStats(entry.metrics))}` : "";
   const errorSuffix = entry.error ? ` ${theme.fg("error", entry.error)}` : "";
   const stepPrefix = showStep && entry.step ? `${theme.fg("dim", `${entry.step}.`)} ` : "";
+
+  // Running with no metrics — show name only, no lonely spinner
+  if (entry.status === "running" && !entry.metrics) {
+    return new Text(`${stepPrefix}${icon} ${styledName}`, 0, 0);
+  }
+
+  const statusIcon = statusIndicator(entry.status, theme);
+  const stats = entry.metrics ? ` ${theme.fg("dim", formatUsageStats(entry.metrics))}` : "";
 
   return new Text(`${stepPrefix}${icon} ${styledName} ${statusIcon}${stats}${errorSuffix}`, 0, 0);
 }

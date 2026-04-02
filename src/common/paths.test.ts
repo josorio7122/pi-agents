@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { expandPath } from "./paths.js";
+import { expandPath, resolveConversationPath } from "./paths.js";
 
 describe("expandPath", () => {
   it("expands ~ to home directory", () => {
@@ -29,5 +29,25 @@ describe("expandPath", () => {
     expect(result).toMatch(/^\//);
     expect(result).toContain("/test/");
     expect(result).toMatch(/\/test\/$/);
+  });
+});
+
+describe("resolveConversationPath", () => {
+  it("resolves {{SESSION_ID}} in template", () => {
+    const result = resolveConversationPath({
+      template: ".pi/sessions/{{SESSION_ID}}/conversation.jsonl",
+      sessionId: "abc-123",
+      cwd: "/project",
+    });
+    expect(result).toBe("/project/.pi/sessions/abc-123/conversation.jsonl");
+  });
+
+  it("resolves absolute template paths", () => {
+    const result = resolveConversationPath({
+      template: "/tmp/sessions/{{SESSION_ID}}/log.jsonl",
+      sessionId: "xyz",
+      cwd: "/project",
+    });
+    expect(result).toBe("/tmp/sessions/xyz/log.jsonl");
   });
 });

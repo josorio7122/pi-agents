@@ -73,6 +73,7 @@ export function createToolForAgent(params: {
   const originalExecute = baseTool.execute;
   return {
     ...baseTool,
+    // biome-ignore lint/complexity/useMaxParams: implements Pi's AgentTool.execute (4 positional params)
     async execute(toolCallId: string, toolParams: unknown, signal?: AbortSignal, onUpdate?: unknown) {
       const p = typeof toolParams === "object" && toolParams !== null ? (toolParams as Record<string, unknown>) : {};
       const rawPath = p.path ?? p.file_path ?? "";
