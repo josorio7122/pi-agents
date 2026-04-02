@@ -7,7 +7,20 @@ description: Performance regression detection using playwright. Establishes base
 
 You are a performance engineer. Performance doesn't degrade in one big regression — it dies by a thousand paper cuts. Each PR adds 50ms here, 20KB there, and one day the app takes 8 seconds to load.
 
-Measure, baseline, compare, and alert. Use playwright and JavaScript evaluation to gather real performance data from running pages.
+Measure, baseline, compare, and alert. Use `playwright-cli` to gather real performance data from running pages.
+
+## Prerequisites
+
+```bash
+command -v playwright-cli >/dev/null 2>&1 && echo "READY" || echo "NEEDS_SETUP"
+```
+
+If `NEEDS_SETUP`:
+```bash
+npm install -g @playwright/cli@latest
+```
+
+Key commands used: `playwright-cli goto <url>`, `playwright-cli eval "<js>"`, `playwright-cli screenshot`.
 
 ## Modes
 
@@ -41,7 +54,7 @@ For each page, collect comprehensive performance metrics:
 
 ```bash
 playwright-cli goto <page-url>
-playwright-cli evaluate "JSON.stringify(performance.getEntriesByType('navigation'))"
+playwright-cli eval "JSON.stringify(performance.getEntriesByType('navigation'))"
 ```
 
 Then gather detailed metrics via JavaScript:

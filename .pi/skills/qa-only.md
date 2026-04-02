@@ -26,12 +26,16 @@ You are a QA engineer. Test web applications like a real user — click everythi
 ## SETUP (run this check BEFORE any browse command)
 
 ```bash
-command -v npx >/dev/null 2>&1 && npx playwright-cli --help >/dev/null 2>&1 && echo "READY" || echo "NEEDS_SETUP"
+command -v playwright-cli >/dev/null 2>&1 && echo "READY" || echo "NEEDS_SETUP"
 ```
 
 If `NEEDS_SETUP`:
-1. Tell the user: "playwright needs to be installed. OK to proceed?"
-2. Run: `npx playwright install`
+1. Tell the user: "playwright-cli is required for QA testing. Install it?"
+2. Install:
+   ```bash
+   npm install -g @playwright/cli@latest
+   playwright-cli --help
+   ```
 
 **Create output directories:**
 
@@ -74,7 +78,7 @@ This is the **primary mode** for developers verifying their work. When the user 
    - View/template/component files → which pages render them
    - Model/service files → which pages use those models (check controllers that reference them)
    - CSS/style files → which pages include those stylesheets
-   - API endpoints → test them directly with `playwright-cli evaluate "await fetch('/api/...')"`
+   - API endpoints → test them directly with `playwright-cli eval "await fetch('/api/...')"`
    - Static pages (markdown, HTML) → navigate to them directly
 
    **If no obvious pages/routes are identified from the diff:** Do not skip browser testing. The user invoked the QA workflow because they want browser-based verification. Fall back to Quick mode — navigate to the homepage, follow the top 5 navigation targets, check console for errors, and test any interactive elements found. Backend, config, and infrastructure changes affect app behavior — always verify the app still works.
@@ -131,17 +135,17 @@ Run full mode, then load `baseline.json` from a previous run. Diff: which issues
 
 ```bash
 playwright-cli goto <login-url>
-playwright-cli snapshot -i                    # find the login form
-playwright-cli fill @e3 "user@example.com"
-playwright-cli fill @e4 "[REDACTED]"         # NEVER include real passwords in report
-playwright-cli click @e5                      # submit
-playwright-cli snapshot -D                    # verify login succeeded
+playwright-cli snapshot                    # find the login form
+playwright-cli fill e3 "user@example.com"
+playwright-cli fill e4 "[REDACTED]"         # NEVER include real passwords in report
+playwright-cli click e5                      # submit
+playwright-cli snapshot                    # verify login succeeded
 ```
 
 **If the user provided a cookie file:**
 
 ```bash
-playwright-cli cookie-import cookies.json
+playwright-cli state-load cookies.json
 playwright-cli goto <target-url>
 ```
 
@@ -155,9 +159,10 @@ Get a map of the application:
 
 ```bash
 playwright-cli goto <target-url>
-playwright-cli snapshot -i -a -o "$REPORT_DIR/screenshots/initial.png"
-playwright-cli links                          # map navigation structure
-playwright-cli evaluate "console.log" --errors               # any errors on landing?
+playwright-cli snapshot
+playwright-cli screenshot --filename="$REPORT_DIR/screenshots/initial.png"
+playwright-cli snapshot                        # map page structure
+playwright-cli console error               # any errors on landing?
 ```
 
 **Detect framework** (note in report metadata):
@@ -174,8 +179,9 @@ Visit pages systematically. At each page:
 
 ```bash
 playwright-cli goto <page-url>
-playwright-cli snapshot -i -a -o "$REPORT_DIR/screenshots/page-name.png"
-playwright-cli evaluate "console.log" --errors
+playwright-cli snapshot
+playwright-cli screenshot --filename="$REPORT_DIR/screenshots/page-name.png"
+playwright-cli console error
 ```
 
 Then follow the **per-page exploration checklist** (see `qa/references/issue-taxonomy.md`):
@@ -188,9 +194,9 @@ Then follow the **per-page exploration checklist** (see `qa/references/issue-tax
 6. **Console** — Any new JS errors after interactions?
 7. **Responsiveness** — Check mobile viewport if relevant:
    ```bash
-   playwright-cli viewport 375x812
-   playwright-cli screenshot "$REPORT_DIR/screenshots/page-mobile.png"
-   playwright-cli viewport 1280x720
+   playwright-cli resize 375 812
+   playwright-cli screenshot --filename="$REPORT_DIR/screenshots/page-mobile.png"
+   playwright-cli resize 1280 720
    ```
 
 **Depth judgment:** Spend more time on core features (homepage, dashboard, checkout, search) and less on secondary pages (about, terms, privacy).
@@ -211,10 +217,10 @@ Document each issue **immediately when found** — don't batch them.
 5. Write repro steps referencing screenshots
 
 ```bash
-playwright-cli screenshot "$REPORT_DIR/screenshots/issue-001-step-1.png"
-playwright-cli click @e5
-playwright-cli screenshot "$REPORT_DIR/screenshots/issue-001-result.png"
-playwright-cli snapshot -D
+playwright-cli screenshot --filename="$REPORT_DIR/screenshots/issue-001-step-1.png"
+playwright-cli click e5
+playwright-cli screenshot --filename="$REPORT_DIR/screenshots/issue-001-result.png"
+playwright-cli snapshot
 ```
 
 **Static bugs** (typos, layout issues, missing images):
@@ -222,7 +228,8 @@ playwright-cli snapshot -D
 2. Describe what's wrong
 
 ```bash
-playwright-cli snapshot -i -a -o "$REPORT_DIR/screenshots/issue-002.png"
+playwright-cli snapshot
+playwright-cli screenshot --filename="$REPORT_DIR/screenshots/issue-002.png"
 ```
 
 **Write each issue to the report immediately** using the structured issue format (title, severity, URL, repro steps, screenshot, expected vs actual).
@@ -332,7 +339,7 @@ Minimum 0 per category.
 8. **Depth over breadth.** 5-10 well-documented issues with evidence > 20 vague descriptions.
 9. **Never delete output files.** Screenshots and reports accumulate — that's intentional.
 10. **Use `snapshot -C` for tricky UIs.** Finds clickable divs that the accessibility tree misses.
-11. **Show screenshots to the user.** After every `playwright-cli screenshot`, `playwright-cli snapshot -a -o`, or `playwright-cli screenshot --viewport 375x812` command, use the Read tool on the output file(s) so the user can see them inline. For `responsive` (3 files), Read all three. This is critical — without it, screenshots are invisible to the user.
+11. **Show screenshots to the user.** After every `playwright-cli screenshot`, `playwright-cli snapshot` + `playwright-cli screenshot`, or `playwright-cli resize` + `playwright-cli screenshot` command, use the Read tool on the output file(s) so the user can see them inline. For `responsive` (3 files), Read all three. This is critical — without it, screenshots are invisible to the user.
 12. **Never refuse to use the browser.** When the user invokes the QA workflow or qa-only, they are requesting browser-based testing. Never suggest evals, unit tests, or other alternatives as a substitute. Even if the diff appears to have no UI changes, backend changes affect app behavior — always open the browser and test.
 
 ---
