@@ -96,7 +96,7 @@ ls src/ app/ pages/ components/ 2>/dev/null | head -30
 
 ```bash
 setopt +o nomatch 2>/dev/null || true
-ls .pi/reports/*office-hours* 2>/dev/null | head -5
+ls .pi/reports/*product-context* .pi/reports/*design-doc* 2>/dev/null | head -5
 ```
 
 If DESIGN.md exists, tell the user: "I'll follow your design system in DESIGN.md by
@@ -114,7 +114,7 @@ like how this looks," screenshot the current page and use `# Design tool not ava
 `# Design variant generation not available in pi-agents` to generate improvement variants from the existing design.
 
 **ask the user with pre-filled context:** Pre-fill what you inferred from the codebase,
-DESIGN.md, and office-hours output. Then ask for what's missing. Frame as ONE question
+DESIGN.md, and product context documents. Then ask for what's missing. Frame as ONE question
 covering all gaps:
 
 > "Here's what I know: [pre-filled context]. I'm missing [gaps].

@@ -52,9 +52,9 @@ After completing the review, read the review log and config to display the dashb
 
 Parse the output. Find the most recent entry for each skill (plan-ceo-review, plan-eng-review, review, plan-design-review, design-review-lite, adversarial-review, external-review, external-plan-review). Ignore entries with timestamps older than 7 days. For the Eng Review row, show whichever is more recent between `review` (diff-scoped pre-landing review) and `plan-eng-review` (plan-stage architecture review). Append "(DIFF)" or "(PLAN)" to the status to distinguish. For the Adversarial row, show whichever is more recent between `adversarial-review` (new auto-scaled) and `external-review` (legacy). For Design Review, show whichever is more recent between `plan-design-review` (full visual audit) and `design-review-lite` (code-level check). Append "(FULL)" or "(LITE)" to the status to distinguish. For the Outside Voice row, show the most recent `external-plan-review` entry — this captures outside voices from both the CEO review and eng review.
 
-**Source attribution:** If the most recent entry for a skill has a \`"via"\` field, append it to the status label in parentheses. Examples: `plan-eng-review` with `via:"autoplan"` shows as "CLEAR (PLAN via autoplan)". `review` with `via:"ship"` shows as "CLEAR (DIFF via ship)". Entries without a `via` field show as "CLEAR (PLAN)" or "CLEAR (DIFF)" as before.
+**Source attribution:** If the most recent entry for a skill has a \`"via"\` field, append it to the status label in parentheses. Examples: `plan-eng-review` with `via:"plan-review"` shows as "CLEAR (PLAN via plan review)". `review` with `via:"ship"` shows as "CLEAR (DIFF via ship)". Entries without a `via` field show as "CLEAR (PLAN)" or "CLEAR (DIFF)" as before.
 
-Note: `autoplan-voices` and `design-outside-voices` entries are audit-trail-only (forensic data for cross-model consensus analysis). They do not appear in the dashboard and are not checked by any consumer.
+Note: `design-outside-voices` entries are audit-trail-only. They do not appear in the dashboard.
 
 Display:
 
@@ -97,7 +97,7 @@ If the Eng Review is NOT "CLEAR":
 
 Print: "No prior eng review found — ship will run its own pre-landing review in Step 3.5."
 
-Check diff size: `git diff <base>...HEAD --stat | tail -1`. If the diff is >200 lines, add: "Note: This is a large diff. Consider running the eng review or autoplan workflow for architecture-level review before shipping."
+Check diff size: `git diff <base>...HEAD --stat | tail -1`. If the diff is >200 lines, add: "Note: This is a large diff. Consider running the eng review for architecture-level review before shipping."
 
 If CEO Review is missing, mention as informational ("CEO Review not run — recommended for product changes") but do NOT block.
 
@@ -393,7 +393,7 @@ Present options to the user:
 - Continue with the workflow.
 
 **If "Add as P0 TODO":**
-- If `TODOS.md` exists, add the entry following the format in `.pi/skills/todos-format.md` (or `.pi/skills/todos-format.md`).
+- If `TODOS.md` exists, add the entry using a structured format with priority (P0-P4), component grouping, and a Completed section.
 - If `TODOS.md` does not exist, create it with the standard header and add the entry.
 - Entry should include: title, the error output, which branch it was noticed on, and priority P0.
 - Continue with the workflow — treat the pre-existing failure as non-blocking.
@@ -906,7 +906,7 @@ curl -s -o /dev/null -w '%{http_code}' http://localhost:4000 2>/dev/null || echo
 
 ### 3. Invoke /qa-only inline
 
-Read the qa-only skill from disk:
+
 
 ```bash
 cat qa-only/SKILL.md
@@ -1043,7 +1043,7 @@ Save the review output — it goes into the PR body in Step 8.
 
 ## Step 3.75: Address Greptile review comments (if PR exists)
 
-Read `.pi/skills/greptile-triage.md` and follow the fetch, filter, classify, and **escalation detection** steps.
+Fetch Greptile review comments from the PR. Classify each as VALID & ACTIONABLE, VALID BUT ALREADY FIXED, FALSE POSITIVE, or SUPPRESSED based on the diff evidence.
 
 **If no PR exists, `gh` fails, API returns an error, or there are zero Greptile comments:** Skip this step silently. Continue to Step 4.
 
@@ -1051,7 +1051,7 @@ Read `.pi/skills/greptile-triage.md` and follow the fetch, filter, classify, and
 
 Include a Greptile summary in your output: `+ N Greptile comments (X valid, Y fixed, Z FP)`
 
-Before replying to any comment, run the **Escalation Detection** algorithm from greptile-triage.md to determine whether to use Tier 1 (friendly) or Tier 2 (firm) reply templates.
+Before replying to any comment, determine the appropriate reply tone — friendly for first-time comments, firm for repeat false positives.
 
 For each classified comment:
 
@@ -1059,10 +1059,10 @@ For each classified comment:
 - The comment (file:line or [top-level] + body summary + permalink URL)
 - `RECOMMENDATION: Choose A because [one-line reason]`
 - Options: A) Fix now, B) Acknowledge and ship anyway, C) It's a false positive
-- If user chooses A: apply the fix, commit the fixed files (`git add <fixed-files> && git commit -m "fix: address Greptile review — <brief description>"`), reply using the **Fix reply template** from greptile-triage.md (include inline diff + explanation), and save to both per-project and global greptile-history (type: fix).
-- If user chooses C: reply using the **False Positive reply template** from greptile-triage.md (include evidence + suggested re-rank), save to both per-project and global greptile-history (type: fp).
+- If user chooses A: apply the fix, commit the fixed files (`git add <fixed-files> && git commit -m "fix: address Greptile review — <brief description>"`), reply with inline diff + explanation showing what was fixed, and save to both per-project and global greptile-history (type: fix).
+- If user chooses C: reply with evidence explaining why it is a false positive, save to both per-project and global greptile-history (type: fp).
 
-**VALID BUT ALREADY FIXED:** Reply using the **Already Fixed reply template** from greptile-triage.md — no ask the user needed:
+**VALID BUT ALREADY FIXED:** Reply explaining what was already fixed — no ask the user needed:
 - Include what was done and the fixing commit SHA
 - Save to both per-project and global greptile-history (type: already-fixed)
 
@@ -1072,7 +1072,7 @@ For each classified comment:
   - A) Reply to Greptile explaining the false positive (recommended if clearly wrong)
   - B) Fix it anyway (if trivial)
   - C) Ignore silently
-- If user chooses A: reply using the **False Positive reply template** from greptile-triage.md (include evidence + suggested re-rank), save to both per-project and global greptile-history (type: fp)
+- If user chooses A: reply with evidence explaining why it is a false positive, save to both per-project and global greptile-history (type: fp)
 
 **SUPPRESSED:** Skip silently — these are known false positives from previous triage.
 
@@ -1285,7 +1285,7 @@ High-confidence findings (agreed on by multiple sources) should be prioritized f
 
 Cross-reference the project's TODOS.md against the changes being shipped. Mark completed items automatically; prompt only if the file is missing or disorganized.
 
-Read `.pi/skills/todos-format.md` for the canonical format reference.
+Use a structured format: items grouped by component, each with priority (P0-P4), and a Completed section at the bottom.
 
 **1. Check if TODOS.md exists** in the repository root.
 
@@ -1545,7 +1545,7 @@ This step is automatic — never skip it, never ask for confirmation.
 - **Date format in CHANGELOG:** `YYYY-MM-DD`
 - **Split commits for bisectability** — each commit = one logical change.
 - **TODOS.md completion detection must be conservative.** Only mark items as completed when the diff clearly shows the work is done.
-- **Use Greptile reply templates from greptile-triage.md.** Every reply includes evidence (inline diff, code references, re-rank suggestion). Never post vague replies.
+- **Every Greptile reply includes evidence** (inline diff, code references). Never post vague replies.
 - **Never push without fresh verification evidence.** If code changed after Step 3 tests, re-run before pushing.
 - **Step 3.4 generates coverage tests.** They must pass before committing. Never commit failing tests.
 - **The goal is: user runs ship, next thing they see is the review + PR URL + auto-synced docs.**
