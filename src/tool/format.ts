@@ -12,6 +12,7 @@ export function formatUsageStats(metrics: Readonly<AgentMetrics>) {
   if (metrics.turns > 0) parts.push(`${metrics.turns} turns`);
   parts.push(`↑${formatTokens(metrics.inputTokens)}`);
   parts.push(`↓${formatTokens(metrics.outputTokens)}`);
+  if (metrics.toolCalls.length > 0) parts.push(`🔧${metrics.toolCalls.length}`);
   parts.push(`$${metrics.cost.toFixed(3)}`);
   return parts.join(" ");
 }

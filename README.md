@@ -44,9 +44,9 @@ tools:
   - ls
 
 skills:
-  - path: .pi/skills/mental-model.md
+  - path: .pi/agent-skills/mental-model.md
     when: Read at task start. Update knowledge after completing work.
-  - path: .pi/skills/active-listener.md
+  - path: .pi/agent-skills/active-listener.md
     when: Always. Read conversation log before every response.
 
 knowledge:

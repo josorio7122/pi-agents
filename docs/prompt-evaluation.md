@@ -28,9 +28,9 @@ Evaluated using: **prompt-engineering**, **skill-writer**, **skill-scanner** ski
 
 ```yaml
 skills:
-  - path: .pi/skills/mental-model.md
+  - path: .pi/agent-skills/mental-model.md
     when: Read knowledge files at task start. Update after completing work.
-  - path: .pi/skills/active-listener.md        # ADD THIS
+  - path: .pi/agent-skills/active-listener.md        # ADD THIS
     when: Always. Read conversation log before responding.
 ```
 

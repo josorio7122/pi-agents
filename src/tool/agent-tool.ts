@@ -3,9 +3,17 @@ import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, truncateHead } from "@mariozechne
 import { Type } from "@sinclair/typebox";
 import type { AgentConfig } from "../discovery/validator.js";
 import { runAgent } from "../invocation/session.js";
-import type { RunAgentFn } from "./modes.js";
+import type { RunAgentFn, RunAgentResult } from "./modes.js";
 import { detectMode, executeChain, executeParallel, executeSingle } from "./modes.js";
+import type { AgentResultDetails, AgentResultEntry } from "./render.js";
 import { renderAgentCall, renderAgentResult } from "./render.js";
+
+function truncateOutput(text: string) {
+  const truncation = truncateHead(text, { maxLines: DEFAULT_MAX_LINES, maxBytes: DEFAULT_MAX_BYTES });
+  return truncation.truncated
+    ? `${truncation.content}\n\n[Output truncated: ${truncation.outputLines}/${truncation.totalLines} lines]`
+    : text;
+}
 
 export function createAgentTool(params: {
   readonly agents: ReadonlyArray<AgentConfig>;
@@ -76,14 +84,43 @@ export function createAgentTool(params: {
       _toolCallId: string,
       toolParams: Record<string, unknown>,
       _signal: AbortSignal | undefined,
-      _onUpdate: ((partial: unknown) => void) | undefined,
+      onUpdate: ((partial: unknown) => void) | undefined,
     ) {
       const mode = detectMode(toolParams);
       if ("error" in mode) {
         return { content: [{ type: "text" as const, text: mode.error }], details: {} };
       }
 
-      let result: { output: string; metrics: unknown; error?: string };
+      const unknownAgentRunner =
+        (name: string): RunAgentFn =>
+        async () => ({
+          output: "",
+          metrics: { turns: 0, inputTokens: 0, outputTokens: 0, cost: 0, toolCalls: [] },
+          error: `Unknown agent: ${name}`,
+        });
+
+      const toEntry = (agentName: string, r: RunAgentResult, step?: number): AgentResultEntry => {
+        const base = {
+          agent: agentName,
+          status: (r.error ? "error" : "done") as AgentResultEntry["status"],
+          metrics: r.metrics,
+        };
+        return {
+          ...base,
+          ...(r.error ? { error: r.error } : {}),
+          ...(step !== undefined ? { step } : {}),
+        };
+      };
+
+      const emitProgress = (details: AgentResultDetails) => {
+        onUpdate?.({ content: [{ type: "text" as const, text: "" }], details });
+      };
+
+      const runningEntry = (agentName: string, step?: number): AgentResultEntry => ({
+        agent: agentName,
+        status: "running",
+        ...(step !== undefined ? { step } : {}),
+      });
 
       if (mode.mode === "single") {
         const config = findAgentConfig(mode.agent);
@@ -95,58 +132,58 @@ export function createAgentTool(params: {
           };
         }
 
-        result = await executeSingle({
-          task: mode.task,
-          runAgent: makeRunAgent(config),
-        });
-      } else if (mode.mode === "parallel") {
-        const tasks = mode.tasks.map((t) => {
-          const config = findAgentConfig(t.agent);
-          return {
-            task: t.task,
-            runAgent: config
-              ? makeRunAgent(config)
-              : async () => ({
-                  output: "",
-                  metrics: { turns: 0, inputTokens: 0, outputTokens: 0, cost: 0, toolCalls: [] },
-                  error: `Unknown agent: ${t.agent}`,
-                }),
-          };
-        });
-
-        const results = await executeParallel({ tasks, maxConcurrency: 4 });
-        const combined = results.map((r) => r?.output ?? "").join("\n\n---\n\n");
-        result = { output: combined, metrics: {} };
-      } else {
-        const steps = mode.chain.map((s) => {
-          const config = findAgentConfig(s.agent);
-          return {
-            task: s.task,
-            runAgent: config
-              ? makeRunAgent(config)
-              : async () => ({
-                  output: "",
-                  metrics: { turns: 0, inputTokens: 0, outputTokens: 0, cost: 0, toolCalls: [] },
-                  error: `Unknown agent: ${s.agent}`,
-                }),
-          };
-        });
-
-        result = await executeChain({ steps });
+        emitProgress({ mode: "single", results: [runningEntry(mode.agent)] });
+        const result = await executeSingle({ task: mode.task, runAgent: makeRunAgent(config) });
+        const details: AgentResultDetails = { mode: "single", results: [toEntry(mode.agent, result)] };
+        return { content: [{ type: "text" as const, text: truncateOutput(result.output) }], details };
       }
 
-      // Truncate output
-      let outputText = result.output;
-      if (result.error) outputText = `Error: ${result.error}`;
-      const truncation = truncateHead(outputText, { maxLines: DEFAULT_MAX_LINES, maxBytes: DEFAULT_MAX_BYTES });
-      const finalOutput = truncation.truncated
-        ? `${truncation.content}\n\n[Output truncated: ${truncation.outputLines}/${truncation.totalLines} lines]`
-        : outputText;
+      if (mode.mode === "parallel") {
+        const taskDefs = mode.tasks.map((t) => ({
+          agent: t.agent,
+          task: t.task,
+          runAgent: findAgentConfig(t.agent) ? makeRunAgent(findAgentConfig(t.agent)!) : unknownAgentRunner(t.agent),
+        }));
 
-      return {
-        content: [{ type: "text" as const, text: finalOutput }],
-        details: { output: finalOutput, task: "task" in mode ? mode.task : undefined, metrics: result.metrics },
-      };
+        const entries: AgentResultEntry[] = taskDefs.map((t) => runningEntry(t.agent));
+        emitProgress({ mode: "parallel", results: [...entries] });
+
+        const results = await executeParallel({
+          tasks: taskDefs.map((t) => ({ task: t.task, runAgent: t.runAgent })),
+          maxConcurrency: 4,
+          onProgress: (idx, r) => {
+            entries[idx] = toEntry(taskDefs[idx]!.agent, r);
+            emitProgress({ mode: "parallel", results: [...entries] });
+          },
+        });
+
+        const finalEntries = results.map((r, i) => toEntry(taskDefs[i]!.agent, r));
+        const combined = results.map((r) => r.output).join("\n\n---\n\n");
+        const details: AgentResultDetails = { mode: "parallel", results: finalEntries };
+        return { content: [{ type: "text" as const, text: truncateOutput(combined) }], details };
+      }
+
+      // chain
+      const stepDefs = mode.chain.map((s) => ({
+        agent: s.agent,
+        task: s.task,
+        runAgent: findAgentConfig(s.agent) ? makeRunAgent(findAgentConfig(s.agent)!) : unknownAgentRunner(s.agent),
+      }));
+
+      const chainEntries: AgentResultEntry[] = stepDefs.map((s, i) => runningEntry(s.agent, i + 1));
+      emitProgress({ mode: "chain", results: [...chainEntries] });
+
+      const chainResult = await executeChain({
+        steps: stepDefs.map((s) => ({ task: s.task, runAgent: s.runAgent })),
+        onStepComplete: (stepIdx, r) => {
+          chainEntries[stepIdx] = toEntry(stepDefs[stepIdx]!.agent, r, stepIdx + 1);
+          emitProgress({ mode: "chain", results: [...chainEntries] });
+        },
+      });
+
+      const finalEntries = chainResult.steps.map((r, i) => toEntry(stepDefs[i]!.agent, r, i + 1));
+      const details: AgentResultDetails = { mode: "chain", results: finalEntries };
+      return { content: [{ type: "text" as const, text: truncateOutput(chainResult.output) }], details };
     },
 
     renderCall(args: Record<string, unknown>, theme: unknown) {
@@ -157,12 +194,11 @@ export function createAgentTool(params: {
       });
     },
 
-    renderResult(result: unknown, options: { expanded: boolean; isPartial: boolean }, theme: unknown) {
+    renderResult(result: unknown, _options: { expanded: boolean; isPartial: boolean }, theme: unknown) {
       return renderAgentResult({
         result: result as Parameters<typeof renderAgentResult>[0]["result"],
-        isPartial: options.isPartial,
-        expanded: options.expanded,
         theme: theme as Parameters<typeof renderAgentResult>[0]["theme"],
+        findAgent: findAgentDisplay,
       });
     },
   };

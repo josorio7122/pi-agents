@@ -6,87 +6,245 @@ const mockTheme = {
   bold: (text: string) => text,
 };
 
+const mockFindAgent = (name: string) =>
+  name === "scout"
+    ? { icon: "🔍", name: "scout", color: "#fff", model: "anthropic/claude-haiku-3" }
+    : name === "investigator"
+      ? { icon: "🔬", name: "investigator", color: "#fff", model: "anthropic/claude-opus-4-6" }
+      : undefined;
+
+// ── renderCall ────────────────────────────────────────────
+
 describe("renderAgentCall", () => {
-  it("renders agent header with icon + name + model", () => {
-    const component = renderAgentCall({
-      args: { agent: "backend-dev", task: "test" },
-      theme: mockTheme,
-      findAgent: () => ({ icon: "🟢", name: "backend-dev", color: "#36f9f6", model: "anthropic/claude-sonnet-4-6" }),
-    });
-    // Component renders — Text object created
-    expect(component).toBeDefined();
+  it("renders single agent with icon + name + model", () => {
+    const c = renderAgentCall({ args: { agent: "scout", task: "test" }, theme: mockTheme, findAgent: mockFindAgent });
+    const text = c.render(120).join("\n");
+    expect(text).toContain("🔍");
+    expect(text).toContain("scout");
+    expect(text).toContain("anthropic/claude-haiku-3");
   });
 
-  it("handles unknown agent", () => {
-    const component = renderAgentCall({
-      args: { agent: "unknown" },
+  it("renders parallel mode header with count only", () => {
+    const c = renderAgentCall({
+      args: {
+        tasks: [
+          { agent: "scout", task: "a" },
+          { agent: "scout", task: "b" },
+        ],
+      },
       theme: mockTheme,
-      findAgent: () => undefined,
+      findAgent: mockFindAgent,
     });
-    expect(component).toBeDefined();
+    const text = c.render(120).join("\n");
+    expect(text).toContain("parallel (2 tasks)");
+    expect(text).not.toContain("scout");
+  });
+
+  it("renders chain mode header with count only", () => {
+    const c = renderAgentCall({
+      args: {
+        chain: [
+          { agent: "scout", task: "a" },
+          { agent: "investigator", task: "b" },
+        ],
+      },
+      theme: mockTheme,
+      findAgent: mockFindAgent,
+    });
+    const text = c.render(120).join("\n");
+    expect(text).toContain("chain (2 steps)");
+    expect(text).not.toContain("scout");
+  });
+
+  it("handles unknown agent gracefully", () => {
+    const c = renderAgentCall({ args: { agent: "unknown" }, theme: mockTheme, findAgent: mockFindAgent });
+    expect(c.render(120).join("")).toContain("unknown");
   });
 });
 
+// ── renderResult ──────────────────────────────────────────
+
 describe("renderAgentResult", () => {
-  it("renders thinking... when partial", () => {
-    const component = renderAgentResult({
+  it("shows running fallback when no details", () => {
+    const c = renderAgentResult({
       result: { content: [{ type: "text", text: "" }] },
-      isPartial: true,
-      expanded: false,
       theme: mockTheme,
+      findAgent: mockFindAgent,
     });
-    expect(component).toBeDefined();
+    expect(c.render(120).join("")).toContain("running...");
   });
 
-  it("renders collapsed output when complete", () => {
-    const component = renderAgentResult({
+  it("renders single done card with stats", () => {
+    const c = renderAgentResult({
       result: {
-        content: [{ type: "text", text: "Done." }],
+        content: [{ type: "text", text: "output" }],
         details: {
-          output: "Task completed successfully.",
-          metrics: { turns: 2, inputTokens: 1000, outputTokens: 200, cost: 0.01, toolCalls: [] },
+          mode: "single",
+          results: [
+            {
+              agent: "scout",
+              status: "done",
+              metrics: {
+                turns: 3,
+                inputTokens: 1000,
+                outputTokens: 200,
+                cost: 0.01,
+                toolCalls: [{ name: "read", args: {} }],
+              },
+            },
+          ],
         },
       },
-      isPartial: false,
-      expanded: false,
       theme: mockTheme,
+      findAgent: mockFindAgent,
     });
-    expect(component).toBeDefined();
+    const text = c.render(120).join("\n");
+    expect(text).toContain("✓");
+    expect(text).toContain("3 turns");
+    expect(text).not.toContain("output");
   });
 
-  it("renders expanded view with task + tools + output", () => {
-    const component = renderAgentResult({
+  it("renders single card without step number", () => {
+    const c = renderAgentResult({
       result: {
-        content: [{ type: "text", text: "Done." }],
+        content: [{ type: "text", text: "" }],
         details: {
-          output: "Task completed.",
-          task: "Build the thing",
-          metrics: {
-            turns: 3,
-            inputTokens: 5000,
-            outputTokens: 500,
-            cost: 0.03,
-            toolCalls: [
-              { name: "read", args: { path: "src/index.ts" } },
-              { name: "bash", args: { command: "npm test" } },
-            ],
-          },
+          mode: "single",
+          results: [
+            {
+              agent: "scout",
+              status: "done",
+              metrics: { turns: 1, inputTokens: 100, outputTokens: 50, cost: 0.001, toolCalls: [] },
+            },
+          ],
         },
       },
-      isPartial: false,
-      expanded: true,
       theme: mockTheme,
+      findAgent: mockFindAgent,
     });
-    expect(component).toBeDefined();
+    const text = c.render(120).join("\n");
+    expect(text).not.toMatch(/^\d\./);
   });
 
-  it("handles no details gracefully", () => {
-    const component = renderAgentResult({
-      result: { content: [{ type: "text", text: "output" }] },
-      isPartial: false,
-      expanded: false,
+  it("renders running agents with ⏳ indicator", () => {
+    const c = renderAgentResult({
+      result: {
+        content: [{ type: "text", text: "" }],
+        details: {
+          mode: "parallel",
+          results: [
+            { agent: "scout", status: "running" },
+            { agent: "scout", status: "running" },
+          ],
+        },
+      },
       theme: mockTheme,
+      findAgent: mockFindAgent,
     });
-    expect(component).toBeDefined();
+    const lines = c.render(120);
+    const running = lines.filter((l) => l.includes("⏳"));
+    expect(running).toHaveLength(2);
+  });
+
+  it("renders parallel cards separated by spacer", () => {
+    const c = renderAgentResult({
+      result: {
+        content: [{ type: "text", text: "" }],
+        details: {
+          mode: "parallel",
+          results: [
+            {
+              agent: "scout",
+              status: "done",
+              metrics: { turns: 2, inputTokens: 500, outputTokens: 100, cost: 0.005, toolCalls: [] },
+            },
+            {
+              agent: "scout",
+              status: "error",
+              error: "timeout",
+              metrics: { turns: 1, inputTokens: 200, outputTokens: 50, cost: 0.002, toolCalls: [] },
+            },
+          ],
+        },
+      },
+      theme: mockTheme,
+      findAgent: mockFindAgent,
+    });
+    const lines = c.render(120);
+    expect(lines.some((l) => l.includes("✓"))).toBe(true);
+    expect(lines.some((l) => l.includes("✗"))).toBe(true);
+    expect(lines.some((l) => l.includes("timeout"))).toBe(true);
+    expect(lines.includes("")).toBe(true);
+  });
+
+  it("renders chain cards with step numbers", () => {
+    const c = renderAgentResult({
+      result: {
+        content: [{ type: "text", text: "" }],
+        details: {
+          mode: "chain",
+          results: [
+            {
+              agent: "scout",
+              status: "done",
+              step: 1,
+              metrics: { turns: 2, inputTokens: 500, outputTokens: 100, cost: 0.005, toolCalls: [] },
+            },
+            {
+              agent: "investigator",
+              status: "done",
+              step: 2,
+              metrics: { turns: 4, inputTokens: 1000, outputTokens: 300, cost: 0.02, toolCalls: [] },
+            },
+          ],
+        },
+      },
+      theme: mockTheme,
+      findAgent: mockFindAgent,
+    });
+    const lines = c.render(120);
+    const text = lines.join("\n");
+    expect(text).toContain("1.");
+    expect(text).toContain("2.");
+    expect(text).toContain("scout");
+    expect(text).toContain("investigator");
+  });
+
+  it("shows error state with message", () => {
+    const c = renderAgentResult({
+      result: {
+        content: [{ type: "text", text: "" }],
+        details: { mode: "single", results: [{ agent: "scout", status: "error", error: "Agent crashed" }] },
+      },
+      theme: mockTheme,
+      findAgent: mockFindAgent,
+    });
+    const text = c.render(120).join("\n");
+    expect(text).toContain("✗");
+    expect(text).toContain("Agent crashed");
+  });
+
+  it("renders mixed running + done in parallel", () => {
+    const c = renderAgentResult({
+      result: {
+        content: [{ type: "text", text: "" }],
+        details: {
+          mode: "parallel",
+          results: [
+            {
+              agent: "scout",
+              status: "done",
+              metrics: { turns: 2, inputTokens: 500, outputTokens: 100, cost: 0.005, toolCalls: [] },
+            },
+            { agent: "scout", status: "running" },
+          ],
+        },
+      },
+      theme: mockTheme,
+      findAgent: mockFindAgent,
+    });
+    const lines = c.render(120);
+    expect(lines.some((l) => l.includes("✓"))).toBe(true);
+    expect(lines.some((l) => l.includes("⏳"))).toBe(true);
   });
 });

@@ -54,7 +54,7 @@
   },
   "overrides": [
     {
-      "includes": ["src/tool/agent-tool.ts", "src/invocation/session.ts", "src/tool/render.ts"],
+      "includes": ["src/tool/agent-tool.ts", "src/invocation/tool-wrapper.ts", "src/tool/render.ts"],
       "linter": {
         "rules": {
           "complexity": {

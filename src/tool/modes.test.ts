@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { AgentMetrics } from "../invocation/metrics.js";
 import type { RunAgentFn } from "./modes.js";
-import { detectMode, executeChain, executeParallel, executeSingle } from "./modes.js";
+import { aggregateMetrics, detectMode, executeChain, executeParallel, executeSingle } from "./modes.js";
 
 const emptyMetrics: AgentMetrics = { turns: 0, inputTokens: 0, outputTokens: 0, cost: 0, toolCalls: [] };
 
@@ -80,15 +80,56 @@ describe("executeChain", () => {
     });
 
     expect(result.output).toBe("result-of-step2 using result-of-step1");
+    expect(result.steps).toHaveLength(2);
   });
 
-  it("stops on first failure", async () => {
+  it("stops on first failure and returns completed steps", async () => {
     const result = await executeChain({
       steps: [
         { task: "step1", runAgent: failingRunAgent },
         { task: "step2 {previous}", runAgent: fakeRunAgent },
       ],
     });
-    expect(result.error).toContain("step 1");
+    expect(result.steps).toHaveLength(1);
+    expect(result.steps[0]?.error).toBe("Agent failed");
+  });
+});
+
+describe("aggregateMetrics", () => {
+  it("sums metrics across results", () => {
+    const results = [
+      {
+        output: "a",
+        metrics: {
+          turns: 2,
+          inputTokens: 1000,
+          outputTokens: 200,
+          cost: 0.01,
+          toolCalls: [{ name: "read", args: {} }],
+        },
+      },
+      {
+        output: "b",
+        metrics: {
+          turns: 3,
+          inputTokens: 2000,
+          outputTokens: 400,
+          cost: 0.02,
+          toolCalls: [{ name: "bash", args: {} }],
+        },
+      },
+    ];
+    const agg = aggregateMetrics(results);
+    expect(agg.turns).toBe(5);
+    expect(agg.inputTokens).toBe(3000);
+    expect(agg.outputTokens).toBe(600);
+    expect(agg.cost).toBe(0.03);
+    expect(agg.toolCalls).toHaveLength(2);
+  });
+
+  it("returns zeros for empty array", () => {
+    const agg = aggregateMetrics([]);
+    expect(agg.turns).toBe(0);
+    expect(agg.toolCalls).toHaveLength(0);
   });
 });

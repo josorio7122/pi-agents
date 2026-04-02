@@ -36,14 +36,17 @@ export async function executeSingle(params: { readonly task: string; readonly ru
 export async function executeParallel(params: {
   readonly tasks: ReadonlyArray<{ readonly task: string; readonly runAgent: RunAgentFn }>;
   readonly maxConcurrency: number;
+  readonly onProgress?: (index: number, result: RunAgentResult) => void;
 }) {
-  // Simple: run all concurrently up to maxConcurrency
-  const results: RunAgentResult[] = [];
+  const results: Array<RunAgentResult | undefined> = new Array(params.tasks.length).fill(undefined);
   const executing: Promise<void>[] = [];
 
-  for (const item of params.tasks) {
+  for (let i = 0; i < params.tasks.length; i++) {
+    const idx = i;
+    const item = params.tasks[idx]!;
     const p = item.runAgent({ task: item.task }).then((r) => {
-      results.push(r);
+      results[idx] = r;
+      params.onProgress?.(idx, r);
     });
     executing.push(p);
 
@@ -53,13 +56,20 @@ export async function executeParallel(params: {
   }
   await Promise.all(executing);
 
-  return results;
+  return results as RunAgentResult[];
 }
+
+export type ChainResult = Readonly<{
+  output: string;
+  steps: ReadonlyArray<RunAgentResult>;
+}>;
 
 export async function executeChain(params: {
   readonly steps: ReadonlyArray<{ readonly task: string; readonly runAgent: RunAgentFn }>;
-}) {
+  readonly onStepComplete?: (index: number, result: RunAgentResult) => void;
+}): Promise<ChainResult> {
   let previousOutput = "";
+  const completed: RunAgentResult[] = [];
 
   for (let i = 0; i < params.steps.length; i++) {
     const step = params.steps[i];
@@ -67,18 +77,33 @@ export async function executeChain(params: {
 
     const taskWithPrevious = step.task.replaceAll("{previous}", previousOutput);
     const result = await step.runAgent({ task: taskWithPrevious });
+    completed.push(result);
+    params.onStepComplete?.(i, result);
 
     if (result.error) {
-      return { ...result, error: `Chain failed at step ${i + 1}: ${result.error}` };
+      return { output: result.output, steps: completed };
     }
 
     previousOutput = result.output;
-
-    if (i === params.steps.length - 1) {
-      return result;
-    }
   }
 
-  const emptyMetrics: AgentMetrics = { turns: 0, inputTokens: 0, outputTokens: 0, cost: 0, toolCalls: [] };
-  return { output: "", metrics: emptyMetrics, error: "Empty chain" };
+  return { output: previousOutput, steps: completed };
+}
+
+export function aggregateMetrics(results: ReadonlyArray<RunAgentResult>): AgentMetrics {
+  let turns = 0;
+  let inputTokens = 0;
+  let outputTokens = 0;
+  let cost = 0;
+  const toolCalls: Array<{ name: string; args: Record<string, unknown> }> = [];
+
+  for (const r of results) {
+    turns += r.metrics.turns;
+    inputTokens += r.metrics.inputTokens;
+    outputTokens += r.metrics.outputTokens;
+    cost += r.metrics.cost;
+    toolCalls.push(...r.metrics.toolCalls);
+  }
+
+  return { turns, inputTokens, outputTokens, cost, toolCalls };
 }

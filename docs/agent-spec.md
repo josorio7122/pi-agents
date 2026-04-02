@@ -117,11 +117,11 @@ tools:
 # ║  BLOCK 4: SKILLS                                        ║
 # ╚══════════════════════════════════════════════════════════╝
 skills:
-  - path: .pi/skills/mental-model.md
+  - path: .pi/agent-skills/mental-model.md
     when: Read at task start. Update knowledge after completing work.
-  - path: .pi/skills/active-listener.md
+  - path: .pi/agent-skills/active-listener.md
     when: Always. Read conversation log before every response.
-  - path: .pi/skills/precise-worker.md
+  - path: .pi/agent-skills/precise-worker.md
     when: Always. Execute exactly what your lead assigned.
 
 # ╔══════════════════════════════════════════════════════════╗
@@ -283,11 +283,11 @@ Behavioral modules — `.md` files injected into the agent's prompt that shape H
 
 ```yaml
 skills:
-  - path: .pi/skills/mental-model.md
+  - path: .pi/agent-skills/mental-model.md
     when: Read at task start. Update knowledge after completing work.
-  - path: .pi/skills/active-listener.md
+  - path: .pi/agent-skills/active-listener.md
     when: Always. Read conversation log before every response.
-  - path: .pi/skills/precise-worker.md
+  - path: .pi/agent-skills/precise-worker.md
     when: Always. Execute exactly what your lead assigned.
 ```
 
@@ -664,7 +664,7 @@ project-root/
 | Path | Git Status | Why |
 |------|-----------|-----|
 | `.pi/agents/*.md` | **Committed** | Team-shared agent definitions |
-| `.pi/skills/*.md` | **Committed** | Team-shared behavioral modules |
+| `.pi/agent-skills/*.md` | **Committed** | Team-shared behavioral modules |
 | `.pi/knowledge/*.yaml` | **Committed** | Project knowledge — team-shared codebase understanding |
 | `.pi/sessions/` | **Gitignored** | Ephemeral — conversation logs, session artifacts |
 | `~/.pi/agent/general/` | **N/A (global)** | General knowledge — personal, travels across projects |
