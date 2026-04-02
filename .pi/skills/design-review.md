@@ -65,7 +65,7 @@ git status --porcelain
 
 If the output is non-empty (working tree is dirty), **STOP** and present options to the user:
 
-"Your working tree has uncommitted changes. the design review needs a clean tree so each design fix gets its own atomic commit."
+"Your working tree has uncommitted changes. Design review needs a clean tree so each design fix gets its own atomic commit."
 
 - A) Commit my changes — commit all current changes with a descriptive message, then start design review
 - B) Stash my changes — stash, run design review, pop the stash after
@@ -74,207 +74,6 @@ If the output is non-empty (working tree is dirty), **STOP** and present options
 RECOMMENDATION: Choose A because uncommitted work should be preserved as a commit before design review adds its own fix commits.
 
 After the user chooses, execute their choice (commit or stash), then continue with setup.
-
-**Check test framework (bootstrap if needed):**
-
-## Test Framework Bootstrap
-
-**Detect existing test framework and project runtime:**
-
-```bash
-setopt +o nomatch 2>/dev/null || true  # zsh compat
-# Detect project runtime
-[ -f Gemfile ] && echo "RUNTIME:ruby"
-[ -f package.json ] && echo "RUNTIME:node"
-[ -f requirements.txt ] || [ -f pyproject.toml ] && echo "RUNTIME:python"
-[ -f go.mod ] && echo "RUNTIME:go"
-[ -f Cargo.toml ] && echo "RUNTIME:rust"
-[ -f composer.json ] && echo "RUNTIME:php"
-[ -f mix.exs ] && echo "RUNTIME:elixir"
-# Detect sub-frameworks
-[ -f Gemfile ] && grep -q "rails" Gemfile 2>/dev/null && echo "FRAMEWORK:rails"
-[ -f package.json ] && grep -q '"next"' package.json 2>/dev/null && echo "FRAMEWORK:nextjs"
-# Check for existing test infrastructure
-ls jest.config.* vitest.config.* playwright.config.* .rspec pytest.ini pyproject.toml phpunit.xml 2>/dev/null
-ls -d test/ tests/ spec/ __tests__/ cypress/ e2e/ 2>/dev/null
-# Check opt-out marker
-[ -f .pi/no-test-bootstrap ] && echo "BOOTSTRAP_DECLINED"
-```
-
-**If test framework detected** (config files or test directories found):
-Print "Test framework detected: {name} ({N} existing tests). Skipping bootstrap."
-Read 2-3 existing test files to learn conventions (naming, imports, assertion style, setup patterns).
-Store conventions as prose context for use in Phase 8e.5 or Step 3.4. **Skip the rest of bootstrap.**
-
-**If BOOTSTRAP_DECLINED** appears: Print "Test bootstrap previously declined — skipping." **Skip the rest of bootstrap.**
-
-**If NO runtime detected** (no config files found): Present options to the user:
-"I couldn't detect your project's language. What runtime are you using?"
-Options: A) Node.js/TypeScript B) Ruby/Rails C) Python D) Go E) Rust F) PHP G) Elixir H) This project doesn't need tests.
-If user picks H → write `.pi/no-test-bootstrap` and continue without tests.
-
-**If runtime detected but no test framework — bootstrap:**
-
-### B2. Research best practices
-
-Use search tools to find current best practices for the detected runtime:
-- `"[runtime] best test framework 2025 2026"`
-- `"[framework A] vs [framework B] comparison"`
-
-If search tools are unavailable, use this built-in knowledge table:
-
-| Runtime | Primary recommendation | Alternative |
-|---------|----------------------|-------------|
-| Ruby/Rails | minitest + fixtures + capybara | rspec + factory_bot + shoulda-matchers |
-| Node.js | vitest + @testing-library | jest + @testing-library |
-| Next.js | vitest + @testing-library/react + playwright | jest + cypress |
-| Python | pytest + pytest-cov | unittest |
-| Go | stdlib testing + testify | stdlib only |
-| Rust | cargo test (built-in) + mockall | — |
-| PHP | phpunit + mockery | pest |
-| Elixir | ExUnit (built-in) + ex_machina | — |
-
-### B3. Framework selection
-
-Present options to the user:
-"I detected this is a [Runtime/Framework] project with no test framework. I researched current best practices. Here are the options:
-A) [Primary] — [rationale]. Includes: [packages]. Supports: unit, integration, smoke, e2e
-B) [Alternative] — [rationale]. Includes: [packages]
-C) Skip — don't set up testing right now
-RECOMMENDATION: Choose A because [reason based on project context]"
-
-If user picks C → write `.pi/no-test-bootstrap`. Tell user: "If you change your mind later, delete `.pi/no-test-bootstrap` and re-run." Continue without tests.
-
-If multiple runtimes detected (monorepo) → ask which runtime to set up first, with option to do both sequentially.
-
-### B4. Install and configure
-
-1. Install the chosen packages (npm/bun/gem/pip/etc.)
-2. Create minimal config file
-3. Create directory structure (test/, spec/, etc.)
-4. Create one example test matching the project's code to verify setup works
-
-If package installation fails → debug once. If still failing → revert with `git checkout -- package.json package-lock.json` (or equivalent for the runtime). Warn user and continue without tests.
-
-### B4.5. First real tests
-
-Generate 3-5 real tests for existing code:
-
-1. **Find recently changed files:** `git log --since=30.days --name-only --format="" | sort | uniq -c | sort -rn | head -10`
-2. **Prioritize by risk:** Error handlers > business logic with conditionals > API endpoints > pure functions
-3. **For each file:** Write one test that tests real behavior with meaningful assertions. Never `expect(x).toBeDefined()` — test what the code DOES.
-4. Run each test. Passes → keep. Fails → fix once. Still fails → delete silently.
-5. Generate at least 1 test, cap at 5.
-
-Never import secrets, API keys, or credentials in test files. Use environment variables or test fixtures.
-
-### B5. Verify
-
-```bash
-# Run the full test suite to confirm everything works
-{detected test command}
-```
-
-If tests fail → debug once. If still failing → revert all bootstrap changes and warn user.
-
-### B5.5. CI/CD pipeline
-
-```bash
-# Check CI provider
-ls -d .github/ 2>/dev/null && echo "CI:github"
-ls .gitlab-ci.yml .circleci/ bitrise.yml 2>/dev/null
-```
-
-If `.github/` exists (or no CI detected — default to GitHub Actions):
-Create `.github/workflows/test.yml` with:
-- `runs-on: ubuntu-latest`
-- Appropriate setup action for the runtime (setup-node, setup-ruby, setup-python, etc.)
-- The same test command verified in B5
-- Trigger: push + pull_request
-
-If non-GitHub CI detected → skip CI generation with note: "Detected {provider} — CI pipeline generation supports GitHub Actions only. Add test step to your existing pipeline manually."
-
-### B6. Create TESTING.md
-
-First check: If TESTING.md already exists → read it and update/append rather than overwriting. Never destroy existing content.
-
-Write TESTING.md with:
-- Philosophy: "100% test coverage is the key to great vibe coding. Tests let you move fast, trust your instincts, and ship with confidence — without them, vibe coding is just yolo coding. With tests, it's a superpower."
-- Framework name and version
-- How to run tests (the verified command from B5)
-- Test layers: Unit tests (what, where, when), Integration tests, Smoke tests, E2E tests
-- Conventions: file naming, assertion style, setup/teardown patterns
-
-### B7. Update CLAUDE.md
-
-First check: If CLAUDE.md already has a `## Testing` section → skip. Don't duplicate.
-
-Append a `## Testing` section:
-- Run command and test directory
-- Reference to TESTING.md
-- Test expectations:
-  - 100% test coverage is the goal — tests make vibe coding safe
-  - When writing new functions, write a corresponding test
-  - When fixing a bug, write a regression test
-  - When adding error handling, write a test that triggers the error
-  - When adding a conditional (if/else, switch), write tests for BOTH paths
-  - Never commit code that makes existing tests fail
-
-### B8. Commit
-
-```bash
-git status --porcelain
-```
-
-Only commit if there are changes. Stage all bootstrap files (config, test directory, TESTING.md, CLAUDE.md, .github/workflows/test.yml if created):
-`git commit -m "chore: bootstrap test framework ({framework name})"`
-
----
-
-**Find the design mockup tool (optional — enables target mockup generation):**
-
-## DESIGN SETUP (run this check BEFORE any design mockup command)
-
-```bash
-# Design mockup tool not available in pi-agents
-echo "DESIGN_NOT_AVAILABLE"
-```
-
-If `DESIGN_NOT_AVAILABLE`: skip visual mockup generation and fall back to the
-existing HTML wireframe approach (`DESIGN_SKETCH`). Design mockups are a
-progressive enhancement, not a hard requirement.
-
-If `BROWSE_NOT_AVAILABLE`: use `open file://...` instead of `playwright-cli goto` to open
-comparison boards. The user just needs to see the HTML file in any browser.
-
-If `DESIGN_READY`: the design binary is available for visual mockup generation.
-Commands:
-- `# Design mockup generation not available in pi-agents --brief "..." --output /path.png` — generate a single mockup
-- `# Design variant generation not available in pi-agents --brief "..." --count 3 --output-dir /path/` — generate N style variants
-- `# Design comparison not available in pi-agents --images "a.png,b.png,c.png" --output /path/board.html --serve` — comparison board + HTTP server
-- `# Design serve not available in pi-agents --html /path/board.html` — serve comparison board and collect feedback via HTTP
-- `# Design check not available in pi-agents --image /path.png --brief "..."` — vision quality gate
-- `# Design iterate not available in pi-agents --session /path/session.json --feedback "..." --output /path.png` — iterate
-
-**CRITICAL PATH RULE:** All design artifacts (mockups, comparison boards, approved.json)
-MUST be saved to `.pi/reports/designs/`, NEVER to `.context/`,
-`docs/designs/`, `/tmp/`, or any project-local directory. Design artifacts are USER
-data, not project files. They persist across branches, conversations, and workspaces.
-
-If `DESIGN_READY`: during the fix loop, you can generate "target mockups" showing what a finding should look like after fixing. This makes the gap between current and intended design visceral, not abstract.
-
-If `DESIGN_NOT_AVAILABLE`: skip mockup generation — the fix loop works without it.
-
-**Create output directories:**
-
-```bash
-# Project slug — use project directory name
-REPORT_DIR=.pi/reports/designs/design-audit-$(date +%Y%m%d)
-mkdir -p "$REPORT_DIR/screenshots"
-echo "REPORT_DIR: $REPORT_DIR"
-```
-
----
 
 ## Phases 1-6: Design Audit Baseline
 
@@ -597,6 +396,14 @@ Tie everything to user goals and product objectives. Always suggest specific imp
 
 ---
 
+## Error Recovery
+
+- `playwright-cli` command fails → check if browser is still open with `playwright-cli list`. If no session, re-open with `playwright-cli open <url>`
+- Stale element ref → run `playwright-cli snapshot` to refresh refs, then retry
+- Page requires auth → ask the user for credentials. Use `playwright-cli cookie-set` or `playwright-cli state-load` if they have a saved state
+- Screenshot appears blank → page may not have loaded. Run `playwright-cli goto <url>` again, wait, then screenshot
+- `eval` returns error → the page may have navigated. Run `playwright-cli snapshot` to confirm current page state
+
 ## Important Rules
 
 1. **Think like a designer, not a QA engineer.** You care whether things feel right, look intentional, and respect the user. You do NOT just care whether things "work."
@@ -813,9 +620,9 @@ For each fixable finding, in impact order:
 - ONLY modify files directly related to the finding
 - Prefer CSS/styling changes over structural component changes
 
-### 8a.5. Target Mockup (if DESIGN_READY)
+### 8a.5. Visual Reference
 
-If the design mockup tool is available and the finding involves visual layout, hierarchy, or spacing (not just a CSS value fix like wrong color or font-size), generate a target mockup showing what the corrected version should look like:
+For findings involving visual layout, hierarchy, or spacing — describe what the corrected version should look like before implementing the fix. This serves as a mental target to verify against.
 
 ```bash
 # Design mockup generation not available in pi-agents --brief "<description of the page/component with the finding fixed, referencing DESIGN.md constraints>" --output "$REPORT_DIR/screenshots/finding-NNN-target.png"
@@ -899,7 +706,7 @@ DESIGN-FIX RISK:
 After all fixes are applied:
 
 1. Re-run the design audit on all affected pages
-2. If target mockups were generated during the fix loop AND `DESIGN_READY`: run `# Design tool not available: verify --mockup "$REPORT_DIR/screenshots/finding-NNN-target.png" --screenshot "$REPORT_DIR/screenshots/finding-NNN-after.png"` to compare the fix result against the target. Include pass/fail in the report.
+2. Compare before/after screenshots for each fix to verify the fix achieved the intended result.
 3. Compute final design score and AI slop score
 4. **If final scores are WORSE than baseline:** WARN prominently — something regressed
 
