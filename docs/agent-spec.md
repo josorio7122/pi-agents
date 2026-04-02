@@ -86,7 +86,7 @@ description: >                   # What this agent does (visible to orchestrator
 model: anthropic/claude-sonnet-4-6  # "provider/model-id" format — must match Pi's model registry
 role: worker                     # worker | lead | orchestrator
 color: "#36f9f6"                 # Hex color for TUI rendering
-icon: "🟢"                       # Emoji icon for TUI display
+icon: "💻"                       # Emoji icon for TUI display
 
 # ╔══════════════════════════════════════════════════════════╗
 # ║  BLOCK 2: DOMAIN                                        ║
@@ -165,7 +165,7 @@ description: >
 model: anthropic/claude-sonnet-4-6
 role: worker
 color: "#36f9f6"
-icon: "🟢"
+icon: "💻"
 ```
 
 ### Fields
@@ -177,7 +177,7 @@ icon: "🟢"
 | `model` | string | ✅ | LLM model in `provider/model-id` format (e.g., `anthropic/claude-sonnet-4-6`). Must match Pi's model registry. |
 | `role` | enum | ✅ | `worker`, `lead`, or `orchestrator`. |
 | `color` | string | ✅ | Hex color code (e.g., `"#36f9f6"`). Used for agent name rendering in TUI. |
-| `icon` | string | ✅ | Emoji icon (e.g., `"🟢"`). Displayed before agent name in TUI and `/agents` command. |
+| `icon` | string | ✅ | Emoji icon (e.g., `"💻"`). Displayed before agent name in TUI and `/agents` command. |
 
 ### Role Semantics
 

@@ -15,6 +15,37 @@ A specification for how agents are defined, how they enhance themselves, and how
 | [docs/extension-design.md](docs/extension-design.md) | Extension design — discovery, invocation, SDK usage, rendering, architecture |
 | [docs/reference.md](docs/reference.md) | Technical reference — reverse-engineered from IndyDevDan's multi-team system |
 
+## Development
+
+### Testing
+
+```bash
+npm test              # Run all 154 unit tests
+npm run check         # Biome lint + TypeScript + tests
+```
+
+### Visual TUI Testing
+
+Simulate real agent rendering with ANSI colors and streaming metric updates:
+
+```bash
+npx tsx scripts/simulate-ui.ts          # All scenarios
+npx tsx scripts/simulate-ui.ts single   # Single agent with live metrics
+npx tsx scripts/simulate-ui.ts parallel # 4 agents running concurrently
+npx tsx scripts/simulate-ui.ts chain    # 3-step sequential pipeline
+npx tsx scripts/simulate-ui.ts error    # Parallel with one failure
+```
+
+The script exercises `renderCall` + `renderResult` with realistic data and timing — cards appear as `⏳`, metrics stream live, then flip to `✓`/`✗` on completion.
+
+### Smoke Tests
+
+Manual end-to-end test playbook requiring a running `pia` session:
+
+```bash
+cat docs/smoke-tests.yml   # 8 scenarios: single, parallel, chain, TDD, domain enforcement, etc.
+```
+
 ## Quick Start
 
 An agent is a single `.md` file:
@@ -26,7 +57,7 @@ description: Builds APIs, databases, and infrastructure.
 model: anthropic/claude-sonnet-4-6
 role: worker
 color: "#36f9f6"
-icon: "🟢"
+icon: "💻"
 
 domain:
   - path: apps/backend/

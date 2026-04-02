@@ -6,6 +6,7 @@
       "recommended": true,
       "style": {
         "recommended": false,
+        "noNestedTernary": "error",
         "useImportType": "error",
         "useFilenamingConvention": {
           "level": "error",

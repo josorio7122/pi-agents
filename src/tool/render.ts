@@ -65,16 +65,12 @@ export function renderAgentResult(params: {
     return new Text(theme.fg("dim", "running..."), 0, 0);
   }
 
-  if (details.mode === "single" && details.results.length === 1) {
-    return renderCard(details.results[0]!, theme, findAgent, false);
-  }
-
+  const showStep = details.mode === "chain";
   const container = new Container();
+  container.addChild(new Spacer(1));
   for (let i = 0; i < details.results.length; i++) {
     if (i > 0) container.addChild(new Spacer(1));
-    const entry = details.results[i]!;
-    const showStep = details.mode === "chain";
-    container.addChild(renderCard(entry, theme, findAgent, showStep));
+    container.addChild(renderCard(details.results[i]!, theme, findAgent, showStep));
   }
   return container;
 }

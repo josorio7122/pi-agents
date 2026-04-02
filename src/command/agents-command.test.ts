@@ -33,12 +33,12 @@ function makeAgent(params: {
 describe("formatAgentList", () => {
   it("formats multiple agents", () => {
     const agents = [
-      makeAgent({ name: "backend-dev", icon: "🟢", description: "Builds APIs." }),
+      makeAgent({ name: "backend-dev", icon: "💻", description: "Builds APIs." }),
       makeAgent({ name: "frontend-dev", icon: "🔵", description: "Builds UIs." }),
     ];
     const lines = formatAgentList(agents);
     expect(lines).toHaveLength(2);
-    expect(lines[0]).toContain("🟢");
+    expect(lines[0]).toContain("💻");
     expect(lines[0]).toContain("backend-dev");
     expect(lines[0]).toContain("Builds APIs.");
     expect(lines[1]).toContain("🔵");

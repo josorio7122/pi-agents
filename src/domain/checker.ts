@@ -43,7 +43,8 @@ export function checkDomain(params: {
     return { allowed: false, reason: `Path "${rel}" is not in agent's domain` };
   }
 
-  const permitted = operation === "read" ? bestMatch.read : operation === "write" ? bestMatch.write : bestMatch.delete;
+  const permissionMap = { read: bestMatch.read, write: bestMatch.write, delete: bestMatch.delete };
+  const permitted = permissionMap[operation];
 
   if (!permitted) {
     return { allowed: false, reason: `${operation} not permitted on "${rel}"` };

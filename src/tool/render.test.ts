@@ -6,12 +6,11 @@ const mockTheme = {
   bold: (text: string) => text,
 };
 
-const mockFindAgent = (name: string) =>
-  name === "scout"
-    ? { icon: "🔍", name: "scout", color: "#fff", model: "anthropic/claude-haiku-3" }
-    : name === "investigator"
-      ? { icon: "🔬", name: "investigator", color: "#fff", model: "anthropic/claude-opus-4-6" }
-      : undefined;
+const agents: Record<string, { icon: string; name: string; color: string; model: string }> = {
+  scout: { icon: "🔍", name: "scout", color: "#fff", model: "anthropic/claude-haiku-3" },
+  investigator: { icon: "🔬", name: "investigator", color: "#fff", model: "anthropic/claude-opus-4-6" },
+};
+const mockFindAgent = (name: string) => agents[name];
 
 // ── renderCall ────────────────────────────────────────────
 

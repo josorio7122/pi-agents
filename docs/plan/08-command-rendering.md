@@ -39,7 +39,7 @@ Output format:
 ```
  🔵  orchestrator     Coordinates the full team
  🟡  eng-lead         Translates requirements to plans
- 🟢  backend-dev      APIs, databases, infrastructure
+ 💻  backend-dev      APIs, databases, infrastructure
 ```
 
 Uses `ctx.ui.notify()` with the formatted list. Agent name padded and rendered in its `color` via `theme.fg()`.
@@ -50,20 +50,20 @@ Shown when the LLM calls the tool:
 
 **Single mode:**
 ```
- 🟢  backend-dev (claude-sonnet-4-6)
+ 💻  backend-dev (claude-sonnet-4-6)
 ```
 
 **Parallel mode:**
 ```
  ● agent parallel (2 tasks)
-   🟢 backend-dev
+   💻 backend-dev
    🔵 frontend-dev
 ```
 
 **Chain mode:**
 ```
  ● agent chain (3 steps)
-   1. 🟢 backend-dev
+   1. 💻 backend-dev
    2. 🟡 eng-lead
    3. 🟠 qa-engineer
 ```
@@ -112,7 +112,7 @@ Uses Pi's `Container`, `Text`, `Spacer`, `Markdown` components.
 ```
 parallel 2/2 done                                              $0.068
 
- 🟢 backend-dev ✓                                    ↑45k ↓3.2k $0.034
+ 💻 backend-dev ✓                                    ↑45k ↓3.2k $0.034
     Implemented ComplementNB...
 
  🔵 frontend-dev ✓                                   ↑32k ↓2.1k $0.034
@@ -123,7 +123,7 @@ parallel 2/2 done                                              $0.068
 ```
 parallel 1/2 done, 1 running
 
- 🟢 backend-dev ✓                                    ↑45k ↓3.2k $0.034
+ 💻 backend-dev ✓                                    ↑45k ↓3.2k $0.034
     Implemented ComplementNB...
 
  🔵 frontend-dev ⏳

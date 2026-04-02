@@ -6,7 +6,10 @@ export type RunAgentResult = Readonly<{
   error?: string;
 }>;
 
-export type RunAgentFn = (params: { readonly task: string }) => Promise<RunAgentResult>;
+export type RunAgentFn = (params: {
+  readonly task: string;
+  readonly onMetrics?: (metrics: AgentMetrics) => void;
+}) => Promise<RunAgentResult>;
 
 type AgentMode =
   | { readonly mode: "single"; readonly agent: string; readonly task: string }
@@ -29,14 +32,19 @@ export function detectMode(params: Record<string, unknown>): ModeOrError {
   return { mode: "chain", chain: params.chain as Array<{ agent: string; task: string }> };
 }
 
-export async function executeSingle(params: { readonly task: string; readonly runAgent: RunAgentFn }) {
-  return params.runAgent({ task: params.task });
+export async function executeSingle(params: {
+  readonly task: string;
+  readonly runAgent: RunAgentFn;
+  readonly onMetrics?: (metrics: AgentMetrics) => void;
+}) {
+  return params.runAgent({ task: params.task, ...(params.onMetrics ? { onMetrics: params.onMetrics } : {}) });
 }
 
 export async function executeParallel(params: {
   readonly tasks: ReadonlyArray<{ readonly task: string; readonly runAgent: RunAgentFn }>;
   readonly maxConcurrency: number;
   readonly onProgress?: (index: number, result: RunAgentResult) => void;
+  readonly onTaskMetrics?: (index: number, metrics: AgentMetrics) => void;
 }) {
   const results: Array<RunAgentResult | undefined> = new Array(params.tasks.length).fill(undefined);
   const executing: Promise<void>[] = [];
@@ -44,7 +52,8 @@ export async function executeParallel(params: {
   for (let i = 0; i < params.tasks.length; i++) {
     const idx = i;
     const item = params.tasks[idx]!;
-    const p = item.runAgent({ task: item.task }).then((r) => {
+    const metricsOpt = params.onTaskMetrics ? { onMetrics: (m: AgentMetrics) => params.onTaskMetrics!(idx, m) } : {};
+    const p = item.runAgent({ task: item.task, ...metricsOpt }).then((r) => {
       results[idx] = r;
       params.onProgress?.(idx, r);
     });
@@ -67,6 +76,7 @@ export type ChainResult = Readonly<{
 export async function executeChain(params: {
   readonly steps: ReadonlyArray<{ readonly task: string; readonly runAgent: RunAgentFn }>;
   readonly onStepComplete?: (index: number, result: RunAgentResult) => void;
+  readonly onStepMetrics?: (index: number, metrics: AgentMetrics) => void;
 }): Promise<ChainResult> {
   let previousOutput = "";
   const completed: RunAgentResult[] = [];
@@ -76,7 +86,8 @@ export async function executeChain(params: {
     if (!step) continue;
 
     const taskWithPrevious = step.task.replaceAll("{previous}", previousOutput);
-    const result = await step.runAgent({ task: taskWithPrevious });
+    const metricsOpt = params.onStepMetrics ? { onMetrics: (m: AgentMetrics) => params.onStepMetrics!(i, m) } : {};
+    const result = await step.runAgent({ task: taskWithPrevious, ...metricsOpt });
     completed.push(result);
     params.onStepComplete?.(i, result);
 

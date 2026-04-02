@@ -105,7 +105,7 @@ Registered via `pi.registerCommand()`. Lists all discovered agents.
 ```
  🔵  orchestrator     Coordinates the full team
  🟡  eng-lead         Translates requirements to plans
- 🟢  backend-dev      APIs, databases, infrastructure
+ 💻  backend-dev      APIs, databases, infrastructure
  🔵  frontend-dev     UI components, client state
  🟠  qa-engineer      Test cases, regression, automation
  🟣  security-rev     Threat modeling, auth, OWASP
@@ -385,7 +385,7 @@ Match the video's simplicity in the default (collapsed) view. Show details on ex
 Appears when the LLM invokes the `agent` tool:
 
 ```
- 🟢  backend-dev (claude-sonnet-4-6)
+ 💻  backend-dev (claude-sonnet-4-6)
 ```
 
 ```typescript
@@ -407,7 +407,7 @@ renderCall(args, theme, context) {
 Shows `thinking...` while the agent is active:
 
 ```
- 🟢  backend-dev (claude-sonnet-4-6)
+ 💻  backend-dev (claude-sonnet-4-6)
      thinking...
 ```
 
@@ -425,7 +425,7 @@ renderResult(result, { isPartial }, theme, context) {
 Shows final output + usage stats on one line:
 
 ```
- 🟢  backend-dev (claude-sonnet-4-6)                      ↑45k ↓3.2k $0.034
+ 💻  backend-dev (claude-sonnet-4-6)                      ↑45k ↓3.2k $0.034
      Implemented ComplementNB classifier. Created cnb_classifier.py
      with 4 passing tests.
 ```
@@ -453,7 +453,7 @@ renderResult(result, { expanded }, theme, context) {
 Shows full detail: task, tool trace, output, per-turn usage:
 
 ```
- 🟢  backend-dev (claude-sonnet-4-6)             3 turns ↑45k ↓3.2k $0.034
+ 💻  backend-dev (claude-sonnet-4-6)             3 turns ↑45k ↓3.2k $0.034
      ─── Task ───
      Implement ComplementNB in classifier.py
      ─── Tools (4 calls) ───
@@ -511,7 +511,7 @@ if (expanded) {
 Multiple agents shown stacked. Each resolves independently:
 
 ```
- 🟢  backend-dev (claude-sonnet-4-6)
+ 💻  backend-dev (claude-sonnet-4-6)
      thinking...
 
  🔵  frontend-dev (claude-sonnet-4-6)
@@ -521,7 +521,7 @@ Multiple agents shown stacked. Each resolves independently:
 Then as each completes:
 
 ```
- 🟢  backend-dev (claude-sonnet-4-6)                      ↑45k ↓3.2k $0.034
+ 💻  backend-dev (claude-sonnet-4-6)                      ↑45k ↓3.2k $0.034
      Implemented ComplementNB classifier...
 
  🔵  frontend-dev (claude-sonnet-4-6)
@@ -542,7 +542,7 @@ description: Builds APIs, databases, and infrastructure.
 model: anthropic/claude-sonnet-4-6
 role: worker
 color: "#36f9f6"              # Hex color for TUI rendering
-icon: "🟢"                    # Emoji icon for TUI rendering
+icon: "💻"                    # Emoji icon for TUI rendering
 ```
 
 | Field | Type | Required | Description |

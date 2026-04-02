@@ -10,7 +10,7 @@ const agent: AgentConfig = {
     model: "anthropic/claude-sonnet-4-6",
     role: "worker",
     color: "#36f9f6",
-    icon: "🟢",
+    icon: "💻",
     domain: [{ path: "apps/backend/", read: true, write: true, delete: true }],
     tools: ["read", "write", "bash"],
     skills: [{ path: ".pi/skills/mental-model.md", when: "Read at task start." }],

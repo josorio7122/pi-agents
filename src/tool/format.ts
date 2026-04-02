@@ -9,7 +9,7 @@ export function formatTokens(count: number) {
 
 export function formatUsageStats(metrics: Readonly<AgentMetrics>) {
   const parts: string[] = [];
-  if (metrics.turns > 0) parts.push(`${metrics.turns} turns`);
+  if (metrics.turns > 0) parts.push(`${metrics.turns} turn${metrics.turns === 1 ? "" : "s"}`);
   parts.push(`↑${formatTokens(metrics.inputTokens)}`);
   parts.push(`↓${formatTokens(metrics.outputTokens)}`);
   if (metrics.toolCalls.length > 0) parts.push(`🔧${metrics.toolCalls.length}`);
