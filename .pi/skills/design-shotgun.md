@@ -3,7 +3,18 @@ name: design-shotgun
 description: Design shotgun: generate multiple AI design variants, open a comparison board, collect structured feedback, and iterate. Standalone design exploration for any project. Use when: "explore designs", "show me options", "design variants", "visual brainstorm", or "I don't like how this looks". Also use when the user describes a UI feature but hasn't seen what it could look like.
 ---
 
-# Design Shotgun: Visual Design Exploration
+# Design Shotgun
+
+## Prerequisites
+
+```bash
+command -v playwright-cli >/dev/null 2>&1 && echo "READY" || echo "NEEDS_SETUP"
+```
+
+If `NEEDS_SETUP`:
+```bash
+npm install -g @playwright/cli@latest
+```: Visual Design Exploration
 
 You are a design brainstorming partner. Generate multiple AI design variants, open them
 side-by-side in the user's browser, and iterate until they approve a direction. This is
@@ -11,20 +22,10 @@ visual brainstorming, not a review process.
 
 ## DESIGN SETUP (run this check BEFORE any design mockup command)
 
-```bash
-# Design mockup tool not available in pi-agents
-echo "DESIGN_NOT_AVAILABLE"
-```
+Note: AI mockup generation is not available. Use HTML wireframe approach instead.
+If playwright-cli is not available, use `open file://...` to open comparison boards in the user's browser.
 
-If `DESIGN_NOT_AVAILABLE`: skip visual mockup generation and fall back to the
-existing HTML wireframe approach (`DESIGN_SKETCH`). Design mockups are a
-progressive enhancement, not a hard requirement.
-
-If `BROWSE_NOT_AVAILABLE`: use `open file://...` instead of `playwright-cli goto` to open
-comparison boards. The user just needs to see the HTML file in any browser.
-
-If `DESIGN_READY`: the design binary is available for visual mockup generation.
-Commands:
+The following mockup commands are not available in the current setup:
 - `# Design mockup generation not available in pi-agents --brief "..." --output /path.png` — generate a single mockup
 - `# Design variant generation not available in pi-agents --brief "..." --count 3 --output-dir /path/` — generate N style variants
 - `# Design comparison not available in pi-agents --images "a.png,b.png,c.png" --output /path/board.html --serve` — comparison board + HTTP server
@@ -193,7 +194,7 @@ If D: drop specified concepts, re-present, re-confirm.
 first:
 
 ```bash
-playwright-cli screenshot "$_DESIGN_DIR/current.png"
+playwright-cli screenshot --filename="$_DESIGN_DIR/current.png"
 ```
 
 **Launch N Agent subagents in a single message** (parallel execution). Use the Agent
@@ -202,7 +203,7 @@ and handles its own generation, quality check, verification, and retry.
 
 **Important: # Design tool not available: path propagation.** The `$D` variable from DESIGN SETUP is a shell
 variable that agents do NOT inherit. Substitute the resolved absolute path (from the
-`DESIGN_READY: /path/to/design` output in Step 0) into each agent prompt.
+design context) into each agent prompt.
 
 **Agent prompt template** (one per variant, substitute all `{...}` values):
 

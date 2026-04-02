@@ -48,7 +48,7 @@ If the codebase is empty and purpose is unclear, say: *"I don't have a clear pic
 ## SETUP (run this check BEFORE any browse command)
 
 ```bash
-command -v npx >/dev/null 2>&1 && npx playwright-cli --help >/dev/null 2>&1 && echo "READY" || echo "NEEDS_SETUP"
+command -v playwright-cli >/dev/null 2>&1 && echo "READY" || echo "NEEDS_SETUP"
 ```
 
 If `NEEDS_SETUP`:
@@ -61,20 +61,12 @@ If browse is not available, that's fine — visual research is optional. This wo
 
 ## DESIGN SETUP (run this check BEFORE any design mockup command)
 
-```bash
-# Design mockup tool not available in pi-agents
-echo "DESIGN_NOT_AVAILABLE"
-```
-
-If `DESIGN_NOT_AVAILABLE`: skip visual mockup generation and fall back to the
-existing HTML wireframe approach (`DESIGN_SKETCH`). Design mockups are a
-progressive enhancement, not a hard requirement.
+Note: AI mockup generation is not available. Use the HTML preview page approach instead.
 
 If `BROWSE_NOT_AVAILABLE`: use `open file://...` instead of `playwright-cli goto` to open
 comparison boards. The user just needs to see the HTML file in any browser.
 
-If `DESIGN_READY`: the design binary is available for visual mockup generation.
-Commands:
+The following mockup commands are not available in the current setup:
 - `# Design mockup generation not available in pi-agents --brief "..." --output /path.png` — generate a single mockup
 - `# Design variant generation not available in pi-agents --brief "..." --count 3 --output-dir /path/` — generate N style variants
 - `# Design comparison not available in pi-agents --images "a.png,b.png,c.png" --output /path/board.html --serve` — comparison board + HTTP server
@@ -87,9 +79,7 @@ MUST be saved to `.pi/reports/designs/`, NEVER to `.context/`,
 `docs/designs/`, `/tmp/`, or any project-local directory. Design artifacts are USER
 data, not project files. They persist across branches, conversations, and workspaces.
 
-If `DESIGN_READY`: Phase 5 will generate AI mockups of your proposed design system applied to real screens, instead of just an HTML preview page. Much more powerful — the user sees what their product could actually look like.
-
-If `DESIGN_NOT_AVAILABLE`: Phase 5 falls back to the HTML preview page (still good).
+Phase 5 generates an HTML preview page showing the proposed design system.
 
 ---
 
@@ -124,7 +114,7 @@ If the browse binary is available (`$B` is set), visit the top 3-5 sites in the 
 
 ```bash
 playwright-cli goto "https://example-site.com"
-playwright-cli screenshot "/tmp/design-research-site-name.png"
+playwright-cli screenshot --filename="/tmp/design-research-site-name.png"
 playwright-cli snapshot
 ```
 
@@ -327,7 +317,7 @@ Each drill-down is one focused ask the user. After the user decides, re-check co
 
 This phase generates visual previews of the proposed design system. Two paths depending on whether the design mockup tool is available.
 
-### Path A: AI Mockups (if DESIGN_READY)
+### Path A: AI Mockups (not available)
 
 Generate AI-rendered mockups showing the proposed design system applied to realistic screens for this product. This is far more powerful than an HTML preview — the user sees what their product could actually look like.
 
@@ -448,7 +438,7 @@ After the user picks a direction:
 - **If in plan mode:** Add the approved mockup path (the full `$_DESIGN_DIR` path) and extracted tokens to the plan file under an "## Approved Design Direction" section. The design system gets written to DESIGN.md when the plan is implemented.
 - **If NOT in plan mode:** Proceed directly to Phase 6 and write DESIGN.md with the extracted tokens.
 
-### Path B: HTML Preview Page (fallback if DESIGN_NOT_AVAILABLE)
+### HTML Preview Page
 
 Generate a polished HTML preview page and open it in the user's browser. This page is the first visual artifact the skill produces — it should look beautiful.
 
