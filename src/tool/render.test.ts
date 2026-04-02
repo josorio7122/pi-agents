@@ -103,7 +103,7 @@ describe("renderAgentResult", () => {
     expect(text).not.toContain("output");
   });
 
-  it("renders single card without step number", () => {
+  it("single mode shows compact card — no icon or name", () => {
     const c = renderAgentResult({
       result: {
         content: [{ type: "text", text: "" }],
@@ -122,10 +122,12 @@ describe("renderAgentResult", () => {
       findAgent: mockFindAgent,
     });
     const text = c.render(120).join("\n");
-    expect(text).not.toMatch(/^\d\./);
+    expect(text).toContain("✓");
+    expect(text).not.toContain("scout");
+    expect(text).not.toContain("🔍");
   });
 
-  it("renders running agents with ⏳ indicator", () => {
+  it("renders running agents with spinner indicator", () => {
     const c = renderAgentResult({
       result: {
         content: [{ type: "text", text: "" }],
@@ -141,7 +143,7 @@ describe("renderAgentResult", () => {
       findAgent: mockFindAgent,
     });
     const lines = c.render(120);
-    const running = lines.filter((l) => l.includes("⏳"));
+    const running = lines.filter((l) => l.match(/[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/));
     expect(running).toHaveLength(2);
   });
 
@@ -244,6 +246,88 @@ describe("renderAgentResult", () => {
     });
     const lines = c.render(120);
     expect(lines.some((l) => l.includes("✓"))).toBe(true);
-    expect(lines.some((l) => l.includes("⏳"))).toBe(true);
+    expect(lines.some((l) => l.match(/[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/))).toBe(true);
+  });
+
+  it("shows aggregate stats for parallel with multiple cards", () => {
+    const c = renderAgentResult({
+      result: {
+        content: [{ type: "text", text: "" }],
+        details: {
+          mode: "parallel",
+          results: [
+            {
+              agent: "scout",
+              status: "done",
+              metrics: {
+                turns: 4,
+                inputTokens: 3500,
+                outputTokens: 5800,
+                cost: 0.079,
+                toolCalls: Array(10).fill({ name: "r", args: {} }),
+              },
+            },
+            {
+              agent: "scout",
+              status: "done",
+              metrics: {
+                turns: 14,
+                inputTokens: 3900,
+                outputTokens: 13000,
+                cost: 0.174,
+                toolCalls: Array(40).fill({ name: "r", args: {} }),
+              },
+            },
+          ],
+        },
+      },
+      theme: mockTheme,
+      findAgent: mockFindAgent,
+    });
+    const text = c.render(120).join("\n");
+    expect(text).toContain("Σ");
+    expect(text).toContain("18 turns");
+    expect(text).toContain("50 tools");
+  });
+
+  it("no aggregate for single mode", () => {
+    const c = renderAgentResult({
+      result: {
+        content: [{ type: "text", text: "" }],
+        details: {
+          mode: "single",
+          results: [
+            {
+              agent: "scout",
+              status: "done",
+              metrics: { turns: 3, inputTokens: 1000, outputTokens: 200, cost: 0.01, toolCalls: [] },
+            },
+          ],
+        },
+      },
+      theme: mockTheme,
+      findAgent: mockFindAgent,
+    });
+    const text = c.render(120).join("\n");
+    expect(text).not.toContain("Σ");
+  });
+
+  it("no aggregate when all running with no metrics", () => {
+    const c = renderAgentResult({
+      result: {
+        content: [{ type: "text", text: "" }],
+        details: {
+          mode: "parallel",
+          results: [
+            { agent: "scout", status: "running" },
+            { agent: "scout", status: "running" },
+          ],
+        },
+      },
+      theme: mockTheme,
+      findAgent: mockFindAgent,
+    });
+    const text = c.render(120).join("\n");
+    expect(text).not.toContain("Σ");
   });
 });

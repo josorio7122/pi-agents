@@ -1,6 +1,7 @@
 import { Container, Spacer, Text } from "@mariozechner/pi-tui";
 import type { AgentMetrics } from "../invocation/metrics.js";
 import { formatUsageStats } from "./format.js";
+import { aggregateMetrics } from "./modes.js";
 
 type RenderTheme = Readonly<{
   fg: (color: string, text: string) => string;
@@ -65,17 +66,39 @@ export function renderAgentResult(params: {
     return new Text(theme.fg("dim", "running..."), 0, 0);
   }
 
+  const isSingle = details.mode === "single" && details.results.length === 1;
   const showStep = details.mode === "chain";
   const container = new Container();
   container.addChild(new Spacer(1));
   for (let i = 0; i < details.results.length; i++) {
     if (i > 0) container.addChild(new Spacer(1));
-    container.addChild(renderCard(details.results[i]!, theme, findAgent, showStep));
+    container.addChild(
+      isSingle
+        ? renderCompactCard(details.results[i]!, theme)
+        : renderCard(details.results[i]!, theme, findAgent, showStep),
+    );
   }
+
+  if (details.results.length > 1) {
+    const withMetrics = details.results.filter((e): e is AgentResultEntry & { metrics: AgentMetrics } => !!e.metrics);
+    if (withMetrics.length > 0) {
+      const agg = aggregateMetrics(withMetrics.map((e) => ({ output: "", metrics: e.metrics })));
+      container.addChild(new Spacer(1));
+      container.addChild(new Text(theme.fg("dim", `Σ ${formatUsageStats(agg)}`), 0, 0));
+    }
+  }
+
   return container;
 }
 
 // ── base card ───────────────────────────────────────────────
+
+function renderCompactCard(entry: AgentResultEntry, theme: RenderTheme) {
+  const statusIcon = statusIndicator(entry.status, theme);
+  const stats = entry.metrics ? ` ${theme.fg("dim", formatUsageStats(entry.metrics))}` : "";
+  const errorSuffix = entry.error ? ` ${theme.fg("error", entry.error)}` : "";
+  return new Text(`${statusIcon}${stats}${errorSuffix}`, 0, 0);
+}
 
 function renderCard(entry: AgentResultEntry, theme: RenderTheme, findAgent: FindAgent, showStep: boolean) {
   const agent = findAgent(entry.agent);
@@ -89,8 +112,11 @@ function renderCard(entry: AgentResultEntry, theme: RenderTheme, findAgent: Find
   return new Text(`${stepPrefix}${icon} ${entry.agent} ${statusIcon}${stats}${errorSuffix}`, 0, 0);
 }
 
+const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+
 function statusIndicator(status: AgentResultEntry["status"], theme: RenderTheme) {
   if (status === "done") return theme.fg("success", "✓");
   if (status === "error") return theme.fg("error", "✗");
-  return theme.fg("dim", "⏳");
+  const frame = SPINNER_FRAMES[Math.floor(Date.now() / 250) % SPINNER_FRAMES.length]!;
+  return theme.fg("accent", frame);
 }

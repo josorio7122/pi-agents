@@ -35,6 +35,32 @@ describe("formatUsageStats", () => {
     const result = formatUsageStats({ inputTokens: 1000, outputTokens: 200, cost: 0.01, turns: 3, toolCalls: [] });
     expect(result).toContain("3 turns");
   });
+
+  it("formats singular turn and tool", () => {
+    const result = formatUsageStats({
+      inputTokens: 100,
+      outputTokens: 50,
+      cost: 0.001,
+      turns: 1,
+      toolCalls: [{ name: "read", args: {} }],
+    });
+    expect(result).toContain("1 turn ");
+    expect(result).toContain("1 tool ");
+  });
+
+  it("formats plural tools", () => {
+    const result = formatUsageStats({
+      inputTokens: 100,
+      outputTokens: 50,
+      cost: 0.001,
+      turns: 0,
+      toolCalls: [
+        { name: "read", args: {} },
+        { name: "bash", args: {} },
+      ],
+    });
+    expect(result).toContain("2 tools");
+  });
 });
 
 describe("formatToolCall", () => {

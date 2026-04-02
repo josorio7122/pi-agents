@@ -12,7 +12,8 @@ export function formatUsageStats(metrics: Readonly<AgentMetrics>) {
   if (metrics.turns > 0) parts.push(`${metrics.turns} turn${metrics.turns === 1 ? "" : "s"}`);
   parts.push(`↑${formatTokens(metrics.inputTokens)}`);
   parts.push(`↓${formatTokens(metrics.outputTokens)}`);
-  if (metrics.toolCalls.length > 0) parts.push(`🔧${metrics.toolCalls.length}`);
+  if (metrics.toolCalls.length > 0)
+    parts.push(`${metrics.toolCalls.length} tool${metrics.toolCalls.length === 1 ? "" : "s"}`);
   parts.push(`$${metrics.cost.toFixed(3)}`);
   return parts.join(" ");
 }
