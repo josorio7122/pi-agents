@@ -52,8 +52,12 @@ command -v playwright-cli >/dev/null 2>&1 && echo "READY" || echo "NEEDS_SETUP"
 ```
 
 If `NEEDS_SETUP`:
-1. Tell the user: "playwright needs to be installed. OK to proceed?"
-2. Run: `npx playwright install`
+1. Tell the user: "playwright-cli is required for visual research. Install it?"
+2. Install:
+   ```bash
+   npm install -g @playwright/cli@latest
+   playwright-cli --help
+   ```
 
 If browse is not available, that's fine — visual research is optional. This workflow works without it using search tools and your built-in design knowledge.
 
