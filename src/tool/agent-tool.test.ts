@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
-import type { AgentMetrics } from "../invocation/metrics.js";
 import type { AgentConfig } from "../discovery/validator.js";
+import type { AgentMetrics } from "../invocation/metrics.js";
 import { createAgentTool } from "./agent-tool.js";
-import type { RunAgentFn, RunAgentResult } from "./modes.js";
 
 const emptyMetrics: AgentMetrics = { turns: 0, inputTokens: 0, outputTokens: 0, cost: 0, toolCalls: [] };
 
@@ -30,10 +29,6 @@ function makeAgent(overrides?: Partial<AgentConfig["frontmatter"]>): AgentConfig
     source: "project",
   };
 }
-
-// We can't easily test execute() without a real Pi session, but we CAN test
-// the tool shape, parameters, and the helper functions exposed via the tool object.
-// The execute() paths are tested indirectly via modes.test.ts + session.test.ts.
 
 describe("createAgentTool", () => {
   const modelRegistry = { find: () => undefined } as never;
@@ -127,7 +122,11 @@ describe("createAgentTool", () => {
         details: {
           mode: "single",
           results: [
-            { agent: "scout", status: "done", metrics: { turns: 1, inputTokens: 100, outputTokens: 50, cost: 0.001, toolCalls: [] } },
+            {
+              agent: "scout",
+              status: "done",
+              metrics: { turns: 1, inputTokens: 100, outputTokens: 50, cost: 0.001, toolCalls: [] },
+            },
           ],
         },
       },
@@ -136,5 +135,90 @@ describe("createAgentTool", () => {
     );
     const text = rendered.render(120).join("\n");
     expect(text).toContain("✓");
+  });
+
+  it("execute throws on invalid mode", async () => {
+    const tool = createAgentTool({
+      agents: [makeAgent()],
+      modelRegistry,
+      cwd: "/tmp",
+      sessionDir: "/tmp/sessions/abc",
+      conversationLogPath: "/tmp/sessions/abc/conversation.jsonl",
+    });
+    await expect(tool.execute("call-1", {}, undefined, undefined)).rejects.toThrow("No mode specified");
+  });
+
+  it("execute throws on unknown agent in single mode", async () => {
+    const tool = createAgentTool({
+      agents: [makeAgent()],
+      modelRegistry,
+      cwd: "/tmp",
+      sessionDir: "/tmp/sessions/abc",
+      conversationLogPath: "/tmp/sessions/abc/conversation.jsonl",
+    });
+    await expect(
+      tool.execute("call-1", { agent: "nonexistent", task: "do stuff" }, undefined, undefined),
+    ).rejects.toThrow('Unknown agent: "nonexistent"');
+  });
+
+  it("execute throws when parallel mode has unknown agents", async () => {
+    const tool = createAgentTool({
+      agents: [makeAgent()],
+      modelRegistry,
+      cwd: "/tmp",
+      sessionDir: "/tmp/sessions/abc",
+      conversationLogPath: "/tmp/sessions/abc/conversation.jsonl",
+    });
+    await expect(
+      tool.execute(
+        "call-1",
+        {
+          tasks: [
+            { agent: "scout", task: "ok" },
+            { agent: "ghost", task: "nope" },
+          ],
+        },
+        undefined,
+        undefined,
+      ),
+    ).rejects.toThrow("Unknown agent");
+  });
+
+  it("execute throws on abort signal", async () => {
+    const tool = createAgentTool({
+      agents: [makeAgent()],
+      modelRegistry,
+      cwd: "/tmp",
+      sessionDir: "/tmp/sessions/abc",
+      conversationLogPath: "/tmp/sessions/abc/conversation.jsonl",
+    });
+    const controller = new AbortController();
+    controller.abort();
+    await expect(
+      tool.execute("call-1", { agent: "scout", task: "do stuff" }, controller.signal, undefined),
+    ).rejects.toThrow("cancelled");
+  });
+
+  it("execute throws when chain mode has unknown agents", async () => {
+    const tool = createAgentTool({
+      agents: [makeAgent()],
+      modelRegistry,
+      cwd: "/tmp",
+      sessionDir: "/tmp/sessions/abc",
+      conversationLogPath: "/tmp/sessions/abc/conversation.jsonl",
+    });
+    await expect(
+      tool.execute(
+        "call-1",
+        {
+          chain: [
+            { agent: "scout", task: "ok" },
+            { agent: "phantom", task: "nope" },
+          ],
+        },
+        undefined,
+        undefined,
+      ),
+    ).rejects.toThrow("Unknown agent");
   });
 });

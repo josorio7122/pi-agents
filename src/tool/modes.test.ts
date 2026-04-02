@@ -51,6 +51,25 @@ describe("executeSingle", () => {
 });
 
 describe("executeParallel", () => {
+  it("respects maxConcurrency limit", async () => {
+    let active = 0;
+    let maxActive = 0;
+    const slowRunAgent: RunAgentFn = async (params) => {
+      active++;
+      maxActive = Math.max(maxActive, active);
+      await new Promise((r) => setTimeout(r, 10));
+      active--;
+      return { output: `Done: ${params.task}`, metrics: emptyMetrics };
+    };
+
+    const results = await executeParallel({
+      tasks: Array.from({ length: 8 }, (_, i) => ({ task: `task-${i}`, runAgent: slowRunAgent })),
+      maxConcurrency: 2,
+    });
+    expect(results).toHaveLength(8);
+    expect(maxActive).toBeLessThanOrEqual(2);
+  });
+
   it("runs multiple tasks concurrently", async () => {
     const results = await executeParallel({
       tasks: [

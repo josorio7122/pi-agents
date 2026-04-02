@@ -44,7 +44,8 @@ function readFileSafe(filePath: string) {
 }
 
 export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> {
-  const { agentConfig, task, cwd, sessionDir, conversationLogPath, modelRegistry, modelOverride, onUpdate } = params;
+  const { agentConfig, task, cwd, sessionDir, conversationLogPath, modelRegistry, modelOverride, signal, onUpdate } =
+    params;
   const fm = agentConfig.frontmatter;
 
   // Read all file content upfront (I/O at the edges)
@@ -138,6 +139,11 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
   });
 
   // Run the agent
+  if (signal?.aborted) {
+    session.dispose();
+    return { output: "", metrics: tracker.snapshot(), error: "Agent execution cancelled" };
+  }
+
   try {
     await session.prompt(task);
   } catch (err) {

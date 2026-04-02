@@ -1,13 +1,14 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 // We test discoverAgents behavior by importing the default export
 // and simulating pi.on("session_start") with a mock ExtensionAPI.
 
 // Helper: write a valid agent .md file
-function writeValidAgent(dir: string, name: string) {
+function writeValidAgent(params: { readonly dir: string; readonly name: string; readonly rootDir: string }) {
+  const { dir, name, rootDir } = params;
   const content = `---
 name: ${name}
 description: "Test agent"
@@ -24,16 +25,16 @@ tools:
   - read
   - ls
 skills:
-  - path: .pi/skills/test.md
+  - path: ${join(rootDir, ".pi", "skills", "test.md")}
     when: Always
 knowledge:
   project:
-    path: .pi/knowledge/${name}.yaml
+    path: ${join(rootDir, ".pi", "knowledge", `${name}.yaml`)}
     description: "Project knowledge"
     updatable: true
     max-lines: 100
   general:
-    path: general/${name}.yaml
+    path: ${join(rootDir, "general", `${name}.yaml`)}
     description: "General knowledge"
     updatable: false
     max-lines: 50
@@ -100,7 +101,9 @@ describe("pi-agents extension", () => {
   it("discovers agents from project directory", async () => {
     const { default: extension } = await import("./index.js");
     const dirs = makeTempDirs();
-    writeValidAgent(dirs.projectAgents, "scout");
+    writeValidAgent({ dir: dirs.projectAgents, name: "scout", rootDir: dirs.root });
+    mkdirSync(join(dirs.root, ".pi", "skills"), { recursive: true });
+    writeFileSync(join(dirs.root, ".pi", "skills", "test.md"), "# Test Skill\nBe helpful.");
 
     // Create knowledge dirs so bootstrap doesn't fail
     mkdirSync(join(dirs.root, ".pi", "knowledge"), { recursive: true });

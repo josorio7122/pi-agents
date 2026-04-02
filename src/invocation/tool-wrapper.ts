@@ -50,8 +50,9 @@ export function createToolForAgent(params: {
   return {
     ...baseTool,
     async execute(toolCallId: unknown, toolParams: unknown, ...rest: unknown[]) {
-      const p = toolParams as Record<string, unknown> | undefined;
-      const filePath = (p?.path ?? p?.file_path ?? "") as string;
+      const p = typeof toolParams === "object" && toolParams !== null ? (toolParams as Record<string, unknown>) : {};
+      const rawPath = p.path ?? p.file_path ?? "";
+      const filePath = typeof rawPath === "string" ? rawPath : "";
 
       if (filePath) {
         const op = name === "read" || name === "grep" || name === "find" || name === "ls" ? "read" : "write";

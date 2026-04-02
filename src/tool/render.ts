@@ -1,6 +1,7 @@
 import { Container, Spacer, Text } from "@mariozechner/pi-tui";
 import type { AgentMetrics } from "../invocation/metrics.js";
 import { formatUsageStats } from "./format.js";
+import type { RunAgentResult } from "./modes.js";
 import { aggregateMetrics } from "./modes.js";
 
 type RenderTheme = Readonly<{
@@ -23,6 +24,24 @@ export type AgentResultDetails = Readonly<{
   mode: "single" | "parallel" | "chain";
   results: ReadonlyArray<AgentResultEntry>;
 }>;
+
+export function toResultEntry(params: {
+  readonly agentName: string;
+  readonly result: RunAgentResult;
+  readonly step?: number;
+}): AgentResultEntry {
+  const { agentName, result, step } = params;
+  const base = {
+    agent: agentName,
+    status: (result.error ? "error" : "done") as AgentResultEntry["status"],
+    metrics: result.metrics,
+  };
+  return { ...base, ...(result.error ? { error: result.error } : {}), ...(step !== undefined ? { step } : {}) };
+}
+
+export function runningEntry(params: { readonly agentName: string; readonly step?: number }): AgentResultEntry {
+  return { agent: params.agentName, status: "running", ...(params.step !== undefined ? { step: params.step } : {}) };
+}
 
 // ── renderCall ──────────────────────────────────────────────
 
@@ -54,13 +73,19 @@ export function renderAgentCall(params: {
 
 // ── renderResult ────────────────────────────────────────────
 
+function isAgentResultDetails(value: unknown): value is AgentResultDetails {
+  if (!value || typeof value !== "object") return false;
+  const v = value as Record<string, unknown>;
+  return (v.mode === "single" || v.mode === "parallel" || v.mode === "chain") && Array.isArray(v.results);
+}
+
 export function renderAgentResult(params: {
   readonly result: { details?: unknown; content: Array<{ type: string; text?: string }> };
   readonly theme: RenderTheme;
   readonly findAgent: FindAgent;
 }) {
   const { result, theme, findAgent } = params;
-  const details = result.details as AgentResultDetails | undefined;
+  const details = isAgentResultDetails(result.details) ? result.details : undefined;
 
   if (!details?.results) {
     return new Text(theme.fg("dim", "running..."), 0, 0);
@@ -75,7 +100,7 @@ export function renderAgentResult(params: {
     container.addChild(
       isSingle
         ? renderCompactCard(details.results[i]!, theme)
-        : renderCard(details.results[i]!, theme, findAgent, showStep),
+        : renderCard({ entry: details.results[i]!, theme, findAgent, showStep }),
     );
   }
 
@@ -100,7 +125,13 @@ function renderCompactCard(entry: AgentResultEntry, theme: RenderTheme) {
   return new Text(`${statusIcon}${stats}${errorSuffix}`, 0, 0);
 }
 
-function renderCard(entry: AgentResultEntry, theme: RenderTheme, findAgent: FindAgent, showStep: boolean) {
+function renderCard(params: {
+  readonly entry: AgentResultEntry;
+  readonly theme: RenderTheme;
+  readonly findAgent: FindAgent;
+  readonly showStep: boolean;
+}) {
+  const { entry, theme, findAgent, showStep } = params;
   const agent = findAgent(entry.agent);
   const icon = agent?.icon ?? "●";
 

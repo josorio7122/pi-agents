@@ -6,6 +6,23 @@ export type AgentMetrics = Readonly<{
   toolCalls: ReadonlyArray<Readonly<{ name: string; args: Record<string, unknown> }>>;
 }>;
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function toNumber(value: unknown) {
+  return typeof value === "number" ? value : 0;
+}
+
+function extractUsage(event: Record<string, unknown>) {
+  const msg = isRecord(event.message) ? event.message : undefined;
+  if (msg?.role !== "assistant") return undefined;
+  const usage = isRecord(msg.usage) ? msg.usage : undefined;
+  if (!usage) return undefined;
+  const costObj = isRecord(usage.cost) ? usage.cost : undefined;
+  return { input: toNumber(usage.input), output: toNumber(usage.output), cost: toNumber(costObj?.total) };
+}
+
 export function createMetricsTracker() {
   let turns = 0;
   let inputTokens = 0;
@@ -19,21 +36,17 @@ export function createMetricsTracker() {
         turns++;
       }
       if (event.type === "message_end") {
-        const msg = event.message as Record<string, unknown> | undefined;
-        if (msg?.role === "assistant") {
-          const usage = msg.usage as Record<string, unknown> | undefined;
-          if (usage) {
-            inputTokens += (usage.input as number | undefined) ?? 0;
-            outputTokens += (usage.output as number | undefined) ?? 0;
-            const costObj = usage.cost as Record<string, unknown> | undefined;
-            cost += (costObj?.total as number | undefined) ?? 0;
-          }
+        const usage = extractUsage(event);
+        if (usage) {
+          inputTokens += usage.input;
+          outputTokens += usage.output;
+          cost += usage.cost;
         }
       }
       if (event.type === "tool_execution_start") {
         toolCalls.push({
-          name: event.toolName as string,
-          args: (event.args as Record<string, unknown>) ?? {},
+          name: typeof event.toolName === "string" ? event.toolName : "unknown",
+          args: isRecord(event.args) ? event.args : {},
         });
       }
     },

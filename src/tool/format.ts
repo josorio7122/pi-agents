@@ -18,22 +18,26 @@ export function formatUsageStats(metrics: Readonly<AgentMetrics>) {
   return parts.join(" ");
 }
 
+function str(value: unknown, fallback: string) {
+  return typeof value === "string" ? value : fallback;
+}
+
 export function formatToolCall(name: string, args: Readonly<Record<string, unknown>>) {
   switch (name) {
     case "bash":
-      return `$ ${(args.command as string) ?? "..."}`;
+      return `$ ${str(args.command, "...")}`;
     case "read":
-      return `read ${(args.path as string) ?? "..."}`;
+      return `read ${str(args.path, "...")}`;
     case "write":
-      return `write ${(args.path as string) ?? "..."}`;
+      return `write ${str(args.path, "...")}`;
     case "edit":
-      return `edit ${(args.path as string) ?? "..."}`;
+      return `edit ${str(args.path, "...")}`;
     case "grep":
-      return `grep /${(args.pattern as string) ?? ""}/ in ${(args.path as string) ?? "."}`;
+      return `grep /${str(args.pattern, "")}/ in ${str(args.path, ".")}`;
     case "find":
-      return `find ${(args.pattern as string) ?? "*"} in ${(args.path as string) ?? "."}`;
+      return `find ${str(args.pattern, "*")} in ${str(args.path, ".")}`;
     case "ls":
-      return `ls ${(args.path as string) ?? "."}`;
+      return `ls ${str(args.path, ".")}`;
     default: {
       const preview = JSON.stringify(args);
       return `${name} ${preview.length > 50 ? `${preview.slice(0, 50)}...` : preview}`;

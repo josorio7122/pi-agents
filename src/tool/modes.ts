@@ -18,6 +18,20 @@ type AgentMode =
 
 type ModeOrError = AgentMode | { readonly error: string };
 
+export function collectAgentNames(mode: AgentMode) {
+  if (mode.mode === "single") return [mode.agent];
+  if (mode.mode === "parallel") return mode.tasks.map((t) => t.agent);
+  return mode.chain.map((s) => s.agent);
+}
+
+function toTaskArray(value: unknown): Array<{ agent: string; task: string }> {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null)
+    .filter((item) => typeof item.agent === "string" && typeof item.task === "string")
+    .map((item) => ({ agent: item.agent as string, task: item.task as string }));
+}
+
 export function detectMode(params: Record<string, unknown>): ModeOrError {
   const hasSingle = typeof params.agent === "string" && typeof params.task === "string";
   const hasParallel = Array.isArray(params.tasks) && params.tasks.length > 0;
@@ -27,9 +41,9 @@ export function detectMode(params: Record<string, unknown>): ModeOrError {
   if (count === 0) return { error: "No mode specified. Provide agent+task, tasks array, or chain array." };
   if (count > 1) return { error: "Multiple modes specified. Provide exactly one of: agent+task, tasks, or chain." };
 
-  if (hasSingle) return { mode: "single", agent: params.agent as string, task: params.task as string };
-  if (hasParallel) return { mode: "parallel", tasks: params.tasks as Array<{ agent: string; task: string }> };
-  return { mode: "chain", chain: params.chain as Array<{ agent: string; task: string }> };
+  if (hasSingle) return { mode: "single", agent: String(params.agent), task: String(params.task) };
+  if (hasParallel) return { mode: "parallel", tasks: toTaskArray(params.tasks) };
+  return { mode: "chain", chain: toTaskArray(params.chain) };
 }
 
 export async function executeSingle(params: {
@@ -47,7 +61,7 @@ export async function executeParallel(params: {
   readonly onTaskMetrics?: (index: number, metrics: AgentMetrics) => void;
 }) {
   const results: Array<RunAgentResult | undefined> = new Array(params.tasks.length).fill(undefined);
-  const executing: Promise<void>[] = [];
+  const executing = new Set<Promise<void>>();
 
   for (let i = 0; i < params.tasks.length; i++) {
     const idx = i;
@@ -56,10 +70,11 @@ export async function executeParallel(params: {
     const p = item.runAgent({ task: item.task, ...metricsOpt }).then((r) => {
       results[idx] = r;
       params.onProgress?.(idx, r);
+      executing.delete(p);
     });
-    executing.push(p);
+    executing.add(p);
 
-    if (executing.length >= params.maxConcurrency) {
+    if (executing.size >= params.maxConcurrency) {
       await Promise.race(executing);
     }
   }
