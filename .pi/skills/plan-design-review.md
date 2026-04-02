@@ -148,7 +148,7 @@ Explain what a 10 looks like for THIS plan.
 
 ### 0B. DESIGN.md Status
 - If DESIGN.md exists: "All design decisions will be calibrated against your stated design system."
-- If no DESIGN.md: "No design system found. Recommend running the design consultation skill first. Proceeding with universal design principles."
+- If no DESIGN.md: "No design system found. Recommend creating a DESIGN.md first (use the design-consultation skill). Proceeding with universal design principles."
 
 ### 0C. Existing Design Leverage
 What existing UI patterns, components, or design decisions in the codebase should this plan reuse? Don't reinvent what already works.
@@ -562,7 +562,7 @@ If visual mockups were generated in Step 0.5, evaluate them against the AI slop 
 
 ### Pass 5: Design System Alignment
 Rate 0-10: Does the plan align with DESIGN.md?
-FIX TO 10: If DESIGN.md exists, annotate with specific tokens/components. If no DESIGN.md, flag the gap and recommend the design consultation skill.
+FIX TO 10: If DESIGN.md exists, annotate with specific tokens/components. If no DESIGN.md, flag the gap and recommend creating a DESIGN.md first.
 Flag any new component — does it fit the existing vocabulary?
 **STOP.** ask the user once per issue. Do NOT batch. Recommend + WHY.
 
@@ -699,9 +699,9 @@ After completing the review, read the review log and config to display the dashb
 
 Parse the output. Find the most recent entry for each skill (plan-ceo-review, plan-eng-review, review, plan-design-review, design-review-lite, adversarial-review, external-review, external-plan-review). Ignore entries with timestamps older than 7 days. For the Eng Review row, show whichever is more recent between `review` (diff-scoped pre-landing review) and `plan-eng-review` (plan-stage architecture review). Append "(DIFF)" or "(PLAN)" to the status to distinguish. For the Adversarial row, show whichever is more recent between `adversarial-review` (new auto-scaled) and `external-review` (legacy). For Design Review, show whichever is more recent between `plan-design-review` (full visual audit) and `design-review-lite` (code-level check). Append "(FULL)" or "(LITE)" to the status to distinguish. For the Outside Voice row, show the most recent `external-plan-review` entry — this captures outside voices from both the CEO review and the eng review.
 
-**Source attribution:** If the most recent entry for a skill has a \`"via"\` field, append it to the status label in parentheses. Examples: `plan-eng-review` with `via:"autoplan"` shows as "CLEAR (PLAN via the autoplan workflow)". `review` with `via:"ship"` shows as "CLEAR (DIFF via the ship workflow)". Entries without a `via` field show as "CLEAR (PLAN)" or "CLEAR (DIFF)" as before.
+**Source attribution:** If the most recent entry for a skill has a \`"via"\` field, append it to the status label in parentheses. Examples: `plan-eng-review` with `via:"plan-review"` shows as "CLEAR (PLAN via plan review)". `review` with `via:"ship"` shows as "CLEAR (DIFF via the ship workflow)". Entries without a `via` field show as "CLEAR (PLAN)" or "CLEAR (DIFF)" as before.
 
-Note: `autoplan-voices` and `design-outside-voices` entries are audit-trail-only (forensic data for cross-model consensus analysis). They do not appear in the dashboard and are not checked by any consumer.
+Note: `design-outside-voices` entries are audit-trail-only (forensic data for cross-model consensus analysis). They do not appear in the dashboard and are not checked by any consumer.
 
 Display:
 

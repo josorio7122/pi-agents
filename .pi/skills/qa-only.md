@@ -122,7 +122,7 @@ Run full mode, then load `baseline.json` from a previous run. Diff: which issues
 
 1. Find browse binary (see Setup above)
 2. Create output directories
-3. Copy report template from `qa/templates/qa-report-template.md` to output dir
+3. Create the report file in the output dir using the structured format below
 4. Start timer for duration tracking
 
 ### Phase 2: Authenticate (if needed)
@@ -225,7 +225,7 @@ playwright-cli snapshot -D
 playwright-cli snapshot -i -a -o "$REPORT_DIR/screenshots/issue-002.png"
 ```
 
-**Write each issue to the report immediately** using the template format from `qa/templates/qa-report-template.md`.
+**Write each issue to the report immediately** using the structured issue format (title, severity, URL, repro steps, screenshot, expected vs actual).
 
 ### Phase 6: Wrap Up
 

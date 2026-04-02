@@ -30,18 +30,18 @@ cat package.json 2>/dev/null | head -20
 ls src/ app/ pages/ components/ 2>/dev/null | head -30
 ```
 
-Look for office-hours output:
+Look for existing product context documents:
 
 ```bash
 setopt +o nomatch 2>/dev/null || true  # zsh compat
 # Project slug — use project directory name
-ls .pi/reports/*office-hours* 2>/dev/null | head -5
-ls .context/*office-hours* .context/attachments/*office-hours* 2>/dev/null | head -5
+ls .pi/reports/*product-context* .pi/reports/*design-doc* 2>/dev/null | head -5
+ls docs/*product-context* docs/*design-doc* 2>/dev/null | head -5
 ```
 
-If office-hours output exists, read it — the product context is pre-filled.
+If product context documents exist, read them — the product context is pre-filled.
 
-If the codebase is empty and purpose is unclear, say: *"I don't have a clear picture of what you're building yet. Want to explore first with the office-hours workflow? Once we know the product direction, we can set up the design system."*
+If the codebase is empty and purpose is unclear, say: *"I don't have a clear picture of what you're building yet. Consider writing a brief product description first — what you are building, who it is for, what space it is in. Then we can set up the design system."*
 
 **Find the browse binary (optional — enables visual competitive research):**
 
@@ -103,7 +103,7 @@ Ask the user a single question that covers everything you need to know. Pre-fill
 3. "Want me to research what top products in your space are doing for design, or should I work from my design knowledge?"
 4. **Explicitly say:** "At any point you can just drop into chat and we'll talk through anything — this isn't a rigid form, it's a conversation."
 
-If the README or office-hours output gives you enough context, pre-fill and confirm: *"From what I can see, this is [X] for [Y] in the [Z] space. Sound right? And would you like me to research what's out there in this space, or should I work from what I know?"*
+If the README or existing product docs give you enough context, pre-fill and confirm: *"From what I can see, this is [X] for [Y] in the [Z] space. Sound right? And would you like me to research what's out there in this space, or should I work from what I know?"*
 
 ---
 
@@ -453,7 +453,7 @@ After the user picks a direction:
 Generate a polished HTML preview page and open it in the user's browser. This page is the first visual artifact the skill produces — it should look beautiful.
 
 ```bash
-PREVIEW_FILE="/tmpthe design consultation-preview-$(date +%s).html"
+PREVIEW_FILE="/tmp/design-preview-$(date +%s).html"
 ```
 
 Write the preview HTML to `$PREVIEW_FILE`, then open it:

@@ -185,8 +185,7 @@ After auditing each file individually, do a cross-doc consistency pass:
 
 ## Step 7: TODOS.md Cleanup
 
-This is a second pass that complements the ship workflow's TODOS step. Read `.pi/skills/todos-format.md` (if
-available) for the canonical TODO item format.
+This is a second pass that complements the ship workflow's TODOS step.
 
 If TODOS.md does not exist, skip this step.
 

@@ -353,7 +353,7 @@ After the first navigation, check if the URL changed to a login-like path:
 ```bash
 playwright-cli evaluate "window.location.href"
 ```
-If URL contains `/login`, `/signin`, `/auth`, or `/sso`: the site requires authentication. ask the user: "This site requires authentication. Want to import cookies from your browser? Run `setup-browser-cookies` first if needed."
+If URL contains `/login`, `/signin`, `/auth`, or `/sso`: the site requires authentication. ask the user: "This site requires authentication. You may need to provide credentials or import cookies for the browser session."
 
 ### Design Audit Checklist (10 categories, ~80 items)
 
