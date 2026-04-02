@@ -33,6 +33,10 @@ skills:
     when: Always. Read conversation log before every response.
   - path: .pi/skills/precise-worker.md
     when: Always. Execute exactly what your lead assigned.
+  - path: .pi/skills/investigate.md
+    when: When debugging errors, unexpected behavior, or failing tests.
+  - path: .pi/skills/careful.md
+    when: When running destructive commands (rm, DROP, force-push, reset).
 knowledge:
   project:
     path: .pi/knowledge/backend-dev.yaml
