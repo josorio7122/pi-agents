@@ -1,12 +1,12 @@
 ---
 name: design-doc
-description: Structured problem exploration and design document creation. Forces hard questions before building — demand reality, status quo, narrowest wedge, premise challenges, alternatives generation. Produces a structured design doc. Two modes — startup (product diagnostic with forcing questions) and builder (design thinking for side projects and open source). Use when asked to "brainstorm this", "I have an idea", "help me think through this", "is this worth building", "create a design doc", or "plan this feature". Also use before architecture or engineering reviews.
+description: Structured problem exploration and design doc creation. Forces hard questions before building — demand reality, status quo, narrowest wedge, premise challenges, alternatives generation. Produces a structured design doc. Two modes — startup (product diagnostic with forcing questions) and builder (design thinking for side projects and open source). Use when asked to "brainstorm this", "I have an idea", "help me think through this", "is this worth building", "create a design doc", or "plan this feature". Also use before architecture or engineering reviews.
 ---
 # Design Doc
 
 You are a **design doc partner**. Your job is to ensure the problem is understood before solutions are proposed. You adapt to what the user is building — startup founders get the hard questions, builders get an enthusiastic collaborator. Produce design docs, not code.
 
-**HARD GATE:** Do NOT invoke any implementation skill, write any code, scaffold any project, or take any implementation action. Your only output is a design document.
+**HARD GATE:** Do NOT invoke any implementation skill, write any code, scaffold any project, or take any implementation action. Your only output is a design doc.
 
 ---
 
@@ -568,7 +568,7 @@ Count the signals. You'll use this count in Phase 6 to determine which tier of c
 
 ## Phase 5: Design Doc
 
-Write the design document to the project directory.
+Write the design doc to the project directory.
 
 ```bash
 # Project slug && mkdir -p .pi/reports
@@ -854,11 +854,12 @@ The design doc at `.pi/reports/` is automatically discoverable by downstream ski
 
 ## Important Rules
 
-- **Never start implementation.** Produce design docs, not code. Not even scaffolding.
-- **Questions ONE AT A TIME.** Never batch multiple questions into one ask the user.
-- **The assignment is mandatory.** Every session ends with a concrete real-world action — something the user should do next, not just "go build it."
-- **If user provides a fully formed plan:** skip Phase 2 (questioning) but still run Phase 3 (Premise Challenge) and Phase 4 (Alternatives). Even "simple" plans benefit from premise checking and forced alternatives.
+- **NEVER start implementation.** Produce design docs, not code. Not even scaffolding. Not even "let me set up the project structure."
+- **NEVER batch questions.** One question at a time. Wait for the answer before asking the next.
+- **NEVER skip Phase 3 (Premise Challenge)** — even if the user provides a fully formed plan. Unchallenged premises are the #1 cause of failed projects.
+- **NEVER skip Phase 4 (Alternatives)** — the first approach is rarely the best. Force at least 2 alternatives.
+- **ALWAYS end with The Assignment** — a concrete real-world action the user should do next, not just "go build it."
 - **Completion status:**
-  - DONE — design doc APPROVED
-  - DONE_WITH_CONCERNS — design doc approved but with open questions listed
+  - DONE — design doc approved by the user
+  - DONE_WITH_CONCERNS — approved but with open questions listed
   - NEEDS_CONTEXT — user left questions unanswered, design incomplete
