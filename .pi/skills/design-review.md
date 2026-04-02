@@ -7,6 +7,31 @@ description: Designer's eye QA: finds visual inconsistency, spacing issues, hier
 
 You are a senior product designer AND a frontend engineer. Review live sites with exacting visual standards — then fix what you find. You have strong opinions about typography, spacing, and visual hierarchy, and zero tolerance for generic or AI-generated-looking interfaces.
 
+## Prerequisites
+
+**playwright-cli** is required for all browser operations in this skill.
+
+```bash
+command -v playwright-cli >/dev/null 2>&1 && echo "READY" || echo "NEEDS_SETUP"
+```
+
+If `NEEDS_SETUP`:
+```bash
+npm install -g @playwright/cli@latest
+playwright-cli --help
+```
+
+All browser commands in this skill use `playwright-cli` directly:
+- `playwright-cli goto <url>` — navigate to a page
+- `playwright-cli snapshot` — capture page structure with element refs
+- `playwright-cli screenshot --filename=<path>` — capture visual evidence
+- `playwright-cli eval "<js>"` — extract computed styles, metrics
+- `playwright-cli console error` — check for console errors
+- `playwright-cli resize <w> <h>` — test responsive breakpoints
+- `playwright-cli click <ref>` — interact with elements from snapshot
+
+The core workflow is: `goto` → `snapshot` → interact → `snapshot` again after changes.
+
 ## Setup
 
 **Parse the user's request for these parameters:**
@@ -24,7 +49,7 @@ You are a senior product designer AND a frontend engineer. Review live sites wit
 
 **CDP mode detection:** Check if browse is connected to the user's real browser:
 ```bash
-echo "playwright-cli available" 2>/dev/null | grep -q "Mode: cdp" && echo "CDP_MODE=true" || echo "CDP_MODE=false"
+playwright-cli list 2>/dev/null | grep -q "cdp" && echo "CDP_MODE=true" || echo "CDP_MODE=false"
 ```
 If `CDP_MODE=true`: skip cookie import steps — the real browser already has cookies and auth sessions. Skip headless detection workarounds.
 
@@ -49,18 +74,6 @@ If the output is non-empty (working tree is dirty), **STOP** and present options
 RECOMMENDATION: Choose A because uncommitted work should be preserved as a commit before design review adds its own fix commits.
 
 After the user chooses, execute their choice (commit or stash), then continue with setup.
-
-**Find the browse binary:**
-
-## SETUP (run this check BEFORE any browse command)
-
-```bash
-command -v npx >/dev/null 2>&1 && npx playwright-cli --help >/dev/null 2>&1 && echo "READY" || echo "NEEDS_SETUP"
-```
-
-If `NEEDS_SETUP`:
-1. Tell the user: "playwright needs to be installed. OK to proceed?"
-2. Run: `npx playwright install`
 
 **Check test framework (bootstrap if needed):**
 
@@ -293,7 +306,7 @@ Run full audit, then load previous `design-baseline.json`. Compare: per-category
 The most uniquely designer-like output. Form a gut reaction before analyzing anything.
 
 1. Navigate to the target URL
-2. Take a full-page desktop screenshot: `playwright-cli screenshot "$REPORT_DIR/screenshots/first-impression.png"`
+2. Take a full-page desktop screenshot: `playwright-cli screenshot --filename="$REPORT_DIR/screenshots/first-impression.png"`
 3. Write the **First Impression** using this structured critique format:
    - "The site communicates **[what]**." (what it says at a glance — competence? playfulness? confusion?)
    - "I notice **[observation]**." (what stands out, positive or negative — be specific)
@@ -310,19 +323,19 @@ Extract the actual design system the site uses (not what a DESIGN.md says, but w
 
 ```bash
 # Fonts in use (capped at 500 elements to avoid timeout)
-playwright-cli evaluate "JSON.stringify([...new Set([...document.querySelectorAll('*')].slice(0,500).map(e => getComputedStyle(e).fontFamily))])"
+playwright-cli eval "JSON.stringify([...new Set([...document.querySelectorAll('*')].slice(0,500).map(e => getComputedStyle(e).fontFamily))])"
 
 # Color palette in use
-playwright-cli evaluate "JSON.stringify([...new Set([...document.querySelectorAll('*')].slice(0,500).flatMap(e => [getComputedStyle(e).color, getComputedStyle(e).backgroundColor]).filter(c => c !== 'rgba(0, 0, 0, 0)'))])"
+playwright-cli eval "JSON.stringify([...new Set([...document.querySelectorAll('*')].slice(0,500).flatMap(e => [getComputedStyle(e).color, getComputedStyle(e).backgroundColor]).filter(c => c !== 'rgba(0, 0, 0, 0)'))])"
 
 # Heading hierarchy
-playwright-cli evaluate "JSON.stringify([...document.querySelectorAll('h1,h2,h3,h4,h5,h6')].map(h => ({tag:h.tagName, text:h.textContent.trim().slice(0,50), size:getComputedStyle(h).fontSize, weight:getComputedStyle(h).fontWeight})))"
+playwright-cli eval "JSON.stringify([...document.querySelectorAll('h1,h2,h3,h4,h5,h6')].map(h => ({tag:h.tagName, text:h.textContent.trim().slice(0,50), size:getComputedStyle(h).fontSize, weight:getComputedStyle(h).fontWeight})))"
 
 # Touch target audit (find undersized interactive elements)
-playwright-cli evaluate "JSON.stringify([...document.querySelectorAll('a,button,input,[role=button]')].filter(e => {const r=e.getBoundingClientRect(); return r.width>0 && (r.width<44||r.height<44)}).map(e => ({tag:e.tagName, text:(e.textContent||'').trim().slice(0,30), w:Math.round(e.getBoundingClientRect().width), h:Math.round(e.getBoundingClientRect().height)})).slice(0,20))"
+playwright-cli eval "JSON.stringify([...document.querySelectorAll('a,button,input,[role=button]')].filter(e => {const r=e.getBoundingClientRect(); return r.width>0 && (r.width<44||r.height<44)}).map(e => ({tag:e.tagName, text:(e.textContent||'').trim().slice(0,30), w:Math.round(e.getBoundingClientRect().width), h:Math.round(e.getBoundingClientRect().height)})).slice(0,20))"
 
 # Performance baseline
-playwright-cli evaluate "JSON.stringify(performance.getEntriesByType('navigation'))"
+playwright-cli eval "JSON.stringify(performance.getEntriesByType('navigation'))"
 ```
 
 Structure findings as an **Inferred Design System**:
@@ -341,17 +354,19 @@ For each page in scope:
 
 ```bash
 playwright-cli goto <url>
-playwright-cli snapshot -i -a -o "$REPORT_DIR/screenshots/{page}-annotated.png"
-playwright-cli screenshot --viewport 375x812 "$REPORT_DIR/screenshots/{page}"
-playwright-cli evaluate "console.log" --errors
-playwright-cli evaluate "JSON.stringify(performance.getEntriesByType('navigation'))"
+playwright-cli snapshot
+playwright-cli screenshot --filename="$REPORT_DIR/screenshots/{page}.png"
+playwright-cli resize 375 812
+playwright-cli screenshot --filename="$REPORT_DIR/screenshots/{page}-mobile.png"
+playwright-cli console error
+playwright-cli eval "JSON.stringify(performance.getEntriesByType('navigation'))"
 ```
 
 ### Auth Detection
 
 After the first navigation, check if the URL changed to a login-like path:
 ```bash
-playwright-cli evaluate "window.location.href"
+playwright-cli eval "window.location.href"
 ```
 If URL contains `/login`, `/signin`, `/auth`, or `/sso`: the site requires authentication. ask the user: "This site requires authentication. You may need to provide credentials or import cookies for the browser session."
 
@@ -378,7 +393,7 @@ Apply these at each page. Each finding gets an impact rating (high/medium/polish
 - Weight contrast: >=2 weights used for hierarchy
 - No blacklisted fonts (Papyrus, Comic Sans, Lobster, Impact, Jokerman)
 - If primary font is Inter/Roboto/Open Sans/Poppins → flag as potentially generic
-- `text-wrap: balance` or `text-pretty` on headings (check via `playwright-cli evaluate <heading> text-wrap`)
+- `text-wrap: balance` or `text-pretty` on headings (check via `playwright-cli eval "el => getComputedStyle(el).textWrap" <heading-ref>`)
 - Curly quotes used, not straight quotes
 - Ellipsis character (`…`) not three dots (`...`)
 - `font-variant-numeric: tabular-nums` on number columns
@@ -438,7 +453,7 @@ Apply these at each page. Each finding gets an impact rating (high/medium/polish
 - Easing: ease-out for entering, ease-in for exiting, ease-in-out for moving
 - Duration: 50-700ms range (nothing slower unless page transition)
 - Purpose: every animation communicates something (state change, attention, spatial relationship)
-- `prefers-reduced-motion` respected (check: `playwright-cli evaluate "matchMedia('(prefers-reduced-motion: reduce)').matches"`)
+- `prefers-reduced-motion` respected (check: `playwright-cli eval "matchMedia('(prefers-reduced-motion: reduce)').matches"`)
 - No `transition: all` — properties listed explicitly
 - Only `transform` and `opacity` animated (not layout properties like width, height, top, left)
 
@@ -482,9 +497,9 @@ The test: would a human designer at a respected studio ever ship this?
 Walk 2-3 key user flows and evaluate the *feel*, not just the function:
 
 ```bash
-playwright-cli snapshot -i
-playwright-cli click @e3           # perform action
-playwright-cli snapshot -D          # diff to see what changed
+playwright-cli snapshot
+playwright-cli click e3           # perform action
+playwright-cli snapshot          # diff to see what changed
 ```
 
 Evaluate:
@@ -594,7 +609,7 @@ Tie everything to user goals and product objectives. Always suggest specific imp
 8. **Responsive is design, not just "not broken."** A stacked desktop layout on mobile is not responsive design — it's lazy. Evaluate whether the mobile layout makes *design* sense.
 9. **Document incrementally.** Write each finding to the report as you find it. Don't batch.
 10. **Depth over breadth.** 5-10 well-documented findings with screenshots and specific suggestions > 20 vague observations.
-11. **Show screenshots to the user.** After every `playwright-cli screenshot`, `playwright-cli snapshot -a -o`, or `playwright-cli screenshot --viewport 375x812` command, use the Read tool on the output file(s) so the user can see them inline. For `responsive` (3 files), Read all three. This is critical — without it, screenshots are invisible to the user.
+11. **Show screenshots to the user.** After every `playwright-cli screenshot`, `playwright-cli snapshot` + `playwright-cli screenshot`, or `playwright-cli resize` + `playwright-cli screenshot` command, use the Read tool on the output file(s) so the user can see them inline. For `responsive` (3 files), Read all three. This is critical — without it, screenshots are invisible to the user.
 
 ### Design Hard Rules
 
@@ -834,9 +849,9 @@ Navigate back to the affected page and verify the fix:
 
 ```bash
 playwright-cli goto <affected-url>
-playwright-cli screenshot "$REPORT_DIR/screenshots/finding-NNN-after.png"
-playwright-cli evaluate "console.log" --errors
-playwright-cli snapshot -D
+playwright-cli screenshot --filename="$REPORT_DIR/screenshots/finding-NNN-after.png"
+playwright-cli console error
+playwright-cli snapshot
 ```
 
 Take **before/after screenshot pair** for every fix.
