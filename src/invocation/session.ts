@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import type { Api, Model } from "@mariozechner/pi-ai";
 import {
   createAgentSession,
@@ -8,6 +7,7 @@ import {
   SessionManager,
   SettingsManager,
 } from "@mariozechner/pi-coding-agent";
+import { readFileSafe } from "../common/fs.js";
 import { parseModelId } from "../common/model.js";
 import { expandPath } from "../common/paths.js";
 import type { AgentConfig } from "../discovery/validator.js";
@@ -28,6 +28,9 @@ type RunAgentParams = Readonly<{
   modelOverride?: Model<Api>;
   signal?: AbortSignal;
   onUpdate?: (metrics: AgentMetrics) => void;
+  caller?: string;
+  extraVariables?: Readonly<Record<string, string>>;
+  customTools?: ReadonlyArray<unknown>;
 }>;
 
 type RunAgentResult = Readonly<{
@@ -36,38 +39,49 @@ type RunAgentResult = Readonly<{
   error?: string;
 }>;
 
-function readFileSafe(filePath: string) {
-  try {
-    return readFileSync(expandPath(filePath), "utf-8");
-  } catch {
-    return "";
-  }
-}
-
 export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> {
-  const { agentConfig, task, cwd, sessionDir, conversationLogPath, modelRegistry, modelOverride, signal, onUpdate } =
-    params;
+  const {
+    agentConfig,
+    task,
+    cwd,
+    sessionDir,
+    conversationLogPath,
+    modelRegistry,
+    modelOverride,
+    signal,
+    onUpdate,
+    caller = "user",
+    extraVariables,
+    customTools,
+  } = params;
   const fm = agentConfig.frontmatter;
 
-  // Read all file content upfront (I/O at the edges)
-  const conversationLogContent = readLog(conversationLogPath);
-  const skillContents = fm.skills.map((s) => ({
+  // Read all file content upfront — parallel async I/O
+  const [conversationLogContent, projectKnowledgeContent, generalKnowledgeContent, ...skillResults] = await Promise.all(
+    [
+      readLog(conversationLogPath),
+      readFileSafe(fm.knowledge.project.path),
+      readFileSafe(fm.knowledge.general.path),
+      ...fm.skills.map((s) => readFileSafe(s.path)),
+    ],
+  );
+  const skillContents = fm.skills.map((s, i) => ({
     name: s.path.split("/").pop()?.replace(".md", "") ?? s.path,
     when: s.when,
-    content: readFileSafe(s.path),
+    content: skillResults[i] ?? "",
   }));
-  const projectKnowledgeContent = readFileSafe(fm.knowledge.project.path);
-  const generalKnowledgeContent = readFileSafe(fm.knowledge.general.path);
 
   // Assemble system prompt (pure)
-  const systemPrompt = assembleSystemPrompt({
+  const assemblyCtx = {
     agentConfig,
     sessionDir,
     conversationLogContent,
     skillContents,
     projectKnowledgeContent,
     generalKnowledgeContent,
-  });
+    ...(extraVariables ? { extraVariables } : {}),
+  };
+  const systemPrompt = assembleSystemPrompt(assemblyCtx);
 
   // Resolve model (override for testing, otherwise from registry)
   const { provider, modelId } = parseModelId(fm.model);
@@ -77,13 +91,15 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
   }
 
   // Build domain with implicit knowledge paths
-  const fullDomain = buildDomainWithKnowledge({
-    domain: fm.domain,
-    knowledgeEntries: [
-      { path: expandPath(fm.knowledge.project.path), updatable: fm.knowledge.project.updatable },
-      { path: expandPath(fm.knowledge.general.path), updatable: fm.knowledge.general.updatable },
-    ],
-  });
+  const knowledgeEntries = [
+    { path: expandPath(fm.knowledge.project.path), updatable: fm.knowledge.project.updatable },
+    { path: expandPath(fm.knowledge.general.path), updatable: fm.knowledge.general.updatable },
+  ];
+  const fullDomain = buildDomainWithKnowledge(
+    fm.reports
+      ? { domain: fm.domain, knowledgeEntries, reportsDir: { path: fm.reports.path, updatable: fm.reports.updatable } }
+      : { domain: fm.domain, knowledgeEntries },
+  );
 
   // Knowledge files with max-lines for post-write enforcement
   const knowledgeFiles = [
@@ -92,19 +108,17 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
   ];
 
   // Create domain-scoped tools.
-  // createToolForAgent wraps AgentTool with domain checks, erasing the schema generic.
-  // The structural shape is compatible with Tool (AgentTool<any>) at runtime.
-  const tools = fm.tools
-    .filter((t) => t !== "delegate") // No delegation in pi-agents scope
+  const builtinTools = fm.tools
     .map((t) =>
       createToolForAgent({ name: t, cwd, domain: fullDomain, conversationLogPath, agentName: fm.name, knowledgeFiles }),
     )
     .filter((t): t is NonNullable<typeof t> => t != null);
+  const tools = [...builtinTools, ...((customTools ?? []) as typeof builtinTools)];
 
-  // Write user task to conversation log BEFORE invocation
-  appendToLog(conversationLogPath, {
+  // Write caller task to conversation log BEFORE invocation
+  await appendToLog(conversationLogPath, {
     ts: new Date().toISOString(),
-    from: "user",
+    from: caller,
     to: fm.name,
     message: task,
   });
@@ -166,10 +180,10 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
   session.dispose();
 
   // Write agent response to conversation log AFTER completion
-  appendToLog(conversationLogPath, {
+  await appendToLog(conversationLogPath, {
     ts: new Date().toISOString(),
     from: fm.name,
-    to: "user",
+    to: caller,
     message: output,
   });
 

@@ -1,26 +1,25 @@
 import { randomUUID } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { getAgentDir } from "@mariozechner/pi-coding-agent";
 import { formatAgentList } from "./command/agents-command.js";
 import { resolveConversationPath } from "./common/paths.js";
-import { bootstrapKnowledge } from "./discovery/bootstrap.js";
 import { parseAgentFile } from "./discovery/parser.js";
 import { scanForAgentFiles } from "./discovery/scanner.js";
 import type { AgentConfig, DiscoveryDiagnostic } from "./discovery/validator.js";
 import { validateAgent } from "./discovery/validator.js";
 import { createAgentTool } from "./tool/agent-tool.js";
 
-function discoverAgents(params: { readonly projectDir: string; readonly userDir: string }) {
+async function discoverAgents(params: { readonly projectDir: string; readonly userDir: string }) {
   const diagnostics: DiscoveryDiagnostic[] = [];
   const agentMap = new Map<string, AgentConfig>();
 
   for (const [dir, source] of [[params.userDir, "user"] as const, [params.projectDir, "project"] as const]) {
-    for (const filePath of scanForAgentFiles(dir)) {
+    for (const filePath of await scanForAgentFiles(dir)) {
       let content: string;
       try {
-        content = readFileSync(filePath, "utf-8");
+        content = await readFile(filePath, "utf-8");
       } catch {
         diagnostics.push({ level: "warning", filePath, message: "Could not read file" });
         continue;
@@ -59,7 +58,7 @@ export default function (pi: ExtensionAPI) {
   pi.on("session_start", async (_event, ctx) => {
     sessionId = randomUUID();
 
-    const result = discoverAgents({
+    const result = await discoverAgents({
       projectDir: join(ctx.cwd, ".pi", "agents"),
       userDir: join(getAgentDir(), "agents"),
     });
@@ -69,8 +68,6 @@ export default function (pi: ExtensionAPI) {
     for (const d of result.diagnostics) {
       ctx.ui.notify(`[pi-agents] ${d.level}: ${d.filePath} — ${d.message}`, d.level === "error" ? "error" : "warning");
     }
-
-    bootstrapKnowledge(agents);
 
     const conversationTemplate = agents[0]?.frontmatter.conversation.path;
     const conversationLogPath = conversationTemplate

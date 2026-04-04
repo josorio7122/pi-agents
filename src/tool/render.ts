@@ -99,11 +99,9 @@ export function renderAgentResult(params: {
   container.addChild(new Spacer(1));
   for (let i = 0; i < details.results.length; i++) {
     if (i > 0) container.addChild(new Spacer(1));
-    container.addChild(
-      isSingle
-        ? renderCompactCard(details.results[i]!, theme)
-        : renderCard({ entry: details.results[i]!, theme, findAgent, showStep }),
-    );
+    const entry = details.results[i];
+    if (!entry) continue;
+    container.addChild(isSingle ? renderCompactCard(entry, theme) : renderCard({ entry, theme, findAgent, showStep }));
   }
 
   if (details.results.length > 1) {
@@ -159,6 +157,6 @@ const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", 
 function statusIndicator(status: AgentResultEntry["status"], theme: RenderTheme) {
   if (status === "done") return theme.fg("success", "✓");
   if (status === "error") return theme.fg("error", "✗");
-  const frame = SPINNER_FRAMES[Math.floor(Date.now() / 80) % SPINNER_FRAMES.length]!;
+  const frame = SPINNER_FRAMES[Math.floor(Date.now() / 80) % SPINNER_FRAMES.length] ?? "⠋";
   return theme.fg("accent", frame);
 }

@@ -29,12 +29,12 @@ skills:
     when: Always
 knowledge:
   project:
-    path: ${join(rootDir, ".pi", "knowledge", `${name}.yaml`)}
+    path: ${join(rootDir, ".pi", "knowledge", "project", `${name}.yaml`)}
     description: "Project knowledge"
     updatable: true
     max-lines: 100
   general:
-    path: ${join(rootDir, "general", `${name}.yaml`)}
+    path: ${join(rootDir, ".pi", "knowledge", "general", `${name}.yaml`)}
     description: "General knowledge"
     updatable: false
     max-lines: 50
@@ -104,12 +104,6 @@ describe("pi-agents extension", () => {
     writeValidAgent({ dir: dirs.projectAgents, name: "scout", rootDir: dirs.root });
     mkdirSync(join(dirs.root, ".pi", "skills"), { recursive: true });
     writeFileSync(join(dirs.root, ".pi", "skills", "test.md"), "# Test Skill\nBe helpful.");
-
-    // Create knowledge dirs so bootstrap doesn't fail
-    mkdirSync(join(dirs.root, ".pi", "knowledge"), { recursive: true });
-    mkdirSync(join(dirs.root, "general"), { recursive: true });
-    writeFileSync(join(dirs.root, ".pi", "knowledge", "scout.yaml"), "");
-    writeFileSync(join(dirs.root, "general", "scout.yaml"), "");
 
     const mock = createMockPi();
     extension(mock.pi as never);

@@ -1,0 +1,36 @@
+// Public API for pi-agents
+// Curated surface for consumers (e.g. pi-teams). Not a barrel — only intentional exports.
+
+export { colorize } from "./common/color.js";
+// Common utilities
+export { readFileSafe } from "./common/fs.js";
+export { parseModelId } from "./common/model.js";
+export { expandPath, resolveConversationPath } from "./common/paths.js";
+// Discovery
+export { parseAgentFile } from "./discovery/parser.js";
+export { scanForAgentFiles } from "./discovery/scanner.js";
+export type { AgentConfig, DiscoveryDiagnostic } from "./discovery/validator.js";
+export { validateAgent } from "./discovery/validator.js";
+// Domain
+export { checkDomain } from "./domain/checker.js";
+export { enforceMaxLines } from "./domain/max-lines.js";
+export { buildDomainWithKnowledge } from "./domain/scoped-tools.js";
+export { appendToLog, ensureLogExists, readLog } from "./invocation/conversation-log.js";
+export type { AgentMetrics } from "./invocation/metrics.js";
+export { createMetricsTracker } from "./invocation/metrics.js";
+// Invocation
+export { runAgent } from "./invocation/session.js";
+export { createToolForAgent } from "./invocation/tool-wrapper.js";
+export type { AssemblyContext } from "./prompt/assembly.js";
+// Prompt
+export { assembleSystemPrompt } from "./prompt/assembly.js";
+export { resolveVariables } from "./prompt/variables.js";
+export type { ConversationEntry } from "./schema/conversation.js";
+export { ConversationEntrySchema } from "./schema/conversation.js";
+export type { AgentFrontmatter } from "./schema/frontmatter.js";
+// Schema
+export { AgentFrontmatterSchema } from "./schema/frontmatter.js";
+export { validateRoleTools } from "./schema/validation.js";
+export type { ChainResult, RunAgentFn, RunAgentResult } from "./tool/modes.js";
+// Execution modes
+export { collectAgentNames, detectMode, executeChain, executeParallel, executeSingle } from "./tool/modes.js";

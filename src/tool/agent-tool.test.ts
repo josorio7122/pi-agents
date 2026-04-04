@@ -1,8 +1,13 @@
+import type { ExtensionContext, Theme } from "@mariozechner/pi-coding-agent";
 import { describe, expect, it } from "vitest";
 import type { AgentConfig } from "../discovery/validator.js";
 import type { AgentMetrics } from "../invocation/metrics.js";
 import { createAgentTool } from "./agent-tool.js";
-import type { RenderTheme } from "./render.js";
+
+const fakeTheme = { fg: (_c: string, t: string) => t, bold: (t: string) => t } as unknown as Theme;
+// ToolRenderContext is not exported — cast through unknown at the boundary
+const fakeContext = {} as unknown as Parameters<NonNullable<ReturnType<typeof createAgentTool>["renderCall"]>>[2];
+const fakeCtx = {} as unknown as ExtensionContext;
 
 const emptyMetrics: AgentMetrics = { turns: 0, inputTokens: 0, outputTokens: 0, cost: 0, toolCalls: [] };
 
@@ -54,7 +59,7 @@ describe("createAgentTool", () => {
       sessionDir: "/tmp/sessions/abc",
       conversationLogPath: "/tmp/sessions/abc/conversation.jsonl",
     });
-    const guidelines = tool.promptGuidelines.join("\n");
+    const guidelines = tool.promptGuidelines!.join("\n");
     expect(guidelines).toContain("scout");
     expect(guidelines).toContain("investigator");
     expect(guidelines).toContain("🔍");
@@ -84,8 +89,7 @@ describe("createAgentTool", () => {
       sessionDir: "/tmp/sessions/abc",
       conversationLogPath: "/tmp/sessions/abc/conversation.jsonl",
     });
-    const mockTheme: RenderTheme = { fg: (_c, t) => t, bold: (t) => t };
-    const rendered = tool.renderCall({ agent: "scout", task: "test" }, mockTheme as any);
+    const rendered = tool.renderCall!({ agent: "scout", task: "test" }, fakeTheme, fakeContext);
     const text = rendered.render(120).join("\n");
     expect(text).toContain("scout");
   });
@@ -98,11 +102,11 @@ describe("createAgentTool", () => {
       sessionDir: "/tmp/sessions/abc",
       conversationLogPath: "/tmp/sessions/abc/conversation.jsonl",
     });
-    const mockTheme: RenderTheme = { fg: (_c, t) => t, bold: (t) => t };
-    const rendered = tool.renderResult(
-      { content: [{ type: "text", text: "" }] },
+    const rendered = tool.renderResult!(
+      { content: [{ type: "text", text: "" }], details: {} },
       { expanded: false, isPartial: false },
-      mockTheme as any,
+      fakeTheme,
+      fakeContext,
     );
     const text = rendered.render(120).join("\n");
     expect(text).toContain("running...");
@@ -116,8 +120,7 @@ describe("createAgentTool", () => {
       sessionDir: "/tmp/sessions/abc",
       conversationLogPath: "/tmp/sessions/abc/conversation.jsonl",
     });
-    const mockTheme: RenderTheme = { fg: (_c, t) => t, bold: (t) => t };
-    const rendered = tool.renderResult(
+    const rendered = tool.renderResult!(
       {
         content: [{ type: "text", text: "done" }],
         details: {
@@ -132,7 +135,8 @@ describe("createAgentTool", () => {
         },
       },
       { expanded: false, isPartial: false },
-      mockTheme as any,
+      fakeTheme,
+      fakeContext,
     );
     const text = rendered.render(120).join("\n");
     expect(text).toContain("✓");
@@ -146,9 +150,7 @@ describe("createAgentTool", () => {
       sessionDir: "/tmp/sessions/abc",
       conversationLogPath: "/tmp/sessions/abc/conversation.jsonl",
     });
-    await expect(tool.execute("call-1", {}, undefined, undefined, undefined as any)).rejects.toThrow(
-      "No mode specified",
-    );
+    await expect(tool.execute("call-1", {}, undefined, undefined, fakeCtx)).rejects.toThrow("No mode specified");
   });
 
   it("execute throws on unknown agent in single mode", async () => {
@@ -160,7 +162,7 @@ describe("createAgentTool", () => {
       conversationLogPath: "/tmp/sessions/abc/conversation.jsonl",
     });
     await expect(
-      tool.execute("call-1", { agent: "nonexistent", task: "do stuff" }, undefined, undefined, undefined as any),
+      tool.execute("call-1", { agent: "nonexistent", task: "do stuff" }, undefined, undefined, fakeCtx),
     ).rejects.toThrow('Unknown agent: "nonexistent"');
   });
 
@@ -183,7 +185,7 @@ describe("createAgentTool", () => {
         },
         undefined,
         undefined,
-        undefined as any,
+        fakeCtx,
       ),
     ).rejects.toThrow("Unknown agent");
   });
@@ -199,7 +201,7 @@ describe("createAgentTool", () => {
     const controller = new AbortController();
     controller.abort();
     await expect(
-      tool.execute("call-1", { agent: "scout", task: "do stuff" }, controller.signal, undefined, undefined as any),
+      tool.execute("call-1", { agent: "scout", task: "do stuff" }, controller.signal, undefined, fakeCtx),
     ).rejects.toThrow("cancelled");
   });
 
@@ -222,7 +224,7 @@ describe("createAgentTool", () => {
         },
         undefined,
         undefined,
-        undefined as any,
+        fakeCtx,
       ),
     ).rejects.toThrow("Unknown agent");
   });

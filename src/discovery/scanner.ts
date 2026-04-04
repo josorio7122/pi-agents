@@ -1,10 +1,13 @@
-import { existsSync, readdirSync } from "node:fs";
+import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 
-export function scanForAgentFiles(directory: string) {
-  if (!existsSync(directory)) return [];
-
-  return readdirSync(directory, { withFileTypes: true })
-    .filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
-    .map((entry) => join(directory, entry.name));
+export async function scanForAgentFiles(directory: string) {
+  try {
+    const entries = await readdir(directory, { withFileTypes: true });
+    return entries
+      .filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
+      .map((entry) => join(directory, entry.name));
+  } catch {
+    return [];
+  }
 }

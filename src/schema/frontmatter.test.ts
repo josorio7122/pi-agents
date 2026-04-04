@@ -13,13 +13,13 @@ const validWorker = {
   skills: [{ path: ".pi/skills/mental-model.md", when: "Read at task start." }],
   knowledge: {
     project: {
-      path: ".pi/knowledge/backend-dev.yaml",
+      path: ".pi/knowledge/project/backend-dev.yaml",
       description: "Track patterns.",
       updatable: true,
       "max-lines": 10000,
     },
     general: {
-      path: "~/.pi/agent/general/backend-dev.yaml",
+      path: ".pi/knowledge/general/backend-dev.yaml",
       description: "General strategies.",
       updatable: true,
       "max-lines": 5000,
@@ -133,6 +133,14 @@ describe("AgentFrontmatterSchema", () => {
       expect(result.success).toBe(false);
     });
 
+    it("accepts custom tool names", () => {
+      const result = AgentFrontmatterSchema.safeParse({
+        ...validWorker,
+        tools: ["read", "my-custom-tool", "another_tool"],
+      });
+      expect(result.success).toBe(true);
+    });
+
     it("rejects empty domain array", () => {
       const result = AgentFrontmatterSchema.safeParse({ ...validWorker, domain: [] });
       expect(result.success).toBe(false);
@@ -153,6 +161,36 @@ describe("AgentFrontmatterSchema", () => {
           ...validWorker.knowledge,
           project: { ...validWorker.knowledge.project, "max-lines": -1 },
         },
+      });
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("reports (optional)", () => {
+    it("accepts agent without reports block", () => {
+      expect(AgentFrontmatterSchema.safeParse(validWorker).success).toBe(true);
+    });
+
+    it("accepts agent with valid reports block", () => {
+      const result = AgentFrontmatterSchema.safeParse({
+        ...validWorker,
+        reports: { path: ".pi/reports", updatable: true },
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it("rejects reports with empty path", () => {
+      const result = AgentFrontmatterSchema.safeParse({
+        ...validWorker,
+        reports: { path: "", updatable: true },
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it("rejects reports missing updatable", () => {
+      const result = AgentFrontmatterSchema.safeParse({
+        ...validWorker,
+        reports: { path: ".pi/reports" },
       });
       expect(result.success).toBe(false);
     });

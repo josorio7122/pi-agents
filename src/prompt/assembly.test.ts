@@ -16,13 +16,13 @@ const agent: AgentConfig = {
     skills: [{ path: ".pi/skills/mental-model.md", when: "Read at task start." }],
     knowledge: {
       project: {
-        path: ".pi/knowledge/backend-dev.yaml",
+        path: ".pi/knowledge/project/backend-dev.yaml",
         description: "Track patterns.",
         updatable: true,
         "max-lines": 10000,
       },
       general: {
-        path: "~/.pi/agent/general/backend-dev.yaml",
+        path: ".pi/knowledge/general/backend-dev.yaml",
         description: "General strategies.",
         updatable: true,
         "max-lines": 5000,
@@ -81,8 +81,14 @@ describe("assembleSystemPrompt", () => {
     expect(result).not.toContain("{{SKILLS_BLOCK}}");
   });
 
-  it("resolves {{TEAM_BLOCK}} as empty string", () => {
+  it("leaves {{TEAM_BLOCK}} unresolved when not in extraVariables", () => {
     const result = assembleSystemPrompt(makeCtx());
+    expect(result).toContain("{{TEAM_BLOCK}}");
+  });
+
+  it("resolves {{TEAM_BLOCK}} when provided via extraVariables", () => {
+    const result = assembleSystemPrompt(makeCtx({ extraVariables: { TEAM_BLOCK: "my-team-content" } }));
+    expect(result).toContain("my-team-content");
     expect(result).not.toContain("{{TEAM_BLOCK}}");
   });
 
@@ -107,6 +113,52 @@ describe("assembleSystemPrompt", () => {
     const result = assembleSystemPrompt(makeCtx({ projectKnowledgeContent: "", generalKnowledgeContent: "" }));
     expect(result).toContain("Project Knowledge");
     expect(result).toContain("General Knowledge");
+  });
+
+  it("includes project knowledge file path", () => {
+    const result = assembleSystemPrompt(makeCtx());
+    expect(result).toContain("File: .pi/knowledge/project/backend-dev.yaml");
+  });
+
+  it("includes general knowledge file path", () => {
+    const result = assembleSystemPrompt(makeCtx());
+    expect(result).toContain("File: .pi/knowledge/general/backend-dev.yaml");
+  });
+
+  it("includes reports section when agent has reports block", () => {
+    const agentWithReports: AgentConfig = {
+      ...agent,
+      frontmatter: { ...agent.frontmatter, reports: { path: ".pi/reports", updatable: true } },
+    };
+    const result = assembleSystemPrompt(makeCtx({ agentConfig: agentWithReports }));
+    expect(result).toContain("## Reports");
+    expect(result).toContain("Directory: .pi/reports");
+  });
+
+  it("omits reports section when agent has no reports block", () => {
+    const result = assembleSystemPrompt(makeCtx());
+    expect(result).not.toContain("## Reports");
+  });
+
+  it("resolves extraVariables in system prompt", () => {
+    const agentWithTeams: AgentConfig = {
+      ...agent,
+      systemPrompt: agent.systemPrompt + "\n\n## Teams\n{{TEAMS_BLOCK}}",
+    };
+    const result = assembleSystemPrompt(
+      makeCtx({
+        agentConfig: agentWithTeams,
+        extraVariables: { TEAMS_BLOCK: "- name: eng-lead\n  leads: Engineering" },
+      }),
+    );
+    expect(result).toContain("- name: eng-lead");
+    expect(result).toContain("leads: Engineering");
+    expect(result).not.toContain("{{TEAMS_BLOCK}}");
+  });
+
+  it("extraVariables override defaults", () => {
+    const result = assembleSystemPrompt(makeCtx({ extraVariables: { TEAM_BLOCK: "overridden-team-content" } }));
+    expect(result).toContain("overridden-team-content");
   });
 
   it("handles multiple skills", () => {

@@ -65,8 +65,9 @@ export async function executeParallel(params: {
 
   for (let i = 0; i < params.tasks.length; i++) {
     const idx = i;
-    const item = params.tasks[idx]!;
-    const metricsOpt = params.onTaskMetrics ? { onMetrics: (m: AgentMetrics) => params.onTaskMetrics!(idx, m) } : {};
+    const item = params.tasks[idx];
+    if (!item) continue;
+    const metricsOpt = params.onTaskMetrics ? { onMetrics: (m: AgentMetrics) => params.onTaskMetrics?.(idx, m) } : {};
     const p = item.runAgent({ task: item.task, ...metricsOpt }).then((r) => {
       results[idx] = r;
       params.onProgress?.(idx, r);
@@ -101,7 +102,7 @@ export async function executeChain(params: {
     if (!step) continue;
 
     const taskWithPrevious = step.task.replaceAll("{previous}", previousOutput);
-    const metricsOpt = params.onStepMetrics ? { onMetrics: (m: AgentMetrics) => params.onStepMetrics!(i, m) } : {};
+    const metricsOpt = params.onStepMetrics ? { onMetrics: (m: AgentMetrics) => params.onStepMetrics?.(i, m) } : {};
     const result = await step.runAgent({ task: taskWithPrevious, ...metricsOpt });
     completed.push(result);
     params.onStepComplete?.(i, result);

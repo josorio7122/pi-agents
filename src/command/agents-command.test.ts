@@ -19,8 +19,8 @@ function makeAgent(params: {
       tools: ["read", "write", "bash"],
       skills: [{ path: ".pi/skills/test.md", when: "Always" }],
       knowledge: {
-        project: { path: ".pi/knowledge/test.yaml", description: "Test", updatable: true, "max-lines": 1000 },
-        general: { path: "~/.pi/agent/general/test.yaml", description: "Test", updatable: true, "max-lines": 500 },
+        project: { path: ".pi/knowledge/project/test.yaml", description: "Test", updatable: true, "max-lines": 1000 },
+        general: { path: ".pi/knowledge/general/test.yaml", description: "Test", updatable: true, "max-lines": 500 },
       },
       conversation: { path: ".pi/sessions/{{SESSION_ID}}/conversation.jsonl" },
     },

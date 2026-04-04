@@ -1,4 +1,4 @@
-import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { access, appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 
 type ConversationEntry = Readonly<{
@@ -9,18 +9,24 @@ type ConversationEntry = Readonly<{
   type?: string;
 }>;
 
-export function ensureLogExists(logPath: string) {
-  if (existsSync(logPath)) return;
-  mkdirSync(dirname(logPath), { recursive: true });
-  writeFileSync(logPath, "", "utf-8");
+export async function ensureLogExists(logPath: string) {
+  try {
+    await access(logPath);
+  } catch {
+    await mkdir(dirname(logPath), { recursive: true });
+    await writeFile(logPath, "", "utf-8");
+  }
 }
 
-export function appendToLog(logPath: string, entry: ConversationEntry) {
-  ensureLogExists(logPath);
-  appendFileSync(logPath, `${JSON.stringify(entry)}\n`, "utf-8");
+export async function appendToLog(logPath: string, entry: ConversationEntry) {
+  await ensureLogExists(logPath);
+  await appendFile(logPath, `${JSON.stringify(entry)}\n`, "utf-8");
 }
 
-export function readLog(logPath: string) {
-  if (!existsSync(logPath)) return "";
-  return readFileSync(logPath, "utf-8");
+export async function readLog(logPath: string) {
+  try {
+    return await readFile(logPath, "utf-8");
+  } catch {
+    return "";
+  }
 }

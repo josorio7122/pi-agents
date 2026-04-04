@@ -20,8 +20,8 @@ function fakeAgent(overrides: {
       tools: ["read", "grep"],
       skills: [{ path: ".pi/agent-skills/test.md", when: "always" }],
       knowledge: {
-        project: { path: ".pi/knowledge/test.yaml", description: "test", updatable: true, "max-lines": 100 },
-        general: { path: "~/.pi/agent/general/test.yaml", description: "test", updatable: true, "max-lines": 100 },
+        project: { path: ".pi/knowledge/project/test.yaml", description: "test", updatable: true, "max-lines": 100 },
+        general: { path: ".pi/knowledge/general/test.yaml", description: "test", updatable: true, "max-lines": 100 },
       },
       conversation: { path: ".pi/sessions/{{SESSION_ID}}/conversation.jsonl" },
     },

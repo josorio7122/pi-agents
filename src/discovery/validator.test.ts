@@ -13,13 +13,13 @@ const validFrontmatter = {
   skills: [{ path: ".pi/skills/mental-model.md", when: "Read at task start." }],
   knowledge: {
     project: {
-      path: ".pi/knowledge/backend-dev.yaml",
+      path: ".pi/knowledge/project/backend-dev.yaml",
       description: "Track patterns.",
       updatable: true,
       "max-lines": 10000,
     },
     general: {
-      path: "~/.pi/agent/general/backend-dev.yaml",
+      path: ".pi/knowledge/general/backend-dev.yaml",
       description: "General strategies.",
       updatable: true,
       "max-lines": 5000,

@@ -37,4 +37,38 @@ describe("buildDomainWithKnowledge", () => {
 
     expect(result).toEqual(baseDomain);
   });
+
+  it("adds updatable reports directory as writable", () => {
+    const result = buildDomainWithKnowledge({
+      domain: baseDomain,
+      knowledgeEntries: [],
+      reportsDir: { path: ".pi/reports", updatable: true },
+    });
+
+    const entry = result.find((d) => d.path === ".pi/reports");
+    expect(entry?.read).toBe(true);
+    expect(entry?.write).toBe(true);
+    expect(entry?.delete).toBe(false);
+  });
+
+  it("adds non-updatable reports directory as read-only", () => {
+    const result = buildDomainWithKnowledge({
+      domain: baseDomain,
+      knowledgeEntries: [],
+      reportsDir: { path: ".pi/reports", updatable: false },
+    });
+
+    const entry = result.find((d) => d.path === ".pi/reports");
+    expect(entry?.read).toBe(true);
+    expect(entry?.write).toBe(false);
+  });
+
+  it("omits reports entry when reportsDir is undefined", () => {
+    const result = buildDomainWithKnowledge({
+      domain: baseDomain,
+      knowledgeEntries: [],
+    });
+
+    expect(result).toEqual(baseDomain);
+  });
 });

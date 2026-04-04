@@ -84,7 +84,7 @@ export function createToolForAgent(params: {
         const result = checkDomain({ filePath, operation: op, domain, cwd });
 
         if (!result.allowed) {
-          appendToLog(conversationLogPath, {
+          await appendToLog(conversationLogPath, {
             ts: new Date().toISOString(),
             from: "system",
             to: agentName,
@@ -102,9 +102,9 @@ export function createToolForAgent(params: {
       if (knowledgeMatch && (name === "write" || name === "edit")) {
         return withFileMutationQueue(resolved, async () => {
           const result = await originalExecute(toolCallId, toolParams, signal, onUpdate);
-          const truncated = enforceMaxLines({ filePath: resolved, maxLines: knowledgeMatch.maxLines });
+          const truncated = await enforceMaxLines({ filePath: resolved, maxLines: knowledgeMatch.maxLines });
           if (truncated) {
-            appendToLog(conversationLogPath, {
+            await appendToLog(conversationLogPath, {
               ts: new Date().toISOString(),
               from: "system",
               to: agentName,

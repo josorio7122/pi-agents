@@ -7,6 +7,7 @@
       "style": {
         "recommended": false,
         "noNestedTernary": "error",
+        "noNonNullAssertion": "error",
         "useImportType": "error",
         "useFilenamingConvention": {
           "level": "error",
@@ -54,13 +55,25 @@
     "includes": ["src/**/*.ts"]
   },
   "overrides": [
-
+    {
+      "includes": ["src/api.ts"],
+      "linter": {
+        "rules": {
+          "performance": {
+            "noBarrelFile": "off"
+          }
+        }
+      }
+    },
     {
       "includes": ["**/*.test.ts"],
       "linter": {
         "rules": {
+          "style": {
+            "noNonNullAssertion": "off"
+          },
           "suspicious": {
-            "noExplicitAny": "off"
+            "noExplicitAny": "error"
           },
           "correctness": {
             "noUnusedVariables": "off"

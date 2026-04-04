@@ -1,9 +1,13 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { readFile, writeFile } from "node:fs/promises";
 
-export function enforceMaxLines(params: { readonly filePath: string; readonly maxLines: number }) {
-  if (!existsSync(params.filePath)) return false;
+export async function enforceMaxLines(params: { readonly filePath: string; readonly maxLines: number }) {
+  let content: string;
+  try {
+    content = await readFile(params.filePath, "utf-8");
+  } catch {
+    return false;
+  }
 
-  const content = readFileSync(params.filePath, "utf-8");
   const lines = content.split("\n");
 
   // Remove trailing empty line from split (file ends with \n)
@@ -15,6 +19,6 @@ export function enforceMaxLines(params: { readonly filePath: string; readonly ma
 
   // Keep last maxLines lines (newest entries at bottom)
   const kept = lines.slice(-params.maxLines);
-  writeFileSync(params.filePath, `${kept.join("\n")}\n`, "utf-8");
+  await writeFile(params.filePath, `${kept.join("\n")}\n`, "utf-8");
   return true;
 }

@@ -8,29 +8,25 @@ import type { AgentConfig } from "../discovery/validator.js";
 import { ensureLogExists, readLog } from "./conversation-log.js";
 import { runAgent } from "./session.js";
 
-function makeTempProject() {
+async function makeTempProject() {
   const dir = mkdtempSync(join(tmpdir(), "pi-agents-integration-"));
-  const knowledgeDir = join(dir, ".pi", "knowledge");
-  const generalDir = join(dir, "general");
+  const projectKnowledgeDir = join(dir, ".pi", "knowledge", "project");
+  const generalKnowledgeDir = join(dir, ".pi", "knowledge", "general");
   const sessionsDir = join(dir, ".pi", "sessions", "test-session");
   const skillsDir = join(dir, ".pi", "skills");
 
-  mkdirSync(knowledgeDir, { recursive: true });
-  mkdirSync(generalDir, { recursive: true });
+  mkdirSync(projectKnowledgeDir, { recursive: true });
+  mkdirSync(generalKnowledgeDir, { recursive: true });
   mkdirSync(sessionsDir, { recursive: true });
   mkdirSync(skillsDir, { recursive: true });
 
   // Create a minimal skill file
   writeFileSync(join(skillsDir, "test-skill.md"), "# Test Skill\n\nBe helpful.");
 
-  // Create empty knowledge files
-  writeFileSync(join(knowledgeDir, "test-agent.yaml"), "");
-  writeFileSync(join(generalDir, "test-agent.yaml"), "");
-
   const conversationLogPath = join(sessionsDir, "conversation.jsonl");
-  ensureLogExists(conversationLogPath);
+  await ensureLogExists(conversationLogPath);
 
-  return { dir, knowledgeDir, generalDir, sessionsDir, conversationLogPath, skillsDir };
+  return { dir, projectKnowledgeDir, generalKnowledgeDir, sessionsDir, conversationLogPath, skillsDir };
 }
 
 function makeTestAgent(projectDir: string): AgentConfig {
@@ -47,13 +43,13 @@ function makeTestAgent(projectDir: string): AgentConfig {
       skills: [{ path: join(projectDir, ".pi", "skills", "test-skill.md"), when: "Always." }],
       knowledge: {
         project: {
-          path: join(projectDir, ".pi", "knowledge", "test-agent.yaml"),
+          path: join(projectDir, ".pi", "knowledge", "project", "test-agent.yaml"),
           description: "Test project knowledge.",
           updatable: true,
           "max-lines": 100,
         },
         general: {
-          path: join(projectDir, "general", "test-agent.yaml"),
+          path: join(projectDir, ".pi", "knowledge", "general", "test-agent.yaml"),
           description: "Test general knowledge.",
           updatable: true,
           "max-lines": 50,
@@ -82,7 +78,7 @@ describe("runAgent (faux provider)", () => {
     faux = registerFauxProvider();
     faux.setResponses([fauxAssistantMessage(fauxText("Hello from the agent!"))]);
 
-    const project = makeTempProject();
+    const project = await makeTempProject();
     const agent = makeTestAgent(project.dir);
 
     const result = await runAgent({
@@ -103,7 +99,7 @@ describe("runAgent (faux provider)", () => {
     faux = registerFauxProvider();
     faux.setResponses([fauxAssistantMessage(fauxText("Task completed."))]);
 
-    const project = makeTempProject();
+    const project = await makeTempProject();
     const agent = makeTestAgent(project.dir);
 
     await runAgent({
@@ -116,7 +112,7 @@ describe("runAgent (faux provider)", () => {
       modelOverride: faux.getModel(),
     });
 
-    const logContent = readLog(project.conversationLogPath);
+    const logContent = await readLog(project.conversationLogPath);
     const lines = logContent.trim().split("\n");
 
     // At least 2 entries: user task + agent response
@@ -137,7 +133,7 @@ describe("runAgent (faux provider)", () => {
     faux = registerFauxProvider();
     faux.setResponses([fauxAssistantMessage(fauxText("Done."))]);
 
-    const project = makeTempProject();
+    const project = await makeTempProject();
     const agent = makeTestAgent(project.dir);
 
     const result = await runAgent({
@@ -158,7 +154,7 @@ describe("runAgent (faux provider)", () => {
     faux = registerFauxProvider();
 
     // Pre-populate conversation log
-    const project = makeTempProject();
+    const project = await makeTempProject();
     const { appendToLog } = await import("./conversation-log.js");
     appendToLog(project.conversationLogPath, {
       ts: "2026-01-01T00:00:00Z",
@@ -184,8 +180,38 @@ describe("runAgent (faux provider)", () => {
     expect(result.error).toBeUndefined();
   });
 
+  it("uses custom caller in conversation log entries", async () => {
+    faux = registerFauxProvider();
+    faux.setResponses([fauxAssistantMessage(fauxText("Done."))]);
+
+    const project = await makeTempProject();
+    const agent = makeTestAgent(project.dir);
+
+    await runAgent({
+      agentConfig: agent,
+      task: "Build this",
+      cwd: project.dir,
+      sessionDir: project.sessionsDir,
+      conversationLogPath: project.conversationLogPath,
+      modelRegistry,
+      modelOverride: faux.getModel(),
+      caller: "orchestrator",
+    });
+
+    const logContent = await readLog(project.conversationLogPath);
+    const lines = logContent.trim().split("\n");
+
+    const userEntry = JSON.parse(lines[0]!);
+    expect(userEntry.from).toBe("orchestrator");
+    expect(userEntry.to).toBe("test-agent");
+
+    const agentEntry = JSON.parse(lines[lines.length - 1]!);
+    expect(agentEntry.from).toBe("test-agent");
+    expect(agentEntry.to).toBe("orchestrator");
+  });
+
   it("returns error for unknown model", async () => {
-    const project = makeTempProject();
+    const project = await makeTempProject();
     const agent = makeTestAgent(project.dir);
     const badAgent = {
       ...agent,

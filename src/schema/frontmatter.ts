@@ -1,7 +1,5 @@
 import { z } from "zod/v4";
 
-const VALID_TOOLS = ["read", "write", "edit", "grep", "bash", "find", "ls", "delegate"] as const;
-
 const DomainEntrySchema = z.object({
   path: z.string().min(1),
   read: z.boolean(),
@@ -32,7 +30,7 @@ export const AgentFrontmatterSchema = z.object({
   // Block 2: Domain
   domain: z.array(DomainEntrySchema).min(1),
   // Block 3: Capabilities
-  tools: z.array(z.enum(VALID_TOOLS)).min(1),
+  tools: z.array(z.string().min(1)).min(1),
   // Block 4: Skills
   skills: z.array(SkillSchema).min(1),
   // Block 5: Knowledge
@@ -40,7 +38,14 @@ export const AgentFrontmatterSchema = z.object({
     project: KnowledgeFileSchema,
     general: KnowledgeFileSchema,
   }),
-  // Block 6: Conversation
+  // Block 6: Reports (optional — only for agents that produce report artifacts)
+  reports: z
+    .object({
+      path: z.string().min(1),
+      updatable: z.boolean(),
+    })
+    .optional(),
+  // Block 7: Conversation
   conversation: z.object({
     path: z.string().includes("{{SESSION_ID}}"),
   }),

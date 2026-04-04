@@ -1,4 +1,5 @@
-import type { ExtensionContext, ModelRegistry, Theme, ToolRenderResultOptions } from "@mariozechner/pi-coding-agent";
+import type { ModelRegistry } from "@mariozechner/pi-coding-agent";
+import { defineTool } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
 import { createThrottle } from "../common/throttle.js";
 import type { AgentConfig } from "../discovery/validator.js";
@@ -44,7 +45,7 @@ export function createAgentTool(params: {
       });
   }
 
-  return {
+  return defineTool({
     name: "agent",
     label: "Agent",
     description:
@@ -63,15 +64,7 @@ export function createAgentTool(params: {
     }),
 
     // biome-ignore lint/complexity/useMaxParams: implements Pi's ToolDefinition.execute (5 positional params)
-    async execute(
-      _toolCallId: string,
-      toolParams: Record<string, unknown>,
-      signal: AbortSignal | undefined,
-      onUpdate:
-        | ((partial: { content: Array<{ type: "text"; text: string }>; details: AgentResultDetails }) => void)
-        | undefined,
-      _ctx: ExtensionContext,
-    ) {
+    async execute(_toolCallId, toolParams, signal, onUpdate, _ctx) {
       if (signal?.aborted) throw new Error("Agent execution cancelled");
 
       const mode = detectMode(toolParams);
@@ -102,7 +95,8 @@ export function createAgentTool(params: {
       const stopAnimation = () => clearInterval(animationInterval);
 
       if (mode.mode === "single") {
-        const config = findAgentConfig(mode.agent)!;
+        const config = findAgentConfig(mode.agent);
+        if (!config) throw new Error(`Agent "${mode.agent}" not found`);
 
         const singleEntry: AgentResultEntry[] = [runningEntry({ agentName: mode.agent })];
         lastDetails = { mode: "single", results: [...singleEntry] };
@@ -116,7 +110,8 @@ export function createAgentTool(params: {
           task: mode.task,
           runAgent: makeRunAgent(config, signal),
           onMetrics: (m) => {
-            singleEntry[0] = { ...singleEntry[0]!, metrics: m };
+            const prev = singleEntry[0];
+            if (prev) singleEntry[0] = { ...prev, metrics: m };
             throttled();
           },
         });
@@ -130,11 +125,11 @@ export function createAgentTool(params: {
       }
 
       if (mode.mode === "parallel") {
-        const taskDefs = mode.tasks.map((t) => ({
-          agent: t.agent,
-          task: t.task,
-          runAgent: makeRunAgent(findAgentConfig(t.agent)!, signal),
-        }));
+        const taskDefs = mode.tasks.map((t) => {
+          const agentConfig = findAgentConfig(t.agent);
+          if (!agentConfig) throw new Error(`Agent "${t.agent}" not found`);
+          return { agent: t.agent, task: t.task, runAgent: makeRunAgent(agentConfig, signal) };
+        });
 
         const entries: AgentResultEntry[] = taskDefs.map((t) => runningEntry({ agentName: t.agent }));
         lastDetails = { mode: "parallel", results: [...entries] };
@@ -148,29 +143,33 @@ export function createAgentTool(params: {
           tasks: taskDefs.map((t) => ({ task: t.task, runAgent: t.runAgent })),
           maxConcurrency: 4,
           onProgress: (idx, r) => {
-            entries[idx] = toResultEntry({ agentName: taskDefs[idx]!.agent, result: r });
+            const def = taskDefs[idx];
+            if (def) entries[idx] = toResultEntry({ agentName: def.agent, result: r });
             throttled.flush();
           },
           onTaskMetrics: (idx, m) => {
-            entries[idx] = { ...entries[idx]!, metrics: m };
+            const prev = entries[idx];
+            if (prev) entries[idx] = { ...prev, metrics: m };
             throttled();
           },
         });
         throttled.flush();
         stopAnimation();
 
-        const finalEntries = results.map((r, i) => toResultEntry({ agentName: taskDefs[i]!.agent, result: r }));
+        const finalEntries = results.map((r, i) =>
+          toResultEntry({ agentName: taskDefs[i]?.agent ?? r.output, result: r }),
+        );
         const combined = results.map((r) => r.output).join("\n\n---\n\n");
         const details = { mode: "parallel", results: finalEntries };
         return { content: [{ type: "text" as const, text: truncateOutput(combined) }], details };
       }
 
       // chain
-      const stepDefs = mode.chain.map((s) => ({
-        agent: s.agent,
-        task: s.task,
-        runAgent: makeRunAgent(findAgentConfig(s.agent)!, signal),
-      }));
+      const stepDefs = mode.chain.map((s) => {
+        const agentConfig = findAgentConfig(s.agent);
+        if (!agentConfig) throw new Error(`Agent "${s.agent}" not found`);
+        return { agent: s.agent, task: s.task, runAgent: makeRunAgent(agentConfig, signal) };
+      });
 
       const chainEntries: AgentResultEntry[] = stepDefs.map((s, i) =>
         runningEntry({ agentName: s.agent, step: i + 1 }),
@@ -185,15 +184,19 @@ export function createAgentTool(params: {
       const chainResult = await executeChain({
         steps: stepDefs.map((s) => ({ task: s.task, runAgent: s.runAgent })),
         onStepComplete: (stepIdx, r) => {
-          chainEntries[stepIdx] = toResultEntry({
-            agentName: stepDefs[stepIdx]!.agent,
-            result: r,
-            step: stepIdx + 1,
-          });
+          const stepDef = stepDefs[stepIdx];
+          if (stepDef) {
+            chainEntries[stepIdx] = toResultEntry({
+              agentName: stepDef.agent,
+              result: r,
+              step: stepIdx + 1,
+            });
+          }
           throttled.flush();
         },
         onStepMetrics: (stepIdx, m) => {
-          chainEntries[stepIdx] = { ...chainEntries[stepIdx]!, metrics: m };
+          const prev = chainEntries[stepIdx];
+          if (prev) chainEntries[stepIdx] = { ...prev, metrics: m };
           throttled();
         },
       });
@@ -201,23 +204,20 @@ export function createAgentTool(params: {
       stopAnimation();
 
       const finalEntries = chainResult.steps.map((r, i) =>
-        toResultEntry({ agentName: stepDefs[i]!.agent, result: r, step: i + 1 }),
+        toResultEntry({ agentName: stepDefs[i]?.agent ?? "", result: r, step: i + 1 }),
       );
       const details = { mode: "chain", results: finalEntries };
       return { content: [{ type: "text" as const, text: truncateOutput(chainResult.output) }], details };
     },
 
-    renderCall(args: Record<string, unknown>, theme: Theme) {
-      return renderAgentCall({ args, theme, findAgent: findAgentDisplay });
+    // biome-ignore lint/complexity/useMaxParams: implements Pi's ToolDefinition.renderCall (3 positional params)
+    renderCall(args, theme, _context) {
+      return renderAgentCall({ args: args as Record<string, unknown>, theme, findAgent: findAgentDisplay });
     },
 
     // biome-ignore lint/complexity/useMaxParams: implements Pi's ToolDefinition.renderResult (4 positional params)
-    renderResult(
-      result: { details?: unknown; content: Array<{ type: string; text?: string }> },
-      _options: ToolRenderResultOptions,
-      theme: Theme,
-    ) {
+    renderResult(result, _options, theme, _context) {
       return renderAgentResult({ result, theme, findAgent: findAgentDisplay });
     },
-  };
+  });
 }
