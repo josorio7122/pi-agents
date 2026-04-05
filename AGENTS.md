@@ -44,3 +44,4 @@ See `tsconfig.json` for strict config (`strict`, `noUncheckedIndexedAccess`, `ex
 - Feature folders: `src/discovery/`, `src/invocation/`, `src/tool/`, `src/domain/`
 - Export only what other modules consume
 - After refactors — grep for orphaned types/interfaces/consts
+- **Keep docs current** — when adding, removing, or changing files, APIs, or behavior, update relevant docs (README, `docs/`, JSDoc, inline comments, AGENTS.md)
