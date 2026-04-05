@@ -51,6 +51,25 @@ describe("executeSingle", () => {
 });
 
 describe("executeParallel", () => {
+  it("skips remaining tasks when signal is aborted", async () => {
+    const controller = new AbortController();
+    let started = 0;
+    const slowRunAgent: RunAgentFn = async (params) => {
+      started++;
+      if (started === 2) controller.abort();
+      await new Promise((r) => setTimeout(r, 10));
+      return { output: `Done: ${params.task}`, metrics: emptyMetrics };
+    };
+
+    const results = await executeParallel({
+      tasks: Array.from({ length: 6 }, (_, i) => ({ task: `task-${i}`, runAgent: slowRunAgent })),
+      maxConcurrency: 2,
+      signal: controller.signal,
+    });
+    expect(started).toBeLessThan(6);
+    expect(results.some((r) => r.error === "Agent execution cancelled")).toBe(true);
+  });
+
   it("respects maxConcurrency limit", async () => {
     let active = 0;
     let maxActive = 0;
@@ -85,6 +104,28 @@ describe("executeParallel", () => {
 });
 
 describe("executeChain", () => {
+  it("stops dispatching steps when signal is aborted", async () => {
+    const controller = new AbortController();
+    let completed = 0;
+    const countingAgent: RunAgentFn = async () => {
+      completed++;
+      if (completed === 1) controller.abort();
+      return { output: `result-${completed}`, metrics: emptyMetrics };
+    };
+
+    const result = await executeChain({
+      steps: [
+        { task: "step1", runAgent: countingAgent },
+        { task: "step2 {previous}", runAgent: countingAgent },
+        { task: "step3 {previous}", runAgent: countingAgent },
+      ],
+      signal: controller.signal,
+    });
+    expect(completed).toBe(1);
+    expect(result.steps).toHaveLength(2);
+    expect(result.steps[1]?.error).toBe("Agent execution cancelled");
+  });
+
   it("passes output of step N as {previous} to step N+1", async () => {
     const capturing: RunAgentFn = async (params) => ({
       output: `result-of-${params.task.replace("{previous}", "").trim()}`,

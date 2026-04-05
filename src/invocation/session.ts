@@ -153,22 +153,28 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
     onUpdate?.(tracker.snapshot());
   });
 
-  // Run the agent
+  // Run the agent — wire abort signal to session.abort() for in-flight cancellation
   if (signal?.aborted) {
     session.dispose();
     return { output: "", metrics: tracker.snapshot(), error: "Agent execution cancelled" };
   }
 
+  const abortHandler = () => {
+    session.abort().catch(() => {});
+  };
+  signal?.addEventListener("abort", abortHandler);
+
   try {
     await session.prompt(task);
   } catch (err) {
-    session.dispose();
-    return { output: "", metrics: tracker.snapshot(), error: String(err) };
+    const error = signal?.aborted ? "Agent execution cancelled" : String(err);
+    return { output: "", metrics: tracker.snapshot(), error };
+  } finally {
+    signal?.removeEventListener("abort", abortHandler);
   }
 
   // Extract final output
   const output = extractAssistantOutput(session.messages);
-
   session.dispose();
 
   // Write agent response to conversation log AFTER completion

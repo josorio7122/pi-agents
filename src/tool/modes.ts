@@ -62,13 +62,23 @@ export async function executeSingle(params: {
 export async function executeParallel(params: {
   readonly tasks: ReadonlyArray<{ readonly task: string; readonly runAgent: RunAgentFn }>;
   readonly maxConcurrency: number;
+  readonly signal?: AbortSignal;
   readonly onProgress?: (index: number, result: RunAgentResult) => void;
   readonly onTaskMetrics?: (index: number, metrics: AgentMetrics) => void;
 }) {
   const results: Array<RunAgentResult | undefined> = new Array(params.tasks.length).fill(undefined);
   const executing = new Set<Promise<void>>();
+  const cancelled: RunAgentResult = {
+    output: "",
+    metrics: { turns: 0, inputTokens: 0, outputTokens: 0, cost: 0, toolCalls: [] },
+    error: "Agent execution cancelled",
+  };
 
   for (let i = 0; i < params.tasks.length; i++) {
+    if (params.signal?.aborted) {
+      for (let j = i; j < params.tasks.length; j++) results[j] = cancelled;
+      break;
+    }
     const idx = i;
     const item = params.tasks[idx];
     if (!item) continue;
@@ -96,6 +106,7 @@ export type ChainResult = Readonly<{
 
 export async function executeChain(params: {
   readonly steps: ReadonlyArray<{ readonly task: string; readonly runAgent: RunAgentFn }>;
+  readonly signal?: AbortSignal;
   readonly onStepComplete?: (index: number, result: RunAgentResult) => void;
   readonly onStepMetrics?: (index: number, metrics: AgentMetrics) => void;
 }): Promise<ChainResult> {
@@ -103,6 +114,14 @@ export async function executeChain(params: {
   const completed: RunAgentResult[] = [];
 
   for (let i = 0; i < params.steps.length; i++) {
+    if (params.signal?.aborted) {
+      completed.push({
+        output: "",
+        metrics: { turns: 0, inputTokens: 0, outputTokens: 0, cost: 0, toolCalls: [] },
+        error: "Agent execution cancelled",
+      });
+      return { output: previousOutput, steps: completed };
+    }
     const step = params.steps[i];
     if (!step) continue;
 

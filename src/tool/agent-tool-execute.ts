@@ -85,6 +85,7 @@ async function executeParallelMode(params: {
   const results = await executeParallel({
     tasks: taskDefs.map((t) => ({ task: t.task, runAgent: t.runAgent })),
     maxConcurrency: 4,
+    ...(signal ? { signal } : {}),
     onProgress: (idx, r) => {
       const def = taskDefs[idx];
       if (def) entries[idx] = toResultEntry({ agentName: def.agent, result: r });
@@ -129,6 +130,7 @@ async function executeChainMode(params: {
   });
   const chainResult = await executeChain({
     steps: stepDefs.map((s) => ({ task: s.task, runAgent: s.runAgent })),
+    ...(signal ? { signal } : {}),
     onStepComplete: (stepIdx, r) => {
       const stepDef = stepDefs[stepIdx];
       if (stepDef) {
