@@ -79,7 +79,7 @@ The `agent` tool definition — registered with Pi so the parent agent can deleg
 |------|---------|
 | `agent-tool.ts` | Tool factory — parameter schema, render hooks, execute dispatch |
 | `agent-tool-execute.ts` | Execution logic for single, parallel, and chain modes |
-| `modes.ts` | Mode detection, validation, and orchestration (Promise.race for parallel) |
+| `modes.ts` | Mode detection, validation, and orchestration (maxConcurrency limiter for parallel) |
 | `render.ts` | TUI components for agent call/result cards with live metrics |
 | `format.ts` | Token/cost/tool-call formatting utilities |
 | `prompt-guidelines.ts` | Generates prompt guidelines listing available agents |
@@ -126,5 +126,6 @@ No code changes required. The frontmatter schema in `src/schema/frontmatter.ts` 
 - **Zero classes** — factory functions with closures for stateful behavior
 - **Zod at boundaries** — frontmatter and conversation entries validated at parse time
 - **Domain checks at execution time** — not at tool creation time, so paths are resolved against the actual CWD
+- **Abort signal propagation** — `RunAgentParams` accepts `signal?: AbortSignal`; session wires `signal.addEventListener('abort', () => session.abort())` for in-flight cancellation; parallel/chain loops check `signal.aborted` before dispatching new tasks
 - **Knowledge tools are separate from generic write/edit** — prevents accidental writes outside knowledge scope
 - **Truncation preserves head** — agent output capped at 2000 lines / 50KB before returning to parent context
