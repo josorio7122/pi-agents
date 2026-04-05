@@ -44,8 +44,6 @@ function makeCtx(overrides?: Partial<AssemblyContext>): AssemblyContext {
     skillContents: [
       { name: "mental-model", when: "Read at task start.", content: "# Mental Model\n\nUpdate your knowledge." },
     ],
-    projectKnowledgeContent: "system:\n  framework: Express",
-    generalKnowledgeContent: "strategies:\n  - Read tests first",
     ...overrides,
   };
 }
@@ -99,30 +97,23 @@ describe("assembleSystemPrompt", () => {
     expect(result).toContain("Read at task start.");
   });
 
-  it("includes project knowledge content", () => {
+  it("includes knowledge file paths and descriptions", () => {
     const result = assembleSystemPrompt(makeCtx());
-    expect(result).toContain("framework: Express");
+    expect(result).toContain(".pi/knowledge/project/backend-dev.yaml");
+    expect(result).toContain("Track patterns.");
+    expect(result).toContain(".pi/knowledge/general/backend-dev.yaml");
+    expect(result).toContain("General strategies.");
   });
 
-  it("includes general knowledge content", () => {
+  it("does not inject knowledge file content into prompt", () => {
     const result = assembleSystemPrompt(makeCtx());
-    expect(result).toContain("Read tests first");
+    expect(result).not.toContain("framework: Express");
+    expect(result).not.toContain("Read tests first");
   });
 
-  it("handles empty knowledge files", () => {
-    const result = assembleSystemPrompt(makeCtx({ projectKnowledgeContent: "", generalKnowledgeContent: "" }));
-    expect(result).toContain("Project Knowledge");
-    expect(result).toContain("General Knowledge");
-  });
-
-  it("includes project knowledge file path", () => {
+  it("mentions read-knowledge tool", () => {
     const result = assembleSystemPrompt(makeCtx());
-    expect(result).toContain("File: .pi/knowledge/project/backend-dev.yaml");
-  });
-
-  it("includes general knowledge file path", () => {
-    const result = assembleSystemPrompt(makeCtx());
-    expect(result).toContain("File: .pi/knowledge/general/backend-dev.yaml");
+    expect(result).toContain("read-knowledge");
   });
 
   it("includes reports section when agent has reports block", () => {

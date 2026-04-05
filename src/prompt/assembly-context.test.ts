@@ -44,8 +44,6 @@ function makeCtx(overrides?: Partial<AssemblyContext>): AssemblyContext {
     skillContents: [
       { name: "mental-model", when: "Read at task start.", content: "# Mental Model\n\nUpdate your knowledge." },
     ],
-    projectKnowledgeContent: "system:\n  framework: Express",
-    generalKnowledgeContent: "strategies:\n  - Read tests first",
     ...overrides,
   };
 }

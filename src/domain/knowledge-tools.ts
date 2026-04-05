@@ -1,5 +1,6 @@
+import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { type AgentToolResult, createEditTool, createWriteTool } from "@mariozechner/pi-coding-agent";
+import { type AgentToolResult, createEditTool, createReadTool, createWriteTool } from "@mariozechner/pi-coding-agent";
 import type { TSchema } from "@sinclair/typebox";
 import { enforceMaxLines } from "./max-lines.js";
 
@@ -85,6 +86,32 @@ export function createWriteKnowledgeTool(params: KnowledgeToolParams): Executabl
     cwd: params.cwd,
     knowledgeFiles: params.knowledgeFiles,
   });
+}
+
+export function createReadKnowledgeTool(params: KnowledgeToolParams): ExecutableTool {
+  const baseTool = createReadTool(params.cwd);
+  return {
+    ...baseTool,
+    name: "read-knowledge",
+    label: "read-knowledge",
+    description: "Read a knowledge file. Use to load your project or general knowledge.",
+    // biome-ignore lint/complexity/useMaxParams: implements Pi's AgentTool.execute (4 positional params)
+    async execute(_toolCallId: string, toolParams: unknown, _signal?: AbortSignal, _onUpdate?: unknown) {
+      const { filePath, resolved } = resolvePathFromParams(toolParams, params.cwd);
+      const match = findKnowledgeMatch({ resolved, knowledgeFiles: params.knowledgeFiles, cwd: params.cwd });
+
+      if (!match) {
+        throw new Error(`read-knowledge can only read knowledge files. Path "${filePath}" is not a knowledge file.`);
+      }
+
+      try {
+        const content = await readFile(resolved, "utf-8");
+        return { content: [{ type: "text" as const, text: content }], details: undefined };
+      } catch {
+        return { content: [{ type: "text" as const, text: "(empty — file does not exist yet)" }], details: undefined };
+      }
+    },
+  };
 }
 
 export function createEditKnowledgeTool(params: KnowledgeToolParams): ExecutableTool {

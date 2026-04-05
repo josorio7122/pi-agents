@@ -37,14 +37,10 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
   const fm = agentConfig.frontmatter;
 
   // Read all file content upfront — parallel async I/O
-  const [conversationLogContent, projectKnowledgeContent, generalKnowledgeContent, ...skillResults] = await Promise.all(
-    [
-      readLog(conversationLogPath),
-      readFileSafe(fm.knowledge.project.path),
-      readFileSafe(fm.knowledge.general.path),
-      ...fm.skills.map((s) => readFileSafe(s.path)),
-    ],
-  );
+  const [conversationLogContent, ...skillResults] = await Promise.all([
+    readLog(conversationLogPath),
+    ...fm.skills.map((s) => readFileSafe(s.path)),
+  ]);
   const skillContents = fm.skills.map((s, i) => ({
     name: s.path.split("/").pop()?.replace(".md", "") ?? s.path,
     when: s.when,
@@ -60,8 +56,6 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
     sessionDir,
     conversationLogContent,
     skillContents,
-    projectKnowledgeContent,
-    generalKnowledgeContent,
     ...(extraVariables ? { extraVariables } : {}),
     ...(sharedContextContents.length > 0 ? { sharedContextContents } : {}),
   };
@@ -99,22 +93,23 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
     .filter((t): t is NonNullable<typeof t> => t != null);
   const tools = builtinTools;
 
-  // Inject knowledge tools when updatable knowledge exists (passed as customTools to SDK)
+  // Inject knowledge tools — read-knowledge always, write/edit only when updatable
   const hasUpdatableKnowledge = knowledgeEntries.some((e) => e.updatable);
-  const knowledgeToolDefs = hasUpdatableKnowledge
-    ? ["write-knowledge", "edit-knowledge"]
-        .map((t) =>
-          createToolForAgent({
-            name: t,
-            cwd,
-            domain: fullDomain,
-            conversationLogPath,
-            agentName: fm.name,
-            knowledgeFiles,
-          }),
-        )
-        .filter((t): t is NonNullable<typeof t> => t != null)
-    : [];
+  const knowledgeToolNames = hasUpdatableKnowledge
+    ? ["read-knowledge", "write-knowledge", "edit-knowledge"]
+    : ["read-knowledge"];
+  const knowledgeToolDefs = knowledgeToolNames
+    .map((t) =>
+      createToolForAgent({
+        name: t,
+        cwd,
+        domain: fullDomain,
+        conversationLogPath,
+        agentName: fm.name,
+        knowledgeFiles,
+      }),
+    )
+    .filter((t): t is NonNullable<typeof t> => t != null);
 
   // Write caller task to conversation log BEFORE invocation
   await appendToLog(conversationLogPath, {

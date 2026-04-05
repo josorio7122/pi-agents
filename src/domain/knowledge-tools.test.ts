@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createEditKnowledgeTool, createWriteKnowledgeTool } from "./knowledge-tools.js";
+import { createEditKnowledgeTool, createReadKnowledgeTool, createWriteKnowledgeTool } from "./knowledge-tools.js";
 
 function makeTempEnv() {
   const cwd = mkdtempSync(join(tmpdir(), "knowledge-tools-"));
@@ -14,6 +14,11 @@ function makeTempEnv() {
 
 function makeKnowledgeFiles(env: ReturnType<typeof makeTempEnv>) {
   return [{ path: env.knowledgePath, maxLines: 10 }];
+}
+
+function extractText(result: { content: ReadonlyArray<{ type: string; text?: string }> }) {
+  const first = result.content[0];
+  return first?.type === "text" ? (first.text ?? "") : "";
 }
 
 describe("createWriteKnowledgeTool", () => {
@@ -68,6 +73,55 @@ describe("createWriteKnowledgeTool", () => {
     const lines = content.trim().split("\n");
     expect(lines).toHaveLength(3);
     expect(lines[0]).toBe("line3");
+  });
+});
+
+describe("createReadKnowledgeTool", () => {
+  it("has name read-knowledge", () => {
+    const env = makeTempEnv();
+    const tool = createReadKnowledgeTool({ cwd: env.cwd, knowledgeFiles: makeKnowledgeFiles(env) });
+    expect(tool.name).toBe("read-knowledge");
+  });
+
+  it("reads a knowledge file path", async () => {
+    const env = makeTempEnv();
+    writeFileSync(env.knowledgePath, "system:\n  framework: Express\n");
+    const tool = createReadKnowledgeTool({ cwd: env.cwd, knowledgeFiles: makeKnowledgeFiles(env) });
+
+    const result = await tool.execute("call-1", { path: env.knowledgePath });
+    const text = extractText(result);
+    expect(text).toContain("framework: Express");
+  });
+
+  it("reads when knowledgeFiles stores relative path", async () => {
+    const env = makeTempEnv();
+    writeFileSync(env.knowledgePath, "found: yes\n");
+    const relativeKnowledgePath = ".pi/knowledge/project/scout.yaml";
+    const files = [{ path: relativeKnowledgePath, maxLines: 10 }];
+    const tool = createReadKnowledgeTool({ cwd: env.cwd, knowledgeFiles: files });
+
+    const result = await tool.execute("call-1", { path: relativeKnowledgePath });
+    const text = extractText(result);
+    expect(text).toContain("found: yes");
+  });
+
+  it("rejects reads from non-knowledge paths", async () => {
+    const env = makeTempEnv();
+    const tool = createReadKnowledgeTool({ cwd: env.cwd, knowledgeFiles: makeKnowledgeFiles(env) });
+    const otherPath = join(env.cwd, "src", "index.ts");
+
+    await expect(tool.execute("call-1", { path: otherPath })).rejects.toThrow(
+      "read-knowledge can only read knowledge files",
+    );
+  });
+
+  it("returns empty content for non-existent knowledge file", async () => {
+    const env = makeTempEnv();
+    const tool = createReadKnowledgeTool({ cwd: env.cwd, knowledgeFiles: makeKnowledgeFiles(env) });
+
+    const result = await tool.execute("call-1", { path: env.knowledgePath });
+    const text = extractText(result);
+    expect(text).toContain("(empty");
   });
 });
 

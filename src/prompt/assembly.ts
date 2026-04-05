@@ -6,8 +6,6 @@ export type AssemblyContext = Readonly<{
   sessionDir: string;
   conversationLogContent: string;
   skillContents: ReadonlyArray<Readonly<{ name: string; when: string; content: string }>>;
-  projectKnowledgeContent: string;
-  generalKnowledgeContent: string;
   extraVariables?: Readonly<Record<string, string>>;
   sharedContextContents?: ReadonlyArray<Readonly<{ path: string; content: string }>>;
 }>;
@@ -17,16 +15,7 @@ function serializeBlock(data: unknown) {
 }
 
 export function assembleSystemPrompt(ctx: AssemblyContext) {
-  const {
-    agentConfig,
-    sessionDir,
-    conversationLogContent,
-    skillContents,
-    projectKnowledgeContent,
-    generalKnowledgeContent,
-    extraVariables,
-    sharedContextContents,
-  } = ctx;
+  const { agentConfig, sessionDir, conversationLogContent, skillContents, extraVariables, sharedContextContents } = ctx;
   const fm = agentConfig.frontmatter;
 
   // Build variable map
@@ -52,15 +41,11 @@ export function assembleSystemPrompt(ctx: AssemblyContext) {
     }
   }
 
-  // Append knowledge with framing
-  prompt += "\n\n---\n\n## Project Knowledge\n";
-  prompt += `File: ${fm.knowledge.project.path}\n`;
-  prompt += "What you have learned about THIS codebase. Use this to navigate efficiently.\n\n";
-  prompt += projectKnowledgeContent || "(empty — you have not explored this codebase yet)";
-  prompt += "\n\n## General Knowledge\n";
-  prompt += `File: ${fm.knowledge.general.path}\n`;
-  prompt += "Your accumulated strategies and heuristics from all projects.\n\n";
-  prompt += generalKnowledgeContent || "(empty — you have not built general strategies yet)";
+  // Append knowledge file paths (content loaded by agent via read-knowledge tool)
+  prompt += "\n\n---\n\n## Knowledge Files\n";
+  prompt += `- **Project:** \`${fm.knowledge.project.path}\` — ${fm.knowledge.project.description}\n`;
+  prompt += `- **General:** \`${fm.knowledge.general.path}\` — ${fm.knowledge.general.description}\n`;
+  prompt += "\nUse `read-knowledge` to load these files. Use `write-knowledge` or `edit-knowledge` to update them.";
 
   // Append shared context files (AGENTS.md, CLAUDE.md, etc.)
   if (sharedContextContents && sharedContextContents.length > 0) {
