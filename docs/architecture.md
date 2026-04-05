@@ -57,6 +57,7 @@ Creates an SDK session, executes the agent, and tracks metrics.
 | File | Purpose |
 |------|---------|
 | `session.ts` | Core orchestrator — builds prompt, creates tools, runs agent session |
+| `session-helpers.ts` | `RunAgentParams`/`RunAgentResult` types + `extractAssistantOutput` |
 | `tool-wrapper.ts` | Wraps SDK tools with domain checks and knowledge guards |
 | `metrics.ts` | Factory for tracking turns, tokens, cost, tool calls |
 | `conversation-log.ts` | JSONL append log for inter-agent conversation history |
@@ -103,6 +104,12 @@ Shared utilities with no domain knowledge.
 |------|---------|
 | `index.ts` | Pi extension entry — discovers agents, registers `agent` tool + `/agents` command |
 | `api.ts` | Curated public API surface for external consumers |
+
+### Command (`src/command/`)
+
+| File | Purpose |
+|------|---------|
+| `agents-command.ts` | Formats the `/agents` CLI command output listing all discovered agents |
 
 ## Adding an Agent
 

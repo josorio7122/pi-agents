@@ -14,6 +14,7 @@ A specification for how agents are defined, how they enhance themselves, and how
 | [docs/agent-example.md](docs/agent-example.md) | Annotated agent example with block reference, model format, variables, and invocation modes |
 | [docs/extension-design.md](docs/extension-design.md) | Extension design — discovery, invocation, SDK usage, rendering, architecture |
 | [docs/reference.md](docs/reference.md) | Technical reference — reverse-engineered from IndyDevDan's multi-team system |
+| [docs/architecture.md](docs/architecture.md) | Architecture — pipeline stages, file map, domain enforcement, design decisions |
 
 ## Development
 
