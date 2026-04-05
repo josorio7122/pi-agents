@@ -33,6 +33,19 @@ describe("createWriteKnowledgeTool", () => {
     expect(content).toBe("discovery: complete\n");
   });
 
+  it("writes when knowledgeFiles stores relative path", async () => {
+    const env = makeTempEnv();
+    // Simulate what session.ts does: expandPath(".pi/knowledge/project/scout.yaml") → relative
+    const relativeKnowledgePath = ".pi/knowledge/project/scout.yaml";
+    const files = [{ path: relativeKnowledgePath, maxLines: 10 }];
+    const tool = createWriteKnowledgeTool({ cwd: env.cwd, knowledgeFiles: files });
+
+    await tool.execute("call-1", { path: relativeKnowledgePath, content: "found: yes\n" });
+
+    const content = readFileSync(env.knowledgePath, "utf-8");
+    expect(content).toBe("found: yes\n");
+  });
+
   it("rejects writes to non-knowledge paths", async () => {
     const env = makeTempEnv();
     const tool = createWriteKnowledgeTool({ cwd: env.cwd, knowledgeFiles: makeKnowledgeFiles(env) });

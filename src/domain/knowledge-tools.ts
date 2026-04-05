@@ -30,8 +30,16 @@ function resolvePathFromParams(params: unknown, cwd: string) {
   return { filePath, resolved: resolve(cwd, filePath) };
 }
 
-function findKnowledgeMatch(resolved: string, knowledgeFiles: ReadonlyArray<KnowledgeFile>) {
-  return knowledgeFiles.find((kf) => resolved === kf.path || resolved.startsWith(`${kf.path}/`));
+function findKnowledgeMatch(params: {
+  readonly resolved: string;
+  readonly knowledgeFiles: ReadonlyArray<KnowledgeFile>;
+  readonly cwd: string;
+}) {
+  const { resolved, knowledgeFiles, cwd } = params;
+  return knowledgeFiles.find((kf) => {
+    const kfResolved = resolve(cwd, kf.path);
+    return resolved === kfResolved || resolved.startsWith(`${kfResolved}/`);
+  });
 }
 
 function wrapWithKnowledgeGuard(params: {
@@ -52,7 +60,7 @@ function wrapWithKnowledgeGuard(params: {
     // biome-ignore lint/complexity/useMaxParams: implements Pi's AgentTool.execute (4 positional params)
     async execute(toolCallId: string, toolParams: unknown, signal?: AbortSignal, onUpdate?: unknown) {
       const { filePath, resolved } = resolvePathFromParams(toolParams, cwd);
-      const match = findKnowledgeMatch(resolved, knowledgeFiles);
+      const match = findKnowledgeMatch({ resolved, knowledgeFiles, cwd });
 
       if (!match) {
         throw new Error(
