@@ -1,72 +1,15 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fauxAssistantMessage, fauxText, registerFauxProvider } from "@mariozechner/pi-ai";
 import { AuthStorage, ModelRegistry } from "@mariozechner/pi-coding-agent";
 import { afterEach, describe, expect, it } from "vitest";
-import type { AgentConfig } from "../discovery/validator.js";
-import { ensureLogExists, readLog } from "./conversation-log.js";
+import { readLog } from "./conversation-log.js";
 import { runAgent } from "./session.js";
-
-async function makeTempProject() {
-  const dir = mkdtempSync(join(tmpdir(), "pi-agents-integration-"));
-  const projectKnowledgeDir = join(dir, ".pi", "knowledge", "project");
-  const generalKnowledgeDir = join(dir, ".pi", "knowledge", "general");
-  const sessionsDir = join(dir, ".pi", "sessions", "test-session");
-  const skillsDir = join(dir, ".pi", "skills");
-
-  mkdirSync(projectKnowledgeDir, { recursive: true });
-  mkdirSync(generalKnowledgeDir, { recursive: true });
-  mkdirSync(sessionsDir, { recursive: true });
-  mkdirSync(skillsDir, { recursive: true });
-
-  // Create a minimal skill file
-  writeFileSync(join(skillsDir, "test-skill.md"), "# Test Skill\n\nBe helpful.");
-
-  const conversationLogPath = join(sessionsDir, "conversation.jsonl");
-  await ensureLogExists(conversationLogPath);
-
-  return { dir, projectKnowledgeDir, generalKnowledgeDir, sessionsDir, conversationLogPath, skillsDir };
-}
-
-function makeTestAgent(projectDir: string): AgentConfig {
-  return {
-    frontmatter: {
-      name: "test-agent",
-      description: "A test agent for integration testing.",
-      model: "faux/faux-model",
-      role: "worker",
-      color: "#ffffff",
-      icon: "🧪",
-      domain: [{ path: "src/", read: true, write: true, delete: false }],
-      tools: ["read", "write", "bash", "ls"],
-      skills: [{ path: join(projectDir, ".pi", "skills", "test-skill.md"), when: "Always." }],
-      knowledge: {
-        project: {
-          path: join(projectDir, ".pi", "knowledge", "project", "test-agent.yaml"),
-          description: "Test project knowledge.",
-          updatable: true,
-          "max-lines": 100,
-        },
-        general: {
-          path: join(projectDir, ".pi", "knowledge", "general", "test-agent.yaml"),
-          description: "Test general knowledge.",
-          updatable: true,
-          "max-lines": 50,
-        },
-      },
-      conversation: { path: ".pi/sessions/{{SESSION_ID}}/conversation.jsonl" },
-    },
-    systemPrompt: "# Test Agent\n\nYou are a test agent. Reply concisely.",
-    filePath: join(projectDir, ".pi", "agents", "test-agent.md"),
-    source: "project",
-  };
-}
+import { makeTempProject, makeTestAgent } from "./session-test-helpers.js";
 
 describe("runAgent (faux provider)", () => {
   let faux: ReturnType<typeof registerFauxProvider>;
   const authStorage = AuthStorage.create();
-  // Set a fake API key so createAgentSession doesn't reject
   authStorage.setRuntimeApiKey("faux", "fake-key-for-testing");
   const modelRegistry = ModelRegistry.inMemory(authStorage);
 
@@ -77,10 +20,8 @@ describe("runAgent (faux provider)", () => {
   it("runs agent and returns output", async () => {
     faux = registerFauxProvider();
     faux.setResponses([fauxAssistantMessage(fauxText("Hello from the agent!"))]);
-
     const project = await makeTempProject();
     const agent = makeTestAgent(project.dir);
-
     const result = await runAgent({
       agentConfig: agent,
       task: "Say hello",
@@ -90,7 +31,6 @@ describe("runAgent (faux provider)", () => {
       modelRegistry,
       modelOverride: faux.getModel(),
     });
-
     expect(result.error).toBeUndefined();
     expect(result.output).toContain("Hello from the agent!");
   });
@@ -98,10 +38,8 @@ describe("runAgent (faux provider)", () => {
   it("writes user task and agent response to conversation log", async () => {
     faux = registerFauxProvider();
     faux.setResponses([fauxAssistantMessage(fauxText("Task completed."))]);
-
     const project = await makeTempProject();
     const agent = makeTestAgent(project.dir);
-
     await runAgent({
       agentConfig: agent,
       task: "Do something",
@@ -111,18 +49,13 @@ describe("runAgent (faux provider)", () => {
       modelRegistry,
       modelOverride: faux.getModel(),
     });
-
     const logContent = await readLog(project.conversationLogPath);
     const lines = logContent.trim().split("\n");
-
-    // At least 2 entries: user task + agent response
     expect(lines.length).toBeGreaterThanOrEqual(2);
-
     const userEntry = JSON.parse(lines[0]!);
     expect(userEntry.from).toBe("user");
     expect(userEntry.to).toBe("test-agent");
     expect(userEntry.message).toBe("Do something");
-
     const agentEntry = JSON.parse(lines[lines.length - 1]!);
     expect(agentEntry.from).toBe("test-agent");
     expect(agentEntry.to).toBe("user");
@@ -132,10 +65,8 @@ describe("runAgent (faux provider)", () => {
   it("tracks metrics", async () => {
     faux = registerFauxProvider();
     faux.setResponses([fauxAssistantMessage(fauxText("Done."))]);
-
     const project = await makeTempProject();
     const agent = makeTestAgent(project.dir);
-
     const result = await runAgent({
       agentConfig: agent,
       task: "Quick task",
@@ -145,15 +76,12 @@ describe("runAgent (faux provider)", () => {
       modelRegistry,
       modelOverride: faux.getModel(),
     });
-
     expect(result.metrics).toBeDefined();
     expect(result.metrics.turns).toBeGreaterThanOrEqual(0);
   });
 
   it("injects conversation log into prompt", async () => {
     faux = registerFauxProvider();
-
-    // Pre-populate conversation log
     const project = await makeTempProject();
     const { appendToLog } = await import("./conversation-log.js");
     appendToLog(project.conversationLogPath, {
@@ -162,11 +90,8 @@ describe("runAgent (faux provider)", () => {
       to: "test-agent",
       message: "Previous conversation entry",
     });
-
     faux.setResponses([fauxAssistantMessage(fauxText("Acknowledged."))]);
-
     const agent = makeTestAgent(project.dir);
-
     const result = await runAgent({
       agentConfig: agent,
       task: "Continue",
@@ -176,17 +101,14 @@ describe("runAgent (faux provider)", () => {
       modelRegistry,
       modelOverride: faux.getModel(),
     });
-
     expect(result.error).toBeUndefined();
   });
 
   it("uses custom caller in conversation log entries", async () => {
     faux = registerFauxProvider();
     faux.setResponses([fauxAssistantMessage(fauxText("Done."))]);
-
     const project = await makeTempProject();
     const agent = makeTestAgent(project.dir);
-
     await runAgent({
       agentConfig: agent,
       task: "Build this",
@@ -197,19 +119,67 @@ describe("runAgent (faux provider)", () => {
       modelOverride: faux.getModel(),
       caller: "orchestrator",
     });
-
     const logContent = await readLog(project.conversationLogPath);
     const lines = logContent.trim().split("\n");
-
     const userEntry = JSON.parse(lines[0]!);
     expect(userEntry.from).toBe("orchestrator");
     expect(userEntry.to).toBe("test-agent");
-
     const agentEntry = JSON.parse(lines[lines.length - 1]!);
     expect(agentEntry.from).toBe("test-agent");
     expect(agentEntry.to).toBe("orchestrator");
   });
 
+  it("includes shared context in system prompt when provided", async () => {
+    faux = registerFauxProvider();
+    let capturedContext: unknown;
+    faux.setResponses([
+      (context) => {
+        capturedContext = context;
+        return fauxAssistantMessage(fauxText("Acknowledged."));
+      },
+    ]);
+    const project = await makeTempProject();
+    const agent = makeTestAgent(project.dir);
+    const result = await runAgent({
+      agentConfig: agent,
+      task: "Check rules",
+      cwd: project.dir,
+      sessionDir: project.sessionsDir,
+      conversationLogPath: project.conversationLogPath,
+      modelRegistry,
+      modelOverride: faux.getModel(),
+      sharedContext: [{ path: "AGENTS.md", content: "SHARED_RULE: always test first" }],
+    });
+    expect(result.error).toBeUndefined();
+    const contextStr = JSON.stringify(capturedContext);
+    expect(contextStr).toContain("SHARED_RULE: always test first");
+    expect(contextStr).toContain("Shared Context");
+  });
+  it("auto-discovers shared context when not provided", async () => {
+    faux = registerFauxProvider();
+    let capturedContext: unknown;
+    faux.setResponses([
+      (context) => {
+        capturedContext = context;
+        return fauxAssistantMessage(fauxText("OK."));
+      },
+    ]);
+    const project = await makeTempProject();
+    writeFileSync(join(project.dir, "AGENTS.md"), "AUTO_DISCOVERED: project agent rules");
+    const agent = makeTestAgent(project.dir);
+    const result = await runAgent({
+      agentConfig: agent,
+      task: "Do something",
+      cwd: project.dir,
+      sessionDir: project.sessionsDir,
+      conversationLogPath: project.conversationLogPath,
+      modelRegistry,
+      modelOverride: faux.getModel(),
+    });
+    expect(result.error).toBeUndefined();
+    const contextStr = JSON.stringify(capturedContext);
+    expect(contextStr).toContain("AUTO_DISCOVERED: project agent rules");
+  });
   it("returns error for unknown model", async () => {
     const project = await makeTempProject();
     const agent = makeTestAgent(project.dir);
@@ -217,7 +187,6 @@ describe("runAgent (faux provider)", () => {
       ...agent,
       frontmatter: { ...agent.frontmatter, model: "nonexistent/bad-model" },
     };
-
     const result = await runAgent({
       agentConfig: badAgent,
       task: "This should fail",
@@ -225,9 +194,7 @@ describe("runAgent (faux provider)", () => {
       sessionDir: project.sessionsDir,
       conversationLogPath: project.conversationLogPath,
       modelRegistry,
-      // No modelOverride — let it try to resolve the bad model
     });
-
     expect(result.error).toContain("Model not found");
   });
 });

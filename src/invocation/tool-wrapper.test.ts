@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -87,5 +87,106 @@ describe("createToolForAgent", () => {
     const log = await readLog(env.logPath);
     expect(log).toContain("Domain violation");
     expect(log).toContain("test-agent");
+  });
+
+  it("creates write-knowledge tool", async () => {
+    const env = await makeTempEnv();
+    const knowledgePath = join(env.cwd, ".pi", "knowledge", "project", "test.yaml");
+    mkdirSync(join(env.cwd, ".pi", "knowledge", "project"), { recursive: true });
+
+    const tool = createToolForAgent({
+      name: "write-knowledge",
+      ...makeDefaultParams(env),
+      knowledgeFiles: [{ path: knowledgePath, maxLines: 100 }],
+    });
+
+    expect(tool).toBeDefined();
+    expect(tool!.name).toBe("write-knowledge");
+  });
+
+  it("creates edit-knowledge tool", async () => {
+    const env = await makeTempEnv();
+    const knowledgePath = join(env.cwd, ".pi", "knowledge", "project", "test.yaml");
+
+    const tool = createToolForAgent({
+      name: "edit-knowledge",
+      ...makeDefaultParams(env),
+      knowledgeFiles: [{ path: knowledgePath, maxLines: 100 }],
+    });
+
+    expect(tool).toBeDefined();
+    expect(tool!.name).toBe("edit-knowledge");
+  });
+
+  it("write-knowledge allows writing to knowledge path", async () => {
+    const env = await makeTempEnv();
+    const knowledgePath = join(env.cwd, ".pi", "knowledge", "project", "test.yaml");
+    mkdirSync(join(env.cwd, ".pi", "knowledge", "project"), { recursive: true });
+
+    const tool = createToolForAgent({
+      name: "write-knowledge",
+      ...makeDefaultParams(env),
+      knowledgeFiles: [{ path: knowledgePath, maxLines: 100 }],
+    });
+
+    await tool!.execute("call-1", { path: knowledgePath, content: "learned: something" });
+    const content = readFileSync(knowledgePath, "utf-8");
+    expect(content).toBe("learned: something");
+  });
+
+  it("write-knowledge rejects non-knowledge paths", async () => {
+    const env = await makeTempEnv();
+    const knowledgePath = join(env.cwd, ".pi", "knowledge", "project", "test.yaml");
+
+    const tool = createToolForAgent({
+      name: "write-knowledge",
+      ...makeDefaultParams(env),
+      knowledgeFiles: [{ path: knowledgePath, maxLines: 100 }],
+    });
+
+    await expect(tool!.execute("call-1", { path: "src/index.ts", content: "bad" })).rejects.toThrow(
+      "write-knowledge can only write to knowledge files",
+    );
+  });
+
+  it("generic write is blocked on knowledge paths", async () => {
+    const env = await makeTempEnv();
+    const knowledgePath = join(env.cwd, ".pi", "knowledge", "project", "test.yaml");
+    mkdirSync(join(env.cwd, ".pi", "knowledge", "project"), { recursive: true });
+
+    const tool = createToolForAgent({
+      name: "write",
+      ...makeDefaultParams(env),
+      domain: [
+        { path: "src/", read: true, write: true, delete: false },
+        { path: ".pi/knowledge/", read: true, write: true, delete: false },
+      ],
+      knowledgeFiles: [{ path: knowledgePath, maxLines: 100 }],
+    });
+
+    await expect(tool!.execute("call-1", { path: knowledgePath, content: "bypass" })).rejects.toThrow(
+      "Use write-knowledge to update knowledge files",
+    );
+  });
+
+  it("generic edit is blocked on knowledge paths", async () => {
+    const env = await makeTempEnv();
+    const knowledgePath = join(env.cwd, ".pi", "knowledge", "project", "test.yaml");
+    mkdirSync(join(env.cwd, ".pi", "knowledge", "project"), { recursive: true });
+    writeFileSync(knowledgePath, "old: value");
+
+    const tool = createToolForAgent({
+      name: "edit",
+      ...makeDefaultParams(env),
+      domain: [
+        { path: "src/", read: true, write: true, delete: false },
+        { path: ".pi/knowledge/", read: true, write: true, delete: false },
+      ],
+      knowledgeFiles: [{ path: knowledgePath, maxLines: 100 }],
+    });
+
+    await expect(
+      tool!.execute("call-1", { path: knowledgePath, edits: [{ oldText: "old", newText: "new" }] }),
+    ).rejects.toThrow("Use edit-knowledge to update knowledge files");
   });
 });

@@ -8,14 +8,13 @@ import {
   createLsTool,
   createReadTool,
   createWriteTool,
-  withFileMutationQueue,
 } from "@mariozechner/pi-coding-agent";
 // Each create*Tool factory returns AgentTool<SpecificSchema> — the schema generic
 // varies per tool. We forward params opaquely through the domain-check wrapper,
 // so we erase the schema to match AgentTool<TSchema, any> structurally.
 import type { TSchema } from "@sinclair/typebox";
 import { checkDomain } from "../domain/checker.js";
-import { enforceMaxLines } from "../domain/max-lines.js";
+import { createEditKnowledgeTool, createWriteKnowledgeTool } from "../domain/knowledge-tools.js";
 import type { buildDomainWithKnowledge } from "../domain/scoped-tools.js";
 import { appendToLog } from "./conversation-log.js";
 
@@ -58,6 +57,10 @@ export function createToolForAgent(params: {
         return createLsTool(cwd);
       case "bash":
         return createBashTool(cwd);
+      case "write-knowledge":
+        return createWriteKnowledgeTool({ cwd, knowledgeFiles });
+      case "edit-knowledge":
+        return createEditKnowledgeTool({ cwd, knowledgeFiles });
       default:
         return undefined;
     }
@@ -68,6 +71,9 @@ export function createToolForAgent(params: {
 
   // bash is not domain-checked
   if (name === "bash") return baseTool;
+
+  // Knowledge tools handle their own path validation
+  if (name === "write-knowledge" || name === "edit-knowledge") return baseTool;
 
   // Wrap file tools with domain check
   const originalExecute = baseTool.execute;
@@ -95,25 +101,14 @@ export function createToolForAgent(params: {
         }
       }
 
-      // For write/edit to knowledge files: use mutation queue + enforce max-lines
-      const resolved = resolve(cwd, filePath);
-      const knowledgeMatch = knowledgeFiles.find((kf) => resolved === kf.path || resolved.startsWith(kf.path));
-
-      if (knowledgeMatch && (name === "write" || name === "edit")) {
-        return withFileMutationQueue(resolved, async () => {
-          const result = await originalExecute(toolCallId, toolParams, signal, onUpdate);
-          const truncated = await enforceMaxLines({ filePath: resolved, maxLines: knowledgeMatch.maxLines });
-          if (truncated) {
-            await appendToLog(conversationLogPath, {
-              ts: new Date().toISOString(),
-              from: "system",
-              to: agentName,
-              message: `Knowledge file truncated to ${knowledgeMatch.maxLines} lines: ${filePath}`,
-              type: "system",
-            });
-          }
-          return result;
-        });
+      // Block generic write/edit on knowledge files — must use knowledge tools
+      if (name === "write" || name === "edit") {
+        const resolved = resolve(cwd, filePath);
+        const isKnowledgePath = knowledgeFiles.some((kf) => resolved === kf.path || resolved.startsWith(`${kf.path}/`));
+        if (isKnowledgePath) {
+          const knowledgeTool = name === "write" ? "write-knowledge" : "edit-knowledge";
+          throw new Error(`Use ${knowledgeTool} to update knowledge files, not ${name}.`);
+        }
       }
 
       return originalExecute(toolCallId, toolParams, signal, onUpdate);

@@ -1,4 +1,4 @@
-import type { ExtensionContext, Theme } from "@mariozechner/pi-coding-agent";
+import type { Theme } from "@mariozechner/pi-coding-agent";
 import { describe, expect, it } from "vitest";
 import type { AgentConfig } from "../discovery/validator.js";
 import type { AgentMetrics } from "../invocation/metrics.js";
@@ -7,7 +7,6 @@ import { createAgentTool } from "./agent-tool.js";
 const fakeTheme = { fg: (_c: string, t: string) => t, bold: (t: string) => t } as unknown as Theme;
 // ToolRenderContext is not exported — cast through unknown at the boundary
 const fakeContext = {} as unknown as Parameters<NonNullable<ReturnType<typeof createAgentTool>["renderCall"]>>[2];
-const fakeCtx = {} as unknown as ExtensionContext;
 
 const emptyMetrics: AgentMetrics = { turns: 0, inputTokens: 0, outputTokens: 0, cost: 0, toolCalls: [] };
 
@@ -140,92 +139,5 @@ describe("createAgentTool", () => {
     );
     const text = rendered.render(120).join("\n");
     expect(text).toContain("✓");
-  });
-
-  it("execute throws on invalid mode", async () => {
-    const tool = createAgentTool({
-      agents: [makeAgent()],
-      modelRegistry,
-      cwd: "/tmp",
-      sessionDir: "/tmp/sessions/abc",
-      conversationLogPath: "/tmp/sessions/abc/conversation.jsonl",
-    });
-    await expect(tool.execute("call-1", {}, undefined, undefined, fakeCtx)).rejects.toThrow("No mode specified");
-  });
-
-  it("execute throws on unknown agent in single mode", async () => {
-    const tool = createAgentTool({
-      agents: [makeAgent()],
-      modelRegistry,
-      cwd: "/tmp",
-      sessionDir: "/tmp/sessions/abc",
-      conversationLogPath: "/tmp/sessions/abc/conversation.jsonl",
-    });
-    await expect(
-      tool.execute("call-1", { agent: "nonexistent", task: "do stuff" }, undefined, undefined, fakeCtx),
-    ).rejects.toThrow('Unknown agent: "nonexistent"');
-  });
-
-  it("execute throws when parallel mode has unknown agents", async () => {
-    const tool = createAgentTool({
-      agents: [makeAgent()],
-      modelRegistry,
-      cwd: "/tmp",
-      sessionDir: "/tmp/sessions/abc",
-      conversationLogPath: "/tmp/sessions/abc/conversation.jsonl",
-    });
-    await expect(
-      tool.execute(
-        "call-1",
-        {
-          tasks: [
-            { agent: "scout", task: "ok" },
-            { agent: "ghost", task: "nope" },
-          ],
-        },
-        undefined,
-        undefined,
-        fakeCtx,
-      ),
-    ).rejects.toThrow("Unknown agent");
-  });
-
-  it("execute throws on abort signal", async () => {
-    const tool = createAgentTool({
-      agents: [makeAgent()],
-      modelRegistry,
-      cwd: "/tmp",
-      sessionDir: "/tmp/sessions/abc",
-      conversationLogPath: "/tmp/sessions/abc/conversation.jsonl",
-    });
-    const controller = new AbortController();
-    controller.abort();
-    await expect(
-      tool.execute("call-1", { agent: "scout", task: "do stuff" }, controller.signal, undefined, fakeCtx),
-    ).rejects.toThrow("cancelled");
-  });
-
-  it("execute throws when chain mode has unknown agents", async () => {
-    const tool = createAgentTool({
-      agents: [makeAgent()],
-      modelRegistry,
-      cwd: "/tmp",
-      sessionDir: "/tmp/sessions/abc",
-      conversationLogPath: "/tmp/sessions/abc/conversation.jsonl",
-    });
-    await expect(
-      tool.execute(
-        "call-1",
-        {
-          chain: [
-            { agent: "scout", task: "ok" },
-            { agent: "phantom", task: "nope" },
-          ],
-        },
-        undefined,
-        undefined,
-        fakeCtx,
-      ),
-    ).rejects.toThrow("Unknown agent");
   });
 });

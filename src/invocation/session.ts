@@ -2,42 +2,21 @@ import type { Api, Model } from "@mariozechner/pi-ai";
 import {
   createAgentSession,
   createExtensionRuntime,
-  type ModelRegistry,
   type ResourceLoader,
   SessionManager,
   SettingsManager,
 } from "@mariozechner/pi-coding-agent";
+import { discoverContextFiles } from "../common/context-files.js";
 import { readFileSafe } from "../common/fs.js";
 import { parseModelId } from "../common/model.js";
 import { expandPath } from "../common/paths.js";
-import type { AgentConfig } from "../discovery/validator.js";
 import { buildDomainWithKnowledge } from "../domain/scoped-tools.js";
 import { assembleSystemPrompt } from "../prompt/assembly.js";
 import { appendToLog, readLog } from "./conversation-log.js";
-import type { AgentMetrics } from "./metrics.js";
 import { createMetricsTracker } from "./metrics.js";
+import type { RunAgentParams, RunAgentResult } from "./session-helpers.js";
+import { extractAssistantOutput } from "./session-helpers.js";
 import { createToolForAgent } from "./tool-wrapper.js";
-
-type RunAgentParams = Readonly<{
-  agentConfig: AgentConfig;
-  task: string;
-  cwd: string;
-  sessionDir: string;
-  conversationLogPath: string;
-  modelRegistry: ModelRegistry;
-  modelOverride?: Model<Api>;
-  signal?: AbortSignal;
-  onUpdate?: (metrics: AgentMetrics) => void;
-  caller?: string;
-  extraVariables?: Readonly<Record<string, string>>;
-  customTools?: ReadonlyArray<unknown>;
-}>;
-
-type RunAgentResult = Readonly<{
-  output: string;
-  metrics: AgentMetrics;
-  error?: string;
-}>;
 
 export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> {
   const {
@@ -53,6 +32,7 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
     caller = "user",
     extraVariables,
     customTools,
+    sharedContext,
   } = params;
   const fm = agentConfig.frontmatter;
 
@@ -71,6 +51,9 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
     content: skillResults[i] ?? "",
   }));
 
+  // Auto-discover shared context files if not provided
+  const sharedContextContents = sharedContext ?? (await discoverContextFiles({ cwd }));
+
   // Assemble system prompt (pure)
   const assemblyCtx = {
     agentConfig,
@@ -80,6 +63,7 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
     projectKnowledgeContent,
     generalKnowledgeContent,
     ...(extraVariables ? { extraVariables } : {}),
+    ...(sharedContextContents.length > 0 ? { sharedContextContents } : {}),
   };
   const systemPrompt = assembleSystemPrompt(assemblyCtx);
 
@@ -107,13 +91,30 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
     { path: expandPath(fm.knowledge.general.path), maxLines: fm.knowledge.general["max-lines"] },
   ];
 
-  // Create domain-scoped tools.
+  // Create domain-scoped tools (built-in only — these go through SDK's tools option)
   const builtinTools = fm.tools
     .map((t) =>
       createToolForAgent({ name: t, cwd, domain: fullDomain, conversationLogPath, agentName: fm.name, knowledgeFiles }),
     )
     .filter((t): t is NonNullable<typeof t> => t != null);
-  const tools = [...builtinTools, ...((customTools ?? []) as typeof builtinTools)];
+  const tools = builtinTools;
+
+  // Inject knowledge tools when updatable knowledge exists (passed as customTools to SDK)
+  const hasUpdatableKnowledge = knowledgeEntries.some((e) => e.updatable);
+  const knowledgeToolDefs = hasUpdatableKnowledge
+    ? ["write-knowledge", "edit-knowledge"]
+        .map((t) =>
+          createToolForAgent({
+            name: t,
+            cwd,
+            domain: fullDomain,
+            conversationLogPath,
+            agentName: fm.name,
+            knowledgeFiles,
+          }),
+        )
+        .filter((t): t is NonNullable<typeof t> => t != null)
+    : [];
 
   // Write caller task to conversation log BEFORE invocation
   await appendToLog(conversationLogPath, {
@@ -128,6 +129,7 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
     cwd,
     model,
     tools,
+    customTools: [...knowledgeToolDefs, ...((customTools ?? []) as typeof knowledgeToolDefs)],
     sessionManager: SessionManager.inMemory(),
     settingsManager: SettingsManager.inMemory({ compaction: { enabled: false } }),
     modelRegistry,
@@ -165,17 +167,7 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
   }
 
   // Extract final output
-  const messages = session.messages;
-  let output = "";
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const msg = messages[i];
-    if (msg?.role === "assistant") {
-      for (const part of msg.content) {
-        if (part.type === "text") output += part.text;
-      }
-      break;
-    }
-  }
+  const output = extractAssistantOutput(session.messages);
 
   session.dispose();
 

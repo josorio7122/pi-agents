@@ -2,6 +2,8 @@
 // Curated surface for consumers (e.g. pi-teams). Not a barrel — only intentional exports.
 
 export { colorize } from "./common/color.js";
+export type { ContextFile } from "./common/context-files.js";
+export { discoverContextFiles } from "./common/context-files.js";
 // Common utilities
 export { readFileSafe } from "./common/fs.js";
 export { parseModelId } from "./common/model.js";

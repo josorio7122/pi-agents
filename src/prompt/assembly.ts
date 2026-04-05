@@ -9,6 +9,7 @@ export type AssemblyContext = Readonly<{
   projectKnowledgeContent: string;
   generalKnowledgeContent: string;
   extraVariables?: Readonly<Record<string, string>>;
+  sharedContextContents?: ReadonlyArray<Readonly<{ path: string; content: string }>>;
 }>;
 
 function serializeBlock(data: unknown) {
@@ -24,6 +25,7 @@ export function assembleSystemPrompt(ctx: AssemblyContext) {
     projectKnowledgeContent,
     generalKnowledgeContent,
     extraVariables,
+    sharedContextContents,
   } = ctx;
   const fm = agentConfig.frontmatter;
 
@@ -59,6 +61,14 @@ export function assembleSystemPrompt(ctx: AssemblyContext) {
   prompt += `File: ${fm.knowledge.general.path}\n`;
   prompt += "Your accumulated strategies and heuristics from all projects.\n\n";
   prompt += generalKnowledgeContent || "(empty — you have not built general strategies yet)";
+
+  // Append shared context files (AGENTS.md, CLAUDE.md, etc.)
+  if (sharedContextContents && sharedContextContents.length > 0) {
+    prompt += "\n\n---\n\n## Shared Context\n";
+    for (const file of sharedContextContents) {
+      prompt += `\n### ${file.path}\n\n${file.content}\n`;
+    }
+  }
 
   // Append reports section if agent produces reports
   if (fm.reports) {

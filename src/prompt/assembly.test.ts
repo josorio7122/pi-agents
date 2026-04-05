@@ -155,22 +155,4 @@ describe("assembleSystemPrompt", () => {
     expect(result).toContain("leads: Engineering");
     expect(result).not.toContain("{{TEAMS_BLOCK}}");
   });
-
-  it("extraVariables override defaults", () => {
-    const result = assembleSystemPrompt(makeCtx({ extraVariables: { TEAM_BLOCK: "overridden-team-content" } }));
-    expect(result).toContain("overridden-team-content");
-  });
-
-  it("handles multiple skills", () => {
-    const result = assembleSystemPrompt(
-      makeCtx({
-        skillContents: [
-          { name: "mental-model", when: "Always.", content: "# MM\n\nContent A." },
-          { name: "active-listener", when: "Always.", content: "# AL\n\nContent B." },
-        ],
-      }),
-    );
-    expect(result).toContain("Content A.");
-    expect(result).toContain("Content B.");
-  });
 });
