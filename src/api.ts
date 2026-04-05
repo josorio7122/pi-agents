@@ -20,8 +20,9 @@ export { buildDomainWithKnowledge } from "./domain/scoped-tools.js";
 export { appendToLog, ensureLogExists, readLog } from "./invocation/conversation-log.js";
 export type { AgentMetrics } from "./invocation/metrics.js";
 export { createMetricsTracker } from "./invocation/metrics.js";
-// Invocation
 export { runAgent } from "./invocation/session.js";
+// Invocation
+export type { RunAgentParams } from "./invocation/session-helpers.js";
 export { createToolForAgent } from "./invocation/tool-wrapper.js";
 export type { AssemblyContext } from "./prompt/assembly.js";
 // Prompt
