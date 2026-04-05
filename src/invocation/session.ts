@@ -12,7 +12,7 @@ import { parseModelId } from "../common/model.js";
 import { expandPath } from "../common/paths.js";
 import { buildDomainWithKnowledge } from "../domain/scoped-tools.js";
 import { assembleSystemPrompt } from "../prompt/assembly.js";
-import { appendToLog, readLog } from "./conversation-log.js";
+import { appendToLog } from "./conversation-log.js";
 import { createMetricsTracker } from "./metrics.js";
 import type { RunAgentParams, RunAgentResult } from "./session-helpers.js";
 import { extractAssistantOutput } from "./session-helpers.js";
@@ -36,11 +36,9 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
   } = params;
   const fm = agentConfig.frontmatter;
 
-  // Read all file content upfront — parallel async I/O
-  const [conversationLogContent, ...skillResults] = await Promise.all([
-    readLog(conversationLogPath),
-    ...fm.skills.map((s) => readFileSafe(s.path)),
-  ]);
+  // Read skill files upfront — parallel async I/O
+  // Conversation log and knowledge are NOT pre-loaded; agents read them via tools
+  const skillResults = await Promise.all(fm.skills.map((s) => readFileSafe(s.path)));
   const skillContents = fm.skills.map((s, i) => ({
     name: s.path.split("/").pop()?.replace(".md", "") ?? s.path,
     when: s.when,
@@ -54,7 +52,7 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
   const assemblyCtx = {
     agentConfig,
     sessionDir,
-    conversationLogContent,
+
     skillContents,
     ...(extraVariables ? { extraVariables } : {}),
     ...(sharedContextContents.length > 0 ? { sharedContextContents } : {}),
@@ -111,6 +109,17 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
     )
     .filter((t): t is NonNullable<typeof t> => t != null);
 
+  // Inject read-conversation tool
+  const conversationTool = createToolForAgent({
+    name: "read-conversation",
+    cwd,
+    domain: fullDomain,
+    conversationLogPath,
+    agentName: fm.name,
+    knowledgeFiles,
+  });
+  const conversationToolDefs = conversationTool ? [conversationTool] : [];
+
   // Write caller task to conversation log BEFORE invocation
   await appendToLog(conversationLogPath, {
     ts: new Date().toISOString(),
@@ -124,7 +133,7 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
     cwd,
     model,
     tools,
-    customTools: [...knowledgeToolDefs, ...((customTools ?? []) as typeof knowledgeToolDefs)],
+    customTools: [...knowledgeToolDefs, ...conversationToolDefs, ...((customTools ?? []) as typeof knowledgeToolDefs)],
     sessionManager: SessionManager.inMemory(),
     settingsManager: SettingsManager.inMemory({ compaction: { enabled: false } }),
     modelRegistry,

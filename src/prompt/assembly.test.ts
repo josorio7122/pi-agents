@@ -40,7 +40,7 @@ function makeCtx(overrides?: Partial<AssemblyContext>): AssemblyContext {
   return {
     agentConfig: agent,
     sessionDir: "/tmp/sessions/abc123",
-    conversationLogContent: '{"from":"user","to":"backend-dev","message":"hello"}',
+
     skillContents: [
       { name: "mental-model", when: "Read at task start.", content: "# Mental Model\n\nUpdate your knowledge." },
     ],
@@ -55,10 +55,15 @@ describe("assembleSystemPrompt", () => {
     expect(result).not.toContain("{{SESSION_DIR}}");
   });
 
-  it("resolves {{CONVERSATION_LOG}} with full content", () => {
+  it("resolves {{CONVERSATION_LOG}} with tool reference", () => {
     const result = assembleSystemPrompt(makeCtx());
-    expect(result).toContain('{"from":"user","to":"backend-dev","message":"hello"}');
+    expect(result).toContain("read-conversation");
     expect(result).not.toContain("{{CONVERSATION_LOG}}");
+  });
+
+  it("does not inject conversation log content into prompt", () => {
+    const result = assembleSystemPrompt(makeCtx());
+    expect(result).not.toContain("conversation history between all participants");
   });
 
   it("resolves {{DOMAIN_BLOCK}} as YAML", () => {

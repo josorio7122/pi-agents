@@ -40,7 +40,7 @@ function makeCtx(overrides?: Partial<AssemblyContext>): AssemblyContext {
   return {
     agentConfig: agent,
     sessionDir: "/tmp/sessions/abc123",
-    conversationLogContent: '{"from":"user","to":"backend-dev","message":"hello"}',
+
     skillContents: [
       { name: "mental-model", when: "Read at task start.", content: "# Mental Model\n\nUpdate your knowledge." },
     ],

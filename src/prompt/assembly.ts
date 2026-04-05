@@ -4,7 +4,6 @@ import { resolveVariables } from "./variables.js";
 export type AssemblyContext = Readonly<{
   agentConfig: AgentConfig;
   sessionDir: string;
-  conversationLogContent: string;
   skillContents: ReadonlyArray<Readonly<{ name: string; when: string; content: string }>>;
   extraVariables?: Readonly<Record<string, string>>;
   sharedContextContents?: ReadonlyArray<Readonly<{ path: string; content: string }>>;
@@ -15,15 +14,13 @@ function serializeBlock(data: unknown) {
 }
 
 export function assembleSystemPrompt(ctx: AssemblyContext) {
-  const { agentConfig, sessionDir, conversationLogContent, skillContents, extraVariables, sharedContextContents } = ctx;
+  const { agentConfig, sessionDir, skillContents, extraVariables, sharedContextContents } = ctx;
   const fm = agentConfig.frontmatter;
 
   // Build variable map
   const variables: Record<string, string> = {
     SESSION_DIR: sessionDir,
-    CONVERSATION_LOG: conversationLogContent
-      ? `The following is the conversation history between all participants (JSONL format, one message per line):\n\n${conversationLogContent}`
-      : "(no conversation history yet)",
+    CONVERSATION_LOG: "Use `read-conversation` to load the conversation history.",
     DOMAIN_BLOCK: serializeBlock(fm.domain),
     KNOWLEDGE_BLOCK: serializeBlock(fm.knowledge),
     SKILLS_BLOCK: serializeBlock(fm.skills),

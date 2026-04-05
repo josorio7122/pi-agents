@@ -14,6 +14,7 @@ import {
 // so we erase the schema to match AgentTool<TSchema, any> structurally.
 import type { TSchema } from "@sinclair/typebox";
 import { checkDomain } from "../domain/checker.js";
+import { createReadConversationTool } from "../domain/conversation-tool.js";
 import {
   createEditKnowledgeTool,
   createReadKnowledgeTool,
@@ -67,6 +68,8 @@ export function createToolForAgent(params: {
         return createWriteKnowledgeTool({ cwd, knowledgeFiles });
       case "edit-knowledge":
         return createEditKnowledgeTool({ cwd, knowledgeFiles });
+      case "read-conversation":
+        return createReadConversationTool({ conversationLogPath });
       default:
         return undefined;
     }
@@ -78,8 +81,8 @@ export function createToolForAgent(params: {
   // bash is not domain-checked
   if (name === "bash") return baseTool;
 
-  // Knowledge tools handle their own path validation
-  if (name === "read-knowledge" || name === "write-knowledge" || name === "edit-knowledge") return baseTool;
+  // Knowledge and conversation tools handle their own validation
+  if (["read-knowledge", "write-knowledge", "edit-knowledge", "read-conversation"].includes(name)) return baseTool;
 
   // Wrap file tools with domain check
   const originalExecute = baseTool.execute;
