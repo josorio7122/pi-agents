@@ -20,7 +20,7 @@ A specification for how agents are defined, how they enhance themselves, and how
 ### Testing
 
 ```bash
-npm test              # Run all 154 unit tests
+npm test              # Run unit tests
 npm run check         # Biome lint + TypeScript + tests
 ```
 

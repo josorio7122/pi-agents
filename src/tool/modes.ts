@@ -24,12 +24,17 @@ export function collectAgentNames(mode: AgentMode) {
   return mode.chain.map((s) => s.agent);
 }
 
-function toTaskArray(value: unknown): Array<{ agent: string; task: string }> {
+function toTaskArray(value: unknown) {
   if (!Array.isArray(value)) return [];
   return value
-    .filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null)
-    .filter((item) => typeof item.agent === "string" && typeof item.task === "string")
-    .map((item) => ({ agent: item.agent as string, task: item.task as string }));
+    .filter(
+      (item): item is { agent: string; task: string } =>
+        typeof item === "object" &&
+        item !== null &&
+        typeof (item as Record<string, unknown>).agent === "string" &&
+        typeof (item as Record<string, unknown>).task === "string",
+    )
+    .map((item) => ({ agent: item.agent, task: item.task }));
 }
 
 export function detectMode(params: Record<string, unknown>): ModeOrError {

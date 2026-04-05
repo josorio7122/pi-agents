@@ -51,4 +51,4 @@ export const AgentFrontmatterSchema = z.object({
   }),
 });
 
-export type AgentFrontmatter = z.infer<typeof AgentFrontmatterSchema>;
+export type AgentFrontmatter = Readonly<z.infer<typeof AgentFrontmatterSchema>>;

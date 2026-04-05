@@ -6,7 +6,7 @@ const CONTEXT_FILE_CANDIDATES = ["AGENTS.md", "CLAUDE.md"] as const;
 
 export type ContextFile = Readonly<{ path: string; content: string }>;
 
-async function loadContextFileFromDir(dir: string): Promise<ContextFile | undefined> {
+async function loadContextFileFromDir(dir: string) {
   for (const filename of CONTEXT_FILE_CANDIDATES) {
     const filePath = join(dir, filename);
     try {

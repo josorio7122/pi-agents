@@ -8,4 +8,4 @@ export const ConversationEntrySchema = z.object({
   type: z.string().optional(),
 });
 
-export type ConversationEntry = z.infer<typeof ConversationEntrySchema>;
+export type ConversationEntry = Readonly<z.infer<typeof ConversationEntrySchema>>;
