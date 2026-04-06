@@ -30,7 +30,7 @@ type MessagePart = Readonly<{ type: string; text?: string; name?: string }>;
 type MessageContent = string | ReadonlyArray<MessagePart>;
 type Message = Readonly<{ role: string; content?: MessageContent }>;
 
-const META_TOOLS = new Set(["read-knowledge", "write-knowledge", "edit-knowledge", "read-conversation"]);
+const META_WRITE_TOOLS = new Set(["write-knowledge", "edit-knowledge"]);
 
 function getTextFromMessage(msg: Message) {
   if (!Array.isArray(msg.content)) return "";
@@ -41,111 +41,40 @@ function getTextFromMessage(msg: Message) {
   return text;
 }
 
-function getToolCallNames(msg: Message): ReadonlyArray<string> {
-  if (!Array.isArray(msg.content)) return [];
-  return msg.content.filter((p) => p.type === "toolCall" && p.name).map((p) => p.name as string);
-}
-
-function hasNonMetaToolCall(msg: Message) {
-  return getToolCallNames(msg).some((name) => !META_TOOLS.has(name));
-}
-
-function hasAnyToolCall(msg: Message) {
-  return getToolCallNames(msg).length > 0;
-}
-
-function precedingToolResultIsMetaOnly(messages: ReadonlyArray<Message>, assistantIndex: number) {
-  // Look at the tool result(s) right before this assistant message.
-  // If ALL preceding tool results came from meta tools, the assistant message is noise.
-  for (let j = assistantIndex - 1; j >= 0; j--) {
-    const prev = messages[j];
-    if (!prev) break;
-    if (prev.role === "toolResult") {
-      // Check the toolName on the tool result
-      const toolName = (prev as Readonly<{ toolName?: string }>).toolName;
-      if (toolName && !META_TOOLS.has(toolName)) return false;
-      continue;
-    }
-    // Hit a non-toolResult message (assistant or user) → stop looking
-    break;
-  }
-  return true;
-}
-
 export function extractAssistantOutput(messages: ReadonlyArray<Message>): string {
-  const { metaToolText, workText, fallback } = collectCandidates(messages);
+  // The last write-knowledge/edit-knowledge call is the boundary.
+  // Everything after it is noise ("Updated project knowledge...").
+  const boundary = findLastMetaWriteIndex(messages);
+  if (boundary < 0) return findLastNonEmptyText(messages, messages.length - 1);
 
-  // Pick winner: if meta-tool text is dramatically larger than work text,
-  // it's the real content (e.g., full plan alongside write-knowledge)
-  // and work text is just narration ("Let me check one more...").
-  if (metaToolText && workText && metaToolText.length > workText.length * 3) {
-    return metaToolText;
-  }
-  return workText || metaToolText || extractKnowledgeContent(messages) || fallback;
+  // Text at the boundary: if it's a transition phrase introducing the write
+  // (ends with ":"), skip it. Otherwise it IS the output.
+  const boundaryMsg = messages[boundary];
+  const boundaryText = boundaryMsg ? getTextFromMessage(boundaryMsg).trim() : "";
+  if (boundaryText && !boundaryText.endsWith(":")) return boundaryText;
+
+  // Transition phrase at boundary → look earlier for the real output.
+  // Fall back to the boundary text itself if nothing else exists.
+  return findLastNonEmptyText(messages, boundary - 1) || boundaryText;
 }
 
-/** Walk backwards collecting candidate outputs by category. */
-function collectCandidates(messages: ReadonlyArray<Message>) {
-  let metaToolText = "";
-  let workText = "";
-  let fallback = "";
-
+/** Index of the last assistant message containing a write-knowledge or edit-knowledge call. */
+function findLastMetaWriteIndex(messages: ReadonlyArray<Message>) {
   for (let i = messages.length - 1; i >= 0; i--) {
     const msg = messages[i];
-    if (msg?.role !== "assistant") continue;
+    if (msg?.role !== "assistant" || !Array.isArray(msg.content)) continue;
+    if (msg.content.some((p) => p.type === "toolCall" && META_WRITE_TOOLS.has(p.name))) return i;
+  }
+  return -1;
+}
 
+/** Walk backwards from `end` and return the last non-empty assistant text. */
+function findLastNonEmptyText(messages: ReadonlyArray<Message>, end: number) {
+  for (let i = end; i >= 0; i--) {
+    const msg = messages[i];
+    if (msg?.role !== "assistant") continue;
     const text = getTextFromMessage(msg);
-
-    // Track fallback (last non-empty text we see walking backwards)
-    if (text.trim() && !fallback) fallback = text;
-
-    // Has non-meta tool calls → work message
-    if (hasNonMetaToolCall(msg)) {
-      if (!workText && isSubstantial(text)) workText = text;
-      continue;
-    }
-
-    // Has only meta tool calls → remember text as candidate
-    if (hasAnyToolCall(msg) && text.trim()) {
-      if (!metaToolText) metaToolText = text;
-      continue;
-    }
-
-    // No tool calls → genuine summary if preceded by non-meta results
-    if (!hasAnyToolCall(msg) && text.trim()) {
-      if (!workText && !precedingToolResultIsMetaOnly(messages, i)) {
-        workText = text;
-      }
-    }
-  }
-
-  return { metaToolText, workText, fallback };
-}
-
-/** Text is substantial if it has multiple lines or is longer than a short transition phrase. */
-function isSubstantial(text: string) {
-  const trimmed = text.trim();
-  return trimmed.includes("\n") || trimmed.length > 80;
-}
-
-/**
- * Last-resort extraction: pull content from write-knowledge tool call arguments.
- * When the agent puts its findings only in the knowledge write (not as text output),
- * this recovers the actual content.
- */
-function extractKnowledgeContent(messages: ReadonlyArray<Message>) {
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const msg = messages[i];
-    if (msg?.role !== "assistant") continue;
-    if (!Array.isArray(msg.content)) continue;
-    for (const part of msg.content) {
-      if (part.type !== "toolCall" || part.name !== "write-knowledge") continue;
-      const args = part as Readonly<{ arguments?: Record<string, unknown> }>;
-      const content = args.arguments?.content;
-      if (typeof content === "string" && content.trim().length > 0) {
-        return content;
-      }
-    }
+    if (text.trim()) return text;
   }
   return "";
 }
