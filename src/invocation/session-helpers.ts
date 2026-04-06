@@ -73,16 +73,22 @@ function precedingToolResultIsMetaOnly(messages: ReadonlyArray<Message>, assista
 }
 
 export function extractAssistantOutput(messages: ReadonlyArray<Message>): string {
-  // Walk backwards through assistant messages. For each one:
-  // 1. Has non-meta tool calls (bash, write, delegate, etc.) → return its text
-  // 2. Has ONLY meta tool calls (knowledge/conversation) → return its text
-  // 3. No tool calls:
-  //    a. Preceded by meta tool results only → skip (post-knowledge noise)
-  //    b. Preceded by non-meta tool results → return (genuine summary)
+  // Strategy: find the last meaningful assistant output, skipping knowledge/meta noise.
   //
-  // Fallback: if all messages were skipped, return last non-empty text.
+  // Walk backwards through assistant messages:
+  //   - Has non-meta tool calls → return its text (work message)
+  //   - Has ONLY meta tool calls → skip, but remember text as candidate
+  //   - No tool calls, preceded by non-meta results → return (genuine summary)
+  //   - No tool calls, preceded by meta results → skip (post-knowledge noise)
+  //
+  // When we find a non-meta work message, check: does it have substantial text?
+  // If yes, return it. If not (just a transition like "Investigating..."), check
+  // if a later meta-tool message had better text (the findings alongside write-knowledge).
+  //
+  // Fallback chain: non-meta text → meta-tool text → last non-empty text.
 
   let fallback = "";
+  let metaToolText = "";
 
   for (let i = messages.length - 1; i >= 0; i--) {
     const msg = messages[i];
@@ -93,11 +99,20 @@ export function extractAssistantOutput(messages: ReadonlyArray<Message>): string
     // Track fallback (last non-empty text we see walking backwards)
     if (text.trim() && !fallback) fallback = text;
 
-    // Has non-meta tool calls → this is a work message, return its text
-    if (hasNonMetaToolCall(msg)) return text;
+    // Has non-meta tool calls → this is a work message
+    if (hasNonMetaToolCall(msg)) {
+      // If this work message has substantial text, return it
+      if (isSubstantial(text)) return text;
+      // Otherwise keep looking — earlier work messages may have the real findings.
+      // Remember meta-tool text as a candidate in case we exhaust all messages.
+      continue;
+    }
 
-    // Has only meta tool calls → the text alongside is the findings
-    if (hasAnyToolCall(msg) && text.trim()) return text;
+    // Has only meta tool calls → remember text but keep looking for real work
+    if (hasAnyToolCall(msg) && text.trim()) {
+      if (!metaToolText) metaToolText = text;
+      continue;
+    }
 
     // No tool calls → check what preceded this message
     if (!hasAnyToolCall(msg) && text.trim()) {
@@ -107,5 +122,35 @@ export function extractAssistantOutput(messages: ReadonlyArray<Message>): string
     }
   }
 
-  return fallback;
+  // No non-meta work found — prefer meta-tool text (likely findings alongside
+  // write-knowledge), then try extracting from knowledge args, then fallback.
+  return metaToolText || extractKnowledgeContent(messages) || fallback;
+}
+
+/** Text is substantial if it has multiple lines or is longer than a short transition phrase. */
+function isSubstantial(text: string) {
+  const trimmed = text.trim();
+  return trimmed.includes("\n") || trimmed.length > 80;
+}
+
+/**
+ * Last-resort extraction: pull content from write-knowledge tool call arguments.
+ * When the agent puts its findings only in the knowledge write (not as text output),
+ * this recovers the actual content.
+ */
+function extractKnowledgeContent(messages: ReadonlyArray<Message>) {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i];
+    if (msg?.role !== "assistant") continue;
+    if (!Array.isArray(msg.content)) continue;
+    for (const part of msg.content) {
+      if (part.type !== "toolCall" || part.name !== "write-knowledge") continue;
+      const args = part as Readonly<{ arguments?: Record<string, unknown> }>;
+      const content = args.arguments?.content;
+      if (typeof content === "string" && content.trim().length > 0) {
+        return content;
+      }
+    }
+  }
+  return "";
 }

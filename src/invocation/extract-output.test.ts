@@ -167,7 +167,49 @@ describe("extractAssistantOutput", () => {
     expect(extractAssistantOutput(messages)).toBe("Here are my thoughts:\n\nThe architecture is solid.");
   });
 
-  // Pattern 14: Fallback — all messages are meta, return last non-empty text
+  // Pattern 14: Knowledge write in separate turn with transition phrase
+  // Agent does recon, then writes knowledge in a separate message with only a transition phrase
+  it("skips transition phrase alongside knowledge write and returns earlier findings", () => {
+    const messages = [
+      user("Scout the codebase"),
+      assistant([text("Investigating..."), toolCall("grep")]),
+      toolResult("grep"),
+      assistant([text("## Files Found\n- app.py \u2014 main entry\n- models.py \u2014 data layer"), toolCall("read")]),
+      toolResult("read"),
+      assistant([text("Let me save this to my knowledge files:"), toolCall("write-knowledge")]),
+      toolResult("write-knowledge"),
+      assistant([text("Updated project knowledge: added architecture entry")]),
+    ];
+    expect(extractAssistantOutput(messages)).toBe(
+      "## Files Found\n- app.py \u2014 main entry\n- models.py \u2014 data layer",
+    );
+  });
+
+  // Pattern 15: Non-meta tool calls with empty text + knowledge write with transition phrase
+  // Agent does recon (tool calls with no text), then writes knowledge with a transition phrase
+  it("skips empty-text work messages and transition-phrase knowledge writes", () => {
+    const messages = [
+      user("Scout the codebase"),
+      assistant([toolCall("ls")]),
+      toolResult("ls"),
+      assistant([toolCall("grep")]),
+      toolResult("grep"),
+      assistant([toolCall("read")]),
+      toolResult("read"),
+      assistant([toolCall("read")]),
+      toolResult("read"),
+      assistant([text("Perfect! Let me save this to my knowledge files:"), toolCall("write-knowledge")]),
+      toolResult("write-knowledge"),
+      assistant([text("Updated project knowledge: added architecture entry")]),
+    ];
+    // The transition phrase is the only non-empty text, but it's not useful findings.
+    // Best we can do: return it since there's nothing better.
+    expect(extractAssistantOutput(messages)).toBe(
+      "Perfect! Let me save this to my knowledge files:",
+    );
+  });
+
+  // Pattern 16: Fallback — all messages are meta, return last non-empty text
   it("falls back to last non-empty text when all messages are meta", () => {
     const messages = [
       user("Update knowledge"),

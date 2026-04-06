@@ -1,3 +1,5 @@
+import { mkdir, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import type { Api, Model } from "@mariozechner/pi-ai";
 import {
   createAgentSession,
@@ -179,6 +181,17 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
 
   // Extract final output
   const output = extractAssistantOutput(session.messages);
+
+  // Persist full agent session for debugging — mirrors pi's session format
+  await dumpAgentSession({
+    agentName: fm.name,
+    caller,
+    task,
+    messages: session.messages,
+    output,
+    sessionDir,
+  });
+
   session.dispose();
 
   // Write agent response to conversation log AFTER completion
@@ -190,4 +203,38 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
   });
 
   return { output, metrics: tracker.snapshot() };
+}
+
+type DumpParams = Readonly<{
+  agentName: string;
+  caller: string;
+  task: string;
+  messages: ReadonlyArray<unknown>;
+  output: string;
+  sessionDir: string;
+}>;
+
+async function dumpAgentSession(params: DumpParams) {
+  try {
+    const agentDir = join(params.sessionDir, "agents");
+    await mkdir(agentDir, { recursive: true });
+    const ts = new Date().toISOString().replace(/[:.]/g, "-");
+    const filename = `${ts}_${params.agentName}.jsonl`;
+    const lines: string[] = [
+      JSON.stringify({
+        type: "agent_session",
+        agent: params.agentName,
+        caller: params.caller,
+        task: params.task,
+        timestamp: new Date().toISOString(),
+        extractedOutput: params.output,
+      }),
+    ];
+    for (const msg of params.messages) {
+      lines.push(JSON.stringify({ type: "message", message: msg }));
+    }
+    await writeFile(join(agentDir, filename), lines.join("\n") + "\n");
+  } catch {
+    // Non-critical — don't fail the agent run if dump fails
+  }
 }
