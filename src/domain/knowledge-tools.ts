@@ -83,7 +83,7 @@ export function createWriteKnowledgeTool(params: KnowledgeToolParams): Executabl
     baseTool,
     toolName: "write-knowledge",
     description:
-      "Write content to a knowledge file. Use for persisting what you have learned. Always write your complete response text BEFORE calling this tool — knowledge writes should be the last thing you do.",
+      "Write content to a knowledge file. Use for persisting what you have learned. Always write your complete response text BEFORE calling this tool — knowledge writes must be the last thing you do. Do not produce any text output after calling this tool.",
     cwd: params.cwd,
     knowledgeFiles: params.knowledgeFiles,
   });
@@ -121,7 +121,7 @@ export function createEditKnowledgeTool(params: KnowledgeToolParams): Executable
     baseTool,
     toolName: "edit-knowledge",
     description:
-      "Edit a knowledge file. Use for updating specific entries in what you have learned. Always write your complete response text BEFORE calling this tool — knowledge writes should be the last thing you do.",
+      "Edit a knowledge file. Use for updating specific entries in what you have learned. Always write your complete response text BEFORE calling this tool — knowledge writes must be the last thing you do. Do not produce any text output after calling this tool.",
     cwd: params.cwd,
     knowledgeFiles: params.knowledgeFiles,
   });
