@@ -33,22 +33,20 @@ describe("extractAssistantOutput via runAgent (faux provider)", () => {
     expect(result.output).toBe("Here are the results.");
   });
 
-  it("skips post-knowledge noise and returns findings from multi-turn session", async () => {
+  it("extracts output from submit tool call", async () => {
     faux = registerFauxProvider();
-    // Turn 1: Agent does work with bash tool call
     faux.setResponses([
       fauxAssistantMessage([fauxText("Investigating..."), fauxToolCall("bash", { command: "ls" })]),
-      // Turn 2: Agent reports findings (output text)
-      fauxAssistantMessage(fauxText("## Findings\n\nFound the bug in line 42.")),
-      // Turn 3: Agent writes knowledge (boundary)
+      // Agent calls submit with its findings
+      fauxAssistantMessage(fauxToolCall("submit", { response: "## Findings\n\nFound the bug in line 42." })),
+      // Post-submit noise + knowledge write
       fauxAssistantMessage(
         fauxToolCall("write-knowledge", {
           path: ".pi/knowledge/project/test-agent.yaml",
           content: "bugs:\n  - line 42",
         }),
       ),
-      // Turn 4: Agent's post-knowledge summary (noise)
-      fauxAssistantMessage(fauxText("Updated project knowledge: added bug entry.")),
+      fauxAssistantMessage(fauxText("Updated project knowledge.")),
     ]);
     const project = await makeTempProject();
     const agent = makeTestAgent(project.dir);
@@ -63,9 +61,7 @@ describe("extractAssistantOutput via runAgent (faux provider)", () => {
       modelOverride: faux.getModel(),
     });
 
-    expect(result.output).toContain("## Findings");
-    expect(result.output).toContain("Found the bug in line 42");
-    expect(result.output).not.toContain("Updated project knowledge");
+    expect(result.output).toBe("## Findings\n\nFound the bug in line 42.");
   });
 
   it("returns genuine summary after non-meta tool work", async () => {

@@ -13,6 +13,7 @@ import { readFileSafe } from "../common/fs.js";
 import { parseModelId } from "../common/model.js";
 import { expandPath } from "../common/paths.js";
 import { buildDomainWithKnowledge } from "../domain/scoped-tools.js";
+import { createSubmitTool } from "../domain/submit-tool.js";
 import { assembleSystemPrompt } from "../prompt/assembly.js";
 import { appendToLog } from "./conversation-log.js";
 import { createMetricsTracker } from "./metrics.js";
@@ -122,6 +123,9 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
   });
   const conversationToolDefs = conversationTool ? [conversationTool] : [];
 
+  // Inject submit tool — every agent must call this to deliver output
+  const submitTool = createSubmitTool();
+
   // Write caller task to conversation log BEFORE invocation
   await appendToLog(conversationLogPath, {
     ts: new Date().toISOString(),
@@ -135,7 +139,12 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
     cwd,
     model,
     tools,
-    customTools: [...knowledgeToolDefs, ...conversationToolDefs, ...((customTools ?? []) as typeof knowledgeToolDefs)],
+    customTools: [
+      ...knowledgeToolDefs,
+      ...conversationToolDefs,
+      submitTool,
+      ...((customTools ?? []) as typeof knowledgeToolDefs),
+    ],
     sessionManager: SessionManager.inMemory(),
     settingsManager: SettingsManager.inMemory({ compaction: { enabled: false } }),
     modelRegistry,

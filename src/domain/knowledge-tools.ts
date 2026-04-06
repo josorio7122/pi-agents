@@ -83,7 +83,7 @@ export function createWriteKnowledgeTool(params: KnowledgeToolParams): Executabl
     baseTool,
     toolName: "write-knowledge",
     description:
-      "Write content to a knowledge file. Use for persisting what you have learned. Call this tool ALONE with no text — write your full response in the previous turn, then call this tool by itself in the next turn.",
+      "Write content to a knowledge file. Use for persisting what you have learned.",
     cwd: params.cwd,
     knowledgeFiles: params.knowledgeFiles,
   });
@@ -121,7 +121,7 @@ export function createEditKnowledgeTool(params: KnowledgeToolParams): Executable
     baseTool,
     toolName: "edit-knowledge",
     description:
-      "Edit a knowledge file. Use for updating specific entries in what you have learned. Call this tool ALONE with no text — write your full response in the previous turn, then call this tool by itself in the next turn.",
+      "Edit a knowledge file. Use for updating specific entries in what you have learned.",
     cwd: params.cwd,
     knowledgeFiles: params.knowledgeFiles,
   });

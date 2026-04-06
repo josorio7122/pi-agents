@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { extractAssistantOutput } from "./session-helpers.js";
 
-// Helper to build messages matching the SDK's shape
 function assistant(parts: ReadonlyArray<{ type: string; text?: string; name?: string }>) {
   return { role: "assistant" as const, content: parts };
 }
@@ -14,6 +13,10 @@ function toolCall(name: string) {
   return { type: "toolCall" as const, name, id: "tc-1", arguments: {} };
 }
 
+function submitResult(response: string) {
+  return { role: "toolResult" as const, toolName: "submit", content: [text(response)], toolCallId: "tc-1" };
+}
+
 function toolResult(toolName: string) {
   return { role: "toolResult" as const, content: [text("ok")], toolCallId: "tc-1", toolName };
 }
@@ -23,29 +26,86 @@ function user(t: string) {
 }
 
 describe("extractAssistantOutput", () => {
-  // === No knowledge writes — last non-empty assistant text ===
+  // === Submit tool — primary extraction ===
 
-  it("returns text from a simple response", () => {
-    const messages = [user("Hello"), assistant([text("Hello back!")])];
-    expect(extractAssistantOutput(messages)).toBe("Hello back!");
-  });
-
-  it("returns last message when no knowledge tools are used", () => {
+  it("extracts response from submit tool result", () => {
     const messages = [
-      user("Implement the feature"),
-      assistant([text("Writing the code"), toolCall("write")]),
-      toolResult("write"),
-      assistant([text("Done. Added endpoint + 5 tests passing.")]),
+      user("Scout the codebase"),
+      assistant([toolCall("read")]),
+      toolResult("read"),
+      assistant([toolCall("submit")]),
+      submitResult("## Report\n\nFound 3 files."),
     ];
-    expect(extractAssistantOutput(messages)).toBe("Done. Added endpoint + 5 tests passing.");
+    expect(extractAssistantOutput(messages)).toBe("## Report\n\nFound 3 files.");
   });
 
-  it("concatenates multiple text parts from the same message", () => {
-    const messages = [user("Explain"), assistant([text("Part 1. "), text("Part 2.")])];
-    expect(extractAssistantOutput(messages)).toBe("Part 1. Part 2.");
+  it("ignores assistant text and uses submit result", () => {
+    const messages = [
+      user("Investigate"),
+      assistant([text("Let me look..."), toolCall("grep")]),
+      toolResult("grep"),
+      assistant([text("Compiling findings..."), toolCall("submit")]),
+      submitResult("## Findings\n\nBug in line 42."),
+      assistant([text("Done!")]),
+    ];
+    expect(extractAssistantOutput(messages)).toBe("## Findings\n\nBug in line 42.");
   });
 
-  it("returns empty string when no assistant messages exist", () => {
+  it("uses last submit when called multiple times", () => {
+    const messages = [
+      user("Do work"),
+      assistant([toolCall("submit")]),
+      submitResult("First attempt"),
+      assistant([toolCall("submit")]),
+      submitResult("Final answer"),
+    ];
+    expect(extractAssistantOutput(messages)).toBe("Final answer");
+  });
+
+  it("ignores knowledge writes after submit", () => {
+    const messages = [
+      user("Scout"),
+      assistant([toolCall("read")]),
+      toolResult("read"),
+      assistant([toolCall("submit")]),
+      submitResult("## Files Found\n- app.py"),
+      assistant([toolCall("write-knowledge")]),
+      toolResult("write-knowledge"),
+      assistant([text("Updated knowledge.")]),
+    ];
+    expect(extractAssistantOutput(messages)).toBe("## Files Found\n- app.py");
+  });
+
+  it("ignores knowledge writes before submit", () => {
+    const messages = [
+      user("Research"),
+      assistant([toolCall("write-knowledge")]),
+      toolResult("write-knowledge"),
+      assistant([text("Now submitting results.")]),
+      assistant([toolCall("submit")]),
+      submitResult("## Analysis\n\nComplete findings."),
+    ];
+    expect(extractAssistantOutput(messages)).toBe("## Analysis\n\nComplete findings.");
+  });
+
+  // === Fallback — no submit tool ===
+
+  it("falls back to last assistant text when no submit", () => {
+    const messages = [user("Hello"), assistant([text("Here are the results.")])];
+    expect(extractAssistantOutput(messages)).toBe("Here are the results.");
+  });
+
+  it("falls back to last non-empty assistant text", () => {
+    const messages = [
+      user("Do work"),
+      assistant([text("Working..."), toolCall("bash")]),
+      toolResult("bash"),
+      assistant([text("Done. Created the file.")]),
+    ];
+    expect(extractAssistantOutput(messages)).toBe("Done. Created the file.");
+  });
+
+  it("returns empty string when no assistant messages", () => {
     expect(extractAssistantOutput([user("Hello")])).toBe("");
   });
 
@@ -53,123 +113,8 @@ describe("extractAssistantOutput", () => {
     expect(extractAssistantOutput([user("Do something"), assistant([text("")])])).toBe("");
   });
 
-  // === Knowledge write boundary — output BEFORE, noise AFTER ===
-
-  it("takes text before write-knowledge, ignores noise after", () => {
-    const messages = [
-      user("Investigate the bug"),
-      assistant([text("Let me read the code"), toolCall("bash")]),
-      toolResult("bash"),
-      assistant([text("## Bug Report\n\nFound a race condition in app.py:235")]),
-      assistant([toolCall("write-knowledge")]),
-      toolResult("write-knowledge"),
-      assistant([text("Updated project knowledge: added race_condition entry")]),
-    ];
-    expect(extractAssistantOutput(messages)).toBe("## Bug Report\n\nFound a race condition in app.py:235");
-  });
-
-  it("ignores post-knowledge error messages", () => {
-    const messages = [
-      user("Review the code"),
-      assistant([text("## Code Review\n\nApproved with one finding")]),
-      assistant([toolCall("write-knowledge")]),
-      toolResult("write-knowledge"),
-      assistant([text("Knowledge files aren't writable. The review above is complete.")]),
-    ];
-    expect(extractAssistantOutput(messages)).toBe("## Code Review\n\nApproved with one finding");
-  });
-
-  it("handles delegate work followed by knowledge write", () => {
-    const messages = [
-      user("Add delete endpoint"),
-      assistant([text("Delegating to backend-dev"), toolCall("delegate")]),
-      toolResult("delegate"),
-      assistant([text("## Summary\n\nEndpoint implemented and reviewed.")]),
-      assistant([toolCall("write-knowledge")]),
-      toolResult("write-knowledge"),
-      assistant([text("Updated knowledge")]),
-    ];
-    expect(extractAssistantOutput(messages)).toBe("## Summary\n\nEndpoint implemented and reviewed.");
-  });
-
-  it("handles read-knowledge before work + edit-knowledge after", () => {
-    const messages = [
-      user("Check what happened"),
-      assistant([toolCall("read-knowledge")]),
-      toolResult("read-knowledge"),
-      assistant([text("Checking the code"), toolCall("read")]),
-      toolResult("read"),
-      assistant([text("## Analysis\n\nThe issue is in line 42")]),
-      assistant([toolCall("edit-knowledge")]),
-      toolResult("edit-knowledge"),
-    ];
-    expect(extractAssistantOutput(messages)).toBe("## Analysis\n\nThe issue is in line 42");
-  });
-
-  it("skips empty text and thinking-only messages to find output", () => {
-    const messages = [
-      user("Do the work"),
-      assistant([text("## Results\n\nEverything works")]),
-      assistant([toolCall("write-knowledge")]),
-      toolResult("write-knowledge"),
-      assistant([{ type: "thinking", text: "internal thoughts" }]),
-    ];
-    expect(extractAssistantOutput(messages)).toBe("## Results\n\nEverything works");
-  });
-
-  it("skips narration-only work messages to find real output", () => {
-    const messages = [
-      user("Scout the codebase"),
-      assistant([text("Investigating..."), toolCall("grep")]),
-      toolResult("grep"),
-      assistant([text("## Files Found\n- app.py — main entry\n- models.py — data layer")]),
-      assistant([toolCall("write-knowledge")]),
-      toolResult("write-knowledge"),
-      assistant([text("Updated project knowledge")]),
-    ];
-    expect(extractAssistantOutput(messages)).toBe("## Files Found\n- app.py — main entry\n- models.py — data layer");
-  });
-
-  it("returns empty when no text exists before knowledge write", () => {
-    const messages = [
-      user("Scout the codebase"),
-      assistant([toolCall("ls")]),
-      toolResult("ls"),
-      assistant([toolCall("read")]),
-      toolResult("read"),
-      assistant([toolCall("write-knowledge")]),
-      toolResult("write-knowledge"),
-      assistant([text("Updated project knowledge")]),
-    ];
-    // Agent violated the contract — no output before knowledge write
-    expect(extractAssistantOutput(messages)).toBe("");
-  });
-
-  it("takes output before the LAST knowledge write when multiple exist", () => {
-    const messages = [
-      user("Do research"),
-      assistant([text("First finding")]),
-      assistant([toolCall("write-knowledge")]),
-      toolResult("write-knowledge"),
-      assistant([text("More research"), toolCall("read")]),
-      toolResult("read"),
-      assistant([text("## Final Report\n\nComplete findings here")]),
-      assistant([toolCall("write-knowledge")]),
-      toolResult("write-knowledge"),
-      assistant([text("Updated knowledge")]),
-    ];
-    expect(extractAssistantOutput(messages)).toBe("## Final Report\n\nComplete findings here");
-  });
-
-  it("handles only-knowledge sessions", () => {
-    const messages = [
-      user("Update knowledge"),
-      assistant([text("Reading knowledge"), toolCall("read-knowledge")]),
-      toolResult("read-knowledge"),
-      assistant([toolCall("write-knowledge")]),
-      toolResult("write-knowledge"),
-      assistant([text("Done updating")]),
-    ];
-    expect(extractAssistantOutput(messages)).toBe("Reading knowledge");
+  it("concatenates multiple text parts", () => {
+    const messages = [user("Explain"), assistant([text("Part 1. "), text("Part 2.")])];
+    expect(extractAssistantOutput(messages)).toBe("Part 1. Part 2.");
   });
 });
