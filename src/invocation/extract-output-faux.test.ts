@@ -38,15 +38,16 @@ describe("extractAssistantOutput via runAgent (faux provider)", () => {
     // Turn 1: Agent does work with bash tool call
     faux.setResponses([
       fauxAssistantMessage([fauxText("Investigating..."), fauxToolCall("bash", { command: "ls" })]),
-      // Turn 2: Agent reports findings + writes knowledge
-      fauxAssistantMessage([
-        fauxText("## Findings\n\nFound the bug in line 42."),
+      // Turn 2: Agent reports findings (output text)
+      fauxAssistantMessage(fauxText("## Findings\n\nFound the bug in line 42.")),
+      // Turn 3: Agent writes knowledge (boundary)
+      fauxAssistantMessage(
         fauxToolCall("write-knowledge", {
           path: ".pi/knowledge/project/test-agent.yaml",
           content: "bugs:\n  - line 42",
         }),
-      ]),
-      // Turn 3: Agent's post-knowledge summary (noise)
+      ),
+      // Turn 4: Agent's post-knowledge summary (noise)
       fauxAssistantMessage(fauxText("Updated project knowledge: added bug entry.")),
     ]);
     const project = await makeTempProject();

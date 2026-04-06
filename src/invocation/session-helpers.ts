@@ -42,20 +42,13 @@ function getTextFromMessage(msg: Message) {
 }
 
 export function extractAssistantOutput(messages: ReadonlyArray<Message>): string {
-  // The last write-knowledge/edit-knowledge call is the boundary.
-  // Everything after it is noise ("Updated project knowledge...").
+  // Contract: agents write their report BEFORE calling write-knowledge.
+  // Find the last meta-write call → everything before it is output, everything after is noise.
   const boundary = findLastMetaWriteIndex(messages);
   if (boundary < 0) return findLastNonEmptyText(messages, messages.length - 1);
 
-  // Text at the boundary: if it's a transition phrase introducing the write
-  // (ends with ":"), skip it. Otherwise it IS the output.
-  const boundaryMsg = messages[boundary];
-  const boundaryText = boundaryMsg ? getTextFromMessage(boundaryMsg).trim() : "";
-  if (boundaryText && !boundaryText.endsWith(":")) return boundaryText;
-
-  // Transition phrase at boundary → look earlier for the real output.
-  // Fall back to the boundary text itself if nothing else exists.
-  return findLastNonEmptyText(messages, boundary - 1) || boundaryText;
+  // Take the last non-empty assistant text strictly BEFORE the meta-write.
+  return findLastNonEmptyText(messages, boundary - 1);
 }
 
 /** Index of the last assistant message containing a write-knowledge or edit-knowledge call. */
