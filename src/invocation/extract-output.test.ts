@@ -204,12 +204,32 @@ describe("extractAssistantOutput", () => {
     ];
     // The transition phrase is the only non-empty text, but it's not useful findings.
     // Best we can do: return it since there's nothing better.
-    expect(extractAssistantOutput(messages)).toBe(
-      "Perfect! Let me save this to my knowledge files:",
-    );
+    expect(extractAssistantOutput(messages)).toBe("Perfect! Let me save this to my knowledge files:");
   });
 
-  // Pattern 16: Fallback — all messages are meta, return last non-empty text
+  // Pattern 16: Large plan alongside write-knowledge, followed by narration alongside read
+  // Real-world case: planner produces findings alongside write-knowledge, then keeps
+  // reading files with short transition text. The plan (meta-tool text) should win.
+  it("prefers large meta-tool text over short narration alongside non-meta tools", () => {
+    const plan =
+      "## Plan: Favorites Feature\n\n### Phase 1\n- Add is_favorited column\n- Create migration\n\n### Phase 2\n- Add API endpoints\n- Add frontend toggle";
+    const messages = [
+      user("Create a plan"),
+      assistant([toolCall("read")]),
+      toolResult("read"),
+      assistant([text(plan), toolCall("write-knowledge")]),
+      toolResult("write-knowledge"),
+      assistant([
+        text("Good — I've verified everything. Let me check one more existing migration to understand the pattern:"),
+        toolCall("read"),
+      ]),
+      toolResult("read"),
+      assistant([text("Updated project knowledge.")]),
+    ];
+    expect(extractAssistantOutput(messages)).toBe(plan);
+  });
+
+  // Pattern 17: Fallback — all messages are meta, return last non-empty text
   it("falls back to last non-empty text when all messages are meta", () => {
     const messages = [
       user("Update knowledge"),

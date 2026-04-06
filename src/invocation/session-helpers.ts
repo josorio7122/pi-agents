@@ -73,22 +73,22 @@ function precedingToolResultIsMetaOnly(messages: ReadonlyArray<Message>, assista
 }
 
 export function extractAssistantOutput(messages: ReadonlyArray<Message>): string {
-  // Strategy: find the last meaningful assistant output, skipping knowledge/meta noise.
-  //
-  // Walk backwards through assistant messages:
-  //   - Has non-meta tool calls → return its text (work message)
-  //   - Has ONLY meta tool calls → skip, but remember text as candidate
-  //   - No tool calls, preceded by non-meta results → return (genuine summary)
-  //   - No tool calls, preceded by meta results → skip (post-knowledge noise)
-  //
-  // When we find a non-meta work message, check: does it have substantial text?
-  // If yes, return it. If not (just a transition like "Investigating..."), check
-  // if a later meta-tool message had better text (the findings alongside write-knowledge).
-  //
-  // Fallback chain: non-meta text → meta-tool text → last non-empty text.
+  const { metaToolText, workText, fallback } = collectCandidates(messages);
 
-  let fallback = "";
+  // Pick winner: if meta-tool text is dramatically larger than work text,
+  // it's the real content (e.g., full plan alongside write-knowledge)
+  // and work text is just narration ("Let me check one more...").
+  if (metaToolText && workText && metaToolText.length > workText.length * 3) {
+    return metaToolText;
+  }
+  return workText || metaToolText || extractKnowledgeContent(messages) || fallback;
+}
+
+/** Walk backwards collecting candidate outputs by category. */
+function collectCandidates(messages: ReadonlyArray<Message>) {
   let metaToolText = "";
+  let workText = "";
+  let fallback = "";
 
   for (let i = messages.length - 1; i >= 0; i--) {
     const msg = messages[i];
@@ -99,32 +99,27 @@ export function extractAssistantOutput(messages: ReadonlyArray<Message>): string
     // Track fallback (last non-empty text we see walking backwards)
     if (text.trim() && !fallback) fallback = text;
 
-    // Has non-meta tool calls → this is a work message
+    // Has non-meta tool calls → work message
     if (hasNonMetaToolCall(msg)) {
-      // If this work message has substantial text, return it
-      if (isSubstantial(text)) return text;
-      // Otherwise keep looking — earlier work messages may have the real findings.
-      // Remember meta-tool text as a candidate in case we exhaust all messages.
+      if (!workText && isSubstantial(text)) workText = text;
       continue;
     }
 
-    // Has only meta tool calls → remember text but keep looking for real work
+    // Has only meta tool calls → remember text as candidate
     if (hasAnyToolCall(msg) && text.trim()) {
       if (!metaToolText) metaToolText = text;
       continue;
     }
 
-    // No tool calls → check what preceded this message
+    // No tool calls → genuine summary if preceded by non-meta results
     if (!hasAnyToolCall(msg) && text.trim()) {
-      // If preceded by non-meta tool results, this IS the real summary
-      if (!precedingToolResultIsMetaOnly(messages, i)) return text;
-      // Otherwise it's post-knowledge noise → skip
+      if (!workText && !precedingToolResultIsMetaOnly(messages, i)) {
+        workText = text;
+      }
     }
   }
 
-  // No non-meta work found — prefer meta-tool text (likely findings alongside
-  // write-knowledge), then try extracting from knowledge args, then fallback.
-  return metaToolText || extractKnowledgeContent(messages) || fallback;
+  return { metaToolText, workText, fallback };
 }
 
 /** Text is substantial if it has multiple lines or is longer than a short transition phrase. */
