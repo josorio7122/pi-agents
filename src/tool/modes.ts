@@ -152,19 +152,5 @@ export function aggregateMetricsArray(metrics: ReadonlyArray<AgentMetrics>): Age
 }
 
 export function aggregateMetrics(results: ReadonlyArray<RunAgentResult>): AgentMetrics {
-  let turns = 0;
-  let inputTokens = 0;
-  let outputTokens = 0;
-  let cost = 0;
-  const toolCalls: Array<{ name: string; args: Record<string, unknown> }> = [];
-
-  for (const r of results) {
-    turns += r.metrics.turns;
-    inputTokens += r.metrics.inputTokens;
-    outputTokens += r.metrics.outputTokens;
-    cost += r.metrics.cost;
-    toolCalls.push(...r.metrics.toolCalls);
-  }
-
-  return { turns, inputTokens, outputTokens, cost, toolCalls };
+  return aggregateMetricsArray(results.map((r) => r.metrics));
 }
