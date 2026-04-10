@@ -52,7 +52,7 @@ async function discoverAgents(params: { readonly projectDir: string; readonly us
 }
 
 export default function (pi: ExtensionAPI) {
-  let agents: AgentConfig[] = [];
+  let agents: ReadonlyArray<AgentConfig> = [];
   let sessionId = "";
 
   pi.on("session_start", async (_event, ctx) => {
