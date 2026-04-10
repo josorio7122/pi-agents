@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { AgentMetrics } from "../invocation/metrics.js";
 import type { RunAgentFn } from "./modes.js";
-import { aggregateMetrics, detectMode, executeChain, executeParallel, executeSingle } from "./modes.js";
+import {
+  aggregateMetrics,
+  aggregateMetricsArray,
+  detectMode,
+  executeChain,
+  executeParallel,
+  executeSingle,
+} from "./modes.js";
 
 const emptyMetrics: AgentMetrics = { turns: 0, inputTokens: 0, outputTokens: 0, cost: 0, toolCalls: [] };
 
@@ -152,6 +159,30 @@ describe("executeChain", () => {
     });
     expect(result.steps).toHaveLength(1);
     expect(result.steps[0]?.error).toBe("Agent failed");
+  });
+});
+
+describe("aggregateMetricsArray", () => {
+  it("sums metrics from a flat array", () => {
+    const metrics: ReadonlyArray<AgentMetrics> = [
+      { turns: 2, inputTokens: 100, outputTokens: 50, cost: 0.01, toolCalls: [{ name: "read", args: {} }] },
+      { turns: 3, inputTokens: 200, outputTokens: 100, cost: 0.02, toolCalls: [{ name: "write", args: {} }] },
+    ];
+    const result = aggregateMetricsArray(metrics);
+    expect(result.turns).toBe(5);
+    expect(result.inputTokens).toBe(300);
+    expect(result.outputTokens).toBe(150);
+    expect(result.cost).toBeCloseTo(0.03);
+    expect(result.toolCalls).toHaveLength(2);
+  });
+
+  it("returns zeroed metrics for empty array", () => {
+    const result = aggregateMetricsArray([]);
+    expect(result.turns).toBe(0);
+    expect(result.inputTokens).toBe(0);
+    expect(result.outputTokens).toBe(0);
+    expect(result.cost).toBe(0);
+    expect(result.toolCalls).toHaveLength(0);
   });
 });
 

@@ -141,6 +141,19 @@ export async function executeChain(params: {
   return { output: previousOutput, steps: completed };
 }
 
+export function aggregateMetricsArray(metrics: ReadonlyArray<AgentMetrics>): AgentMetrics {
+  return metrics.reduce<AgentMetrics>(
+    (acc, m) => ({
+      turns: acc.turns + m.turns,
+      inputTokens: acc.inputTokens + m.inputTokens,
+      outputTokens: acc.outputTokens + m.outputTokens,
+      cost: acc.cost + m.cost,
+      toolCalls: [...acc.toolCalls, ...m.toolCalls],
+    }),
+    { turns: 0, inputTokens: 0, outputTokens: 0, cost: 0, toolCalls: [] },
+  );
+}
+
 export function aggregateMetrics(results: ReadonlyArray<RunAgentResult>): AgentMetrics {
   let turns = 0;
   let inputTokens = 0;

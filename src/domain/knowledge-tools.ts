@@ -82,8 +82,7 @@ export function createWriteKnowledgeTool(params: KnowledgeToolParams): Executabl
   return wrapWithKnowledgeGuard({
     baseTool,
     toolName: "write-knowledge",
-    description:
-      "Write content to a knowledge file. Use for persisting what you have learned.",
+    description: "Write content to a knowledge file. Use for persisting what you have learned.",
     cwd: params.cwd,
     knowledgeFiles: params.knowledgeFiles,
   });
@@ -120,8 +119,7 @@ export function createEditKnowledgeTool(params: KnowledgeToolParams): Executable
   return wrapWithKnowledgeGuard({
     baseTool,
     toolName: "edit-knowledge",
-    description:
-      "Edit a knowledge file. Use for updating specific entries in what you have learned.",
+    description: "Edit a knowledge file. Use for updating specific entries in what you have learned.",
     cwd: params.cwd,
     knowledgeFiles: params.knowledgeFiles,
   });
