@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { type AgentToolResult, createEditTool, createReadTool, createWriteTool } from "@mariozechner/pi-coding-agent";
-import type { TSchema } from "@sinclair/typebox";
+import { createEditTool, createReadTool, createWriteTool } from "@mariozechner/pi-coding-agent";
+import type { ExecutableTool } from "../common/tool-types.js";
 import { enforceMaxLines } from "./max-lines.js";
 
 type KnowledgeFile = Readonly<{ path: string; maxLines: number }>;
@@ -9,19 +9,6 @@ type KnowledgeFile = Readonly<{ path: string; maxLines: number }>;
 interface KnowledgeToolParams {
   readonly cwd: string;
   readonly knowledgeFiles: ReadonlyArray<KnowledgeFile>;
-}
-
-interface ExecutableTool {
-  readonly name: string;
-  readonly label: string;
-  readonly description: string;
-  readonly parameters: TSchema;
-  execute(
-    toolCallId: string,
-    params: unknown,
-    signal?: AbortSignal,
-    onUpdate?: unknown,
-  ): Promise<AgentToolResult<unknown>>;
 }
 
 function resolvePathFromParams(params: unknown, cwd: string) {
