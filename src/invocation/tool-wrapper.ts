@@ -1,6 +1,5 @@
 import { resolve } from "node:path";
 import {
-  type AgentToolResult,
   createBashTool,
   createEditTool,
   createFindTool,
@@ -9,10 +8,10 @@ import {
   createReadTool,
   createWriteTool,
 } from "@mariozechner/pi-coding-agent";
+import type { ExecutableTool } from "../common/tool-types.js";
 // Each create*Tool factory returns AgentTool<SpecificSchema> — the schema generic
 // varies per tool. We forward params opaquely through the domain-check wrapper,
 // so we erase the schema to match AgentTool<TSchema, any> structurally.
-import type { TSchema } from "@sinclair/typebox";
 import { checkDomain } from "../domain/checker.js";
 import { createReadConversationTool } from "../domain/conversation-tool.js";
 import {
@@ -23,20 +22,6 @@ import {
 import type { buildDomainWithKnowledge } from "../domain/scoped-tools.js";
 import { appendToLog } from "./conversation-log.js";
 
-interface WrappableTool {
-  readonly name: string;
-  readonly label: string;
-  readonly description: string;
-  readonly parameters: TSchema;
-  prepareArguments?: (args: unknown) => unknown;
-  execute(
-    toolCallId: string,
-    params: unknown,
-    signal?: AbortSignal,
-    onUpdate?: unknown,
-  ): Promise<AgentToolResult<unknown>>;
-}
-
 export function createToolForAgent(params: {
   readonly name: string;
   readonly cwd: string;
@@ -46,7 +31,7 @@ export function createToolForAgent(params: {
   readonly knowledgeFiles: ReadonlyArray<{ path: string; maxLines: number }>;
 }) {
   const { name, cwd, domain, conversationLogPath, agentName, knowledgeFiles } = params;
-  function createTool(toolName: string, cwd: string): WrappableTool | undefined {
+  function createTool(toolName: string, cwd: string): ExecutableTool | undefined {
     switch (toolName) {
       case "read":
         return createReadTool(cwd);

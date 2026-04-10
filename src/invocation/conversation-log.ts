@@ -1,13 +1,6 @@
 import { access, appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
-
-type ConversationEntry = Readonly<{
-  ts: string;
-  from: string;
-  to: string;
-  message: string;
-  type?: string;
-}>;
+import type { ConversationEntry } from "../schema/conversation.js";
 
 export async function ensureLogExists(logPath: string) {
   try {
