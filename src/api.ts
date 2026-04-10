@@ -49,3 +49,8 @@ export {
 } from "./tool/modes.js";
 // Rendering
 export type { RenderTheme } from "./tool/render.js";
+// TUI components
+export { BorderedBox } from "./tui/bordered-box.js";
+export { renderConversation } from "./tui/conversation.js";
+export { buildFinalEvents, buildPartialEvents } from "./tui/render-events.js";
+export type { AgentStatus, ConversationEvent } from "./tui/types.js";
