@@ -34,6 +34,8 @@ export type { AgentFrontmatter } from "./schema/frontmatter.js";
 // Schema
 export { AgentFrontmatterSchema } from "./schema/frontmatter.js";
 export { validateRoleTools } from "./schema/validation.js";
+// Formatting
+export { formatTokens, formatUsageStats } from "./tool/format.js";
 export type { ChainResult, RunAgentFn, RunAgentResult } from "./tool/modes.js";
 // Execution modes
 export { collectAgentNames, detectMode, executeChain, executeParallel, executeSingle } from "./tool/modes.js";
