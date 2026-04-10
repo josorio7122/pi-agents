@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { RenderTheme } from "./render.js";
 import { renderAgentResult } from "./render.js";
 
+const strip = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, "");
+
 const mockTheme: RenderTheme = {
   fg: (_color, text) => text,
   bold: (text) => text,
@@ -14,7 +16,7 @@ const agents: Record<string, { icon: string; name: string; color: string; model:
 const mockFindAgent = (name: string) => agents[name];
 
 describe("renderAgentResult — chain, error & aggregates", () => {
-  it("renders chain cards with step numbers", () => {
+  it("renders chain cards with step numbers in bordered boxes", () => {
     const c = renderAgentResult({
       result: {
         content: [{ type: "text", text: "" }],
@@ -39,15 +41,17 @@ describe("renderAgentResult — chain, error & aggregates", () => {
       theme: mockTheme,
       findAgent: mockFindAgent,
     });
-    const lines = c.render(120);
+    const lines = c.render(120).map(strip);
     const text = lines.join("\n");
     expect(text).toContain("1.");
     expect(text).toContain("2.");
     expect(text).toContain("scout");
     expect(text).toContain("investigator");
+    const tops = lines.filter((l) => l.startsWith("┌"));
+    expect(tops).toHaveLength(2);
   });
 
-  it("shows error state with message", () => {
+  it("shows error state with message in bordered box", () => {
     const c = renderAgentResult({
       result: {
         content: [{ type: "text", text: "" }],
@@ -56,12 +60,14 @@ describe("renderAgentResult — chain, error & aggregates", () => {
       theme: mockTheme,
       findAgent: mockFindAgent,
     });
-    const text = c.render(120).join("\n");
+    const lines = c.render(120).map(strip);
+    const text = lines.join("\n");
     expect(text).toContain("✗");
     expect(text).toContain("Agent crashed");
+    expect(lines.some((l) => l.includes("┌"))).toBe(true);
   });
 
-  it("renders mixed running + done in parallel", () => {
+  it("renders mixed running + done in parallel with bordered boxes", () => {
     const c = renderAgentResult({
       result: {
         content: [{ type: "text", text: "" }],
@@ -80,9 +86,13 @@ describe("renderAgentResult — chain, error & aggregates", () => {
       theme: mockTheme,
       findAgent: mockFindAgent,
     });
-    const lines = c.render(120);
-    expect(lines.some((l) => l.includes("✓"))).toBe(true);
-    expect(lines.some((l) => l.includes("scout"))).toBe(true);
+    const lines = c.render(120).map(strip);
+    const text = lines.join("\n");
+    expect(text).toContain("✓");
+    expect(text).toContain("scout");
+    expect(text).toContain("working...");
+    const tops = lines.filter((l) => l.startsWith("┌"));
+    expect(tops).toHaveLength(2);
   });
 
   it("shows aggregate stats for parallel with multiple cards", () => {
@@ -120,7 +130,7 @@ describe("renderAgentResult — chain, error & aggregates", () => {
       theme: mockTheme,
       findAgent: mockFindAgent,
     });
-    const text = c.render(120).join("\n");
+    const text = c.render(120).map(strip).join("\n");
     expect(text).toContain("Σ");
     expect(text).toContain("18 turns");
     expect(text).toContain("50 tools");
@@ -144,7 +154,7 @@ describe("renderAgentResult — chain, error & aggregates", () => {
       theme: mockTheme,
       findAgent: mockFindAgent,
     });
-    const text = c.render(120).join("\n");
+    const text = c.render(120).map(strip).join("\n");
     expect(text).not.toContain("Σ");
   });
 
@@ -163,7 +173,7 @@ describe("renderAgentResult — chain, error & aggregates", () => {
       theme: mockTheme,
       findAgent: mockFindAgent,
     });
-    const text = c.render(120).join("\n");
+    const text = c.render(120).map(strip).join("\n");
     expect(text).not.toContain("Σ");
   });
 });
