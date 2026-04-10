@@ -39,3 +39,5 @@ export { formatTokens, formatUsageStats } from "./tool/format.js";
 export type { ChainResult, RunAgentFn, RunAgentResult } from "./tool/modes.js";
 // Execution modes
 export { collectAgentNames, detectMode, executeChain, executeParallel, executeSingle } from "./tool/modes.js";
+// Rendering
+export type { RenderTheme } from "./tool/render.js";
