@@ -8,6 +8,7 @@ export { discoverContextFiles } from "./common/context-files.js";
 export { readFileSafe } from "./common/fs.js";
 export { parseModelId } from "./common/model.js";
 export { expandPath, resolveConversationPath } from "./common/paths.js";
+export { SPINNER_FRAMES, spinnerFrame } from "./common/spinner.js";
 // Discovery
 export { parseAgentFile } from "./discovery/parser.js";
 export { scanForAgentFiles } from "./discovery/scanner.js";
@@ -38,6 +39,13 @@ export { validateRoleTools } from "./schema/validation.js";
 export { formatTokens, formatUsageStats } from "./tool/format.js";
 export type { ChainResult, RunAgentFn, RunAgentResult } from "./tool/modes.js";
 // Execution modes
-export { collectAgentNames, detectMode, executeChain, executeParallel, executeSingle } from "./tool/modes.js";
+export {
+  aggregateMetricsArray,
+  collectAgentNames,
+  detectMode,
+  executeChain,
+  executeParallel,
+  executeSingle,
+} from "./tool/modes.js";
 // Rendering
 export type { RenderTheme } from "./tool/render.js";

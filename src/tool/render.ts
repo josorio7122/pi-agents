@@ -1,6 +1,7 @@
 import type { ThemeColor } from "@mariozechner/pi-coding-agent";
 import { Container, Spacer, Text } from "@mariozechner/pi-tui";
 import { colorize } from "../common/color.js";
+import { spinnerFrame } from "../common/spinner.js";
 import type { AgentMetrics } from "../invocation/metrics.js";
 import { formatUsageStats } from "./format.js";
 import type { RunAgentResult } from "./modes.js";
@@ -152,11 +153,8 @@ function renderCard(params: {
   return new Text(`${stepPrefix}${icon} ${styledName} ${statusIcon}${stats}${errorSuffix}`, 0, 0);
 }
 
-const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-
 function statusIndicator(status: AgentResultEntry["status"], theme: RenderTheme) {
   if (status === "done") return theme.fg("success", "✓");
   if (status === "error") return theme.fg("error", "✗");
-  const frame = SPINNER_FRAMES[Math.floor(Date.now() / 80) % SPINNER_FRAMES.length] ?? "⠋";
-  return theme.fg("accent", frame);
+  return theme.fg("accent", spinnerFrame());
 }
