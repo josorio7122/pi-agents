@@ -1,10 +1,7 @@
 import type { AgentMetrics } from "../invocation/metrics.js";
+import type { RunAgentResult } from "../invocation/session-helpers.js";
 
-export type RunAgentResult = Readonly<{
-  output: string;
-  metrics: AgentMetrics;
-  error?: string;
-}>;
+export type { RunAgentResult };
 
 export type RunAgentFn = (params: {
   readonly task: string;

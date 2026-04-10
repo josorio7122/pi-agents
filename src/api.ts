@@ -23,7 +23,7 @@ export type { AgentMetrics } from "./invocation/metrics.js";
 export { createMetricsTracker } from "./invocation/metrics.js";
 export { runAgent } from "./invocation/session.js";
 // Invocation
-export type { RunAgentParams } from "./invocation/session-helpers.js";
+export type { RunAgentParams, RunAgentResult } from "./invocation/session-helpers.js";
 export { createToolForAgent } from "./invocation/tool-wrapper.js";
 export type { AssemblyContext } from "./prompt/assembly.js";
 // Prompt
@@ -37,7 +37,7 @@ export { AgentFrontmatterSchema } from "./schema/frontmatter.js";
 export { validateRoleTools } from "./schema/validation.js";
 // Formatting
 export { formatTokens, formatUsageStats } from "./tool/format.js";
-export type { ChainResult, RunAgentFn, RunAgentResult } from "./tool/modes.js";
+export type { ChainResult, RunAgentFn } from "./tool/modes.js";
 // Execution modes
 export {
   aggregateMetricsArray,
