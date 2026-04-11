@@ -152,28 +152,31 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
     signal?.removeEventListener("abort", abortHandler);
   }
 
-  // Extract final output
-  const output = extractAssistantOutput(session.messages);
+  // Extract final output, persist, and dispose — guaranteed cleanup via finally
+  let output = "";
+  try {
+    output = extractAssistantOutput(session.messages);
 
-  // Persist full agent session for debugging — mirrors pi's session format
-  await dumpAgentSession({
-    agentName: fm.name,
-    caller,
-    task,
-    messages: session.messages,
-    output,
-    sessionDir,
-  });
+    // Persist full agent session for debugging — mirrors pi's session format
+    await dumpAgentSession({
+      agentName: fm.name,
+      caller,
+      task,
+      messages: session.messages,
+      output,
+      sessionDir,
+    });
 
-  session.dispose();
-
-  // Write agent response to conversation log AFTER completion
-  await appendToLog(conversationLogPath, {
-    ts: new Date().toISOString(),
-    from: fm.name,
-    to: caller,
-    message: output,
-  });
+    // Write agent response to conversation log AFTER completion
+    await appendToLog(conversationLogPath, {
+      ts: new Date().toISOString(),
+      from: fm.name,
+      to: caller,
+      message: output,
+    });
+  } finally {
+    session.dispose();
+  }
 
   return { output, metrics: tracker.snapshot() };
 }
