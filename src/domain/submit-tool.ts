@@ -1,4 +1,5 @@
 import { Type } from "@sinclair/typebox";
+import { isRecord } from "../common/type-guards.js";
 
 const SUBMIT_TOOL_NAME = "submit";
 
@@ -16,7 +17,7 @@ export function createSubmitTool() {
     description: SUBMIT_DESCRIPTION,
     parameters: submitParameters,
     async execute(_toolCallId: string, params: unknown) {
-      const p = typeof params === "object" && params !== null ? (params as Record<string, unknown>) : {};
+      const p = isRecord(params) ? params : {};
       const response = typeof p.response === "string" ? p.response : "";
       return {
         content: [{ type: "text" as const, text: response }],
