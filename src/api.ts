@@ -13,6 +13,7 @@ export { ANIMATION_FRAME_MS, spinnerFrame, workingDots } from "./common/spinner.
 export { isRecord } from "./common/type-guards.js";
 // Discovery
 export { parseAgentFile } from "./discovery/parser.js";
+export { extractFrontmatter } from "./discovery/extract-frontmatter.js";
 export { scanForAgentFiles } from "./discovery/scanner.js";
 export type { AgentConfig, DiscoveryDiagnostic } from "./discovery/validator.js";
 export { validateAgent } from "./discovery/validator.js";
