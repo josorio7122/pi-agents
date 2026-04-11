@@ -27,6 +27,8 @@ describe("renderAgentCall", () => {
     const lines = c.render(120).map(strip);
     const text = lines.join("\n");
     expect(lines.some((l) => l.includes("┌"))).toBe(true);
+    expect(text).toContain("Main");
+    expect(text).toContain("→");
     expect(text).toContain("🔍");
     expect(text).toContain("scout");
     expect(text).toContain("anthropic/claude-haiku-3");
@@ -49,6 +51,7 @@ describe("renderAgentCall", () => {
     expect(text).toContain("parallel (2 tasks)");
     const tops = lines.filter((l) => l.startsWith("┌"));
     expect(tops).toHaveLength(2);
+    expect(text).toContain("Main");
     expect(text).toContain("scout");
     expect(text).toContain("investigator");
     expect(text).toContain("task a");
@@ -73,6 +76,7 @@ describe("renderAgentCall", () => {
     expect(text).toContain("2.");
     const tops = lines.filter((l) => l.startsWith("┌"));
     expect(tops).toHaveLength(2);
+    expect(text).toContain("Main");
     expect(text).toContain("scout");
     expect(text).toContain("investigator");
   });
@@ -80,6 +84,7 @@ describe("renderAgentCall", () => {
   it("handles unknown agent gracefully", () => {
     const c = renderAgentCall({ args: { agent: "unknown" }, theme: mockTheme, findAgent: mockFindAgent });
     const text = c.render(120).map(strip).join("\n");
+    expect(text).toContain("Main");
     expect(text).toContain("unknown");
     expect(text).toContain("┌");
   });
@@ -128,6 +133,7 @@ describe("renderAgentResult", () => {
     const lines = c.render(120).map(strip);
     const text = lines.join("\n");
     expect(lines.some((l) => l.includes("┌"))).toBe(true);
+    expect(text).toContain("Main");
     expect(text).toContain("scout");
     expect(text).toContain("Found 3 bugs");
     expect(text).toContain("✓");

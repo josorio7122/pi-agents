@@ -24,7 +24,9 @@ function agentHeader(params: {
   const model = agent?.model ?? "";
   const modelSuffix = model ? ` ${theme.fg("dim", `(${model})`)}` : "";
   const prefix = stepPrefix ?? "";
-  return `${prefix}${icon} ${styledName}${modelSuffix}`;
+  const mainLabel = theme.fg("accent", theme.bold("Main"));
+  const arrow = theme.fg("dim", "→");
+  return `${prefix}${mainLabel} ${arrow} ${icon} ${styledName}${modelSuffix}`;
 }
 
 function borderColor(theme: RenderTheme) {
