@@ -6,7 +6,6 @@ export interface ExecutableTool {
   readonly label: string;
   readonly description: string;
   readonly parameters: TSchema;
-  prepareArguments?: (args: unknown) => unknown;
   execute(
     toolCallId: string,
     params: unknown,
