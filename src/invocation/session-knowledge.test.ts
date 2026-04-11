@@ -1,25 +1,10 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { AuthStorage, ModelRegistry } from "@mariozechner/pi-coding-agent";
 import { describe, expect, it } from "vitest";
 import type { AgentConfig } from "../discovery/validator.js";
-import { ensureLogExists } from "./conversation-log.js";
 import { runAgent } from "./session.js";
-
-async function makeTempProject() {
-  const dir = mkdtempSync(join(tmpdir(), "pi-agents-integration-"));
-  const sessionsDir = join(dir, ".pi", "sessions", "test-session");
-
-  mkdirSync(join(dir, ".pi", "knowledge", "project"), { recursive: true });
-  mkdirSync(join(dir, ".pi", "knowledge", "general"), { recursive: true });
-  mkdirSync(sessionsDir, { recursive: true });
-
-  const conversationLogPath = join(sessionsDir, "conversation.jsonl");
-  await ensureLogExists(conversationLogPath);
-
-  return { dir, sessionsDir, conversationLogPath };
-}
+import { makeTempProject } from "./session-test-helpers.js";
 
 describe("runAgent e2e — read-only agent with updatable knowledge", () => {
   const authStorage = AuthStorage.create();
