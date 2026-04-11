@@ -76,7 +76,7 @@ describe("validateAgent", () => {
     });
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.errors.some((e) => e.message.includes("body") || e.message.includes("prompt"))).toBe(true);
+    expect(result.errors.some((e) => e.message.includes("Missing system prompt body"))).toBe(true);
   });
 
   it("preserves filePath and source", () => {

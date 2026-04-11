@@ -41,7 +41,8 @@ export function validateAgent(params: {
   }
 
   // Validate system prompt body is non-empty
-  if (!params.body.trim()) {
+  const trimmedBody = params.body.trim();
+  if (!trimmedBody) {
     diagnostics.push({
       level: "error",
       filePath: params.filePath,
@@ -63,7 +64,7 @@ export function validateAgent(params: {
     ok: true,
     value: {
       frontmatter: parsed.data,
-      systemPrompt: params.body.trim(),
+      systemPrompt: trimmedBody,
       filePath: params.filePath,
       source: params.source,
     },
