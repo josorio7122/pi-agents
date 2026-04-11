@@ -77,7 +77,7 @@ describe("runAgent (faux provider)", () => {
       modelOverride: faux.getModel(),
     });
     expect(result.metrics).toBeDefined();
-    expect(result.metrics.turns).toBeGreaterThanOrEqual(0);
+    expect(result.metrics.turns).toBeGreaterThanOrEqual(1);
   });
 
   it("makes conversation log available to agent via read-conversation tool", async () => {
