@@ -7,9 +7,9 @@ import {
   SettingsManager,
 } from "@mariozechner/pi-coding-agent";
 import { discoverContextFiles } from "../common/context-files.js";
-import { readFileSafe } from "../common/fs.js";
 import { parseModelId } from "../common/model.js";
 import { expandPath } from "../common/paths.js";
+import { loadSkillContents } from "../common/skills.js";
 import { buildDomainWithKnowledge } from "../domain/scoped-tools.js";
 import { assembleSystemPrompt } from "../prompt/assembly.js";
 import { buildAgentTools } from "./build-tools.js";
@@ -37,14 +37,8 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
   } = params;
   const fm = agentConfig.frontmatter;
 
-  // Read skill files upfront — parallel async I/O
-  // Conversation log and knowledge are NOT pre-loaded; agents read them via tools
-  const skillResults = await Promise.all(fm.skills.map((s) => readFileSafe(s.path)));
-  const skillContents = fm.skills.map((s, i) => ({
-    name: s.path.split("/").pop()?.replace(".md", "") ?? s.path,
-    when: s.when,
-    content: skillResults[i] ?? "",
-  }));
+  // Read skill files upfront — conversation log and knowledge are NOT pre-loaded (agents use tools)
+  const skillContents = await loadSkillContents(fm.skills);
 
   // Auto-discover shared context files if not provided
   const sharedContextContents = sharedContext ?? (await discoverContextFiles({ cwd }));

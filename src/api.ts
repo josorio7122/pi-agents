@@ -8,6 +8,7 @@ export { discoverContextFiles } from "./common/context-files.js";
 export { readFileSafe } from "./common/fs.js";
 export { parseModelId } from "./common/model.js";
 export { expandPath, resolveConversationPath } from "./common/paths.js";
+export { loadSkillContents } from "./common/skills.js";
 export { ANIMATION_FRAME_MS, spinnerFrame, workingDots } from "./common/spinner.js";
 export { isRecord } from "./common/type-guards.js";
 // Discovery
