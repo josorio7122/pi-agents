@@ -6,8 +6,8 @@ import type { AgentMetrics } from "../invocation/metrics.js";
 import { runAgent } from "../invocation/session.js";
 import { executeAgentTool } from "./agent-tool-execute.js";
 import { buildPromptGuidelines } from "./prompt-guidelines.js";
-import type { AgentResultDetails } from "./render.js";
 import { renderAgentCall, renderAgentResult } from "./render.js";
+import type { AgentResultDetails } from "./render-types.js";
 
 export function createAgentTool(params: {
   readonly agents: ReadonlyArray<AgentConfig>;

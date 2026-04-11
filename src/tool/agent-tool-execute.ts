@@ -3,8 +3,8 @@ import type { AgentConfig } from "../discovery/validator.js";
 import type { AgentMetrics } from "../invocation/metrics.js";
 import type { RunAgentResult } from "./modes.js";
 import { collectAgentNames, detectMode, executeChain, executeParallel, executeSingle } from "./modes.js";
-import type { AgentResultDetails, AgentResultEntry } from "./render.js";
-import { runningEntry, toResultEntry } from "./render.js";
+import type { AgentResultDetails, AgentResultEntry } from "./render-types.js";
+import { runningEntry, toResultEntry } from "./render-types.js";
 import { truncateOutput } from "./truncate.js";
 
 type EmitProgress = (details: AgentResultDetails) => void;

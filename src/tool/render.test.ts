@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { RenderTheme } from "./render.js";
 import { renderAgentCall, renderAgentResult } from "./render.js";
+import type { RenderTheme } from "./render-types.js";
 
 const strip = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, "");
 

@@ -48,7 +48,7 @@ export {
   executeSingle,
 } from "./tool/modes.js";
 // Rendering
-export type { RenderTheme } from "./tool/render.js";
+export type { RenderTheme } from "./tool/render-types.js";
 // TUI components
 export { BorderedBox } from "./tui/bordered-box.js";
 export { renderConversation } from "./tui/conversation.js";

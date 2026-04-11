@@ -2,7 +2,7 @@ import { getMarkdownTheme } from "@mariozechner/pi-coding-agent";
 import { Container, Markdown, Spacer } from "@mariozechner/pi-tui";
 import { colorize } from "../common/color.js";
 import type { AgentConfig } from "../discovery/validator.js";
-import type { RenderTheme } from "../tool/render.js";
+import type { RenderTheme } from "../tool/render-types.js";
 import { BorderedBox } from "./bordered-box.js";
 import type { ConversationEvent } from "./types.js";
 
