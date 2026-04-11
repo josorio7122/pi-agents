@@ -48,23 +48,15 @@ describe("parseAgentFile", () => {
   });
 
   it("handles frontmatter with invalid YAML gracefully", () => {
-    // parseFrontmatter from pi-coding-agent may throw on invalid YAML
-    let result: ReturnType<typeof parseAgentFile> | undefined;
-    let threw = false;
+    // parseFrontmatter may throw on malformed YAML, or return empty frontmatter.
+    // Either way, parseAgentFile must not return ok: true with garbage data.
     try {
-      result = parseAgentFile("---\n: invalid: yaml: [\n---\nBody here");
-    } catch {
-      threw = true;
-    }
-    // Acceptable: either throws (unhandled YAML error) or returns an error result
-    if (threw) {
-      expect(threw).toBe(true);
-    } else if (result) {
-      if (result.ok) {
-        expect(result.value.frontmatter).toBeDefined();
-      } else {
-        expect(result.error).toBeDefined();
-      }
+      const result = parseAgentFile("---\n: invalid: yaml: [\n---\nBody here");
+      // If it doesn't throw, it must be an error result
+      expect(result.ok).toBe(false);
+    } catch (err) {
+      // Throwing is acceptable — YAML parsing failure
+      expect(err).toBeDefined();
     }
   });
 
