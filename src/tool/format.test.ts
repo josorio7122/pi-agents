@@ -83,4 +83,28 @@ describe("formatToolCall", () => {
   it("formats unknown tools with name + args", () => {
     expect(formatToolCall("custom", { key: "value" })).toContain("custom");
   });
+
+  it("formats bash with missing command as $ ...", () => {
+    expect(formatToolCall("bash", {})).toBe("$ ...");
+  });
+
+  it("formats read with missing path as read ...", () => {
+    expect(formatToolCall("read", {})).toBe("read ...");
+  });
+
+  it("formats grep with missing fields", () => {
+    expect(formatToolCall("grep", {})).toBe("grep // in .");
+  });
+
+  it("truncates long args for unknown tools", () => {
+    const longValue = "a".repeat(100);
+    const result = formatToolCall("custom", { key: longValue });
+    expect(result.length).toBeLessThan(70);
+    expect(result).toContain("...");
+  });
+
+  it("handles non-string args gracefully", () => {
+    expect(formatToolCall("bash", { command: 42 })).toBe("$ ...");
+    expect(formatToolCall("read", { path: null })).toBe("read ...");
+  });
 });
