@@ -95,7 +95,7 @@ export function createToolForAgent(params: {
       }
 
       // Block generic write/edit on knowledge files — must use knowledge tools
-      if (name === "write" || name === "edit") {
+      if (filePath && (name === "write" || name === "edit")) {
         const resolved = resolve(cwd, filePath);
         const isKnowledgePath = knowledgeFiles.some((kf) => resolved === kf.path || resolved.startsWith(`${kf.path}/`));
         if (isKnowledgePath) {
