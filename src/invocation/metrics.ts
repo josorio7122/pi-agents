@@ -1,3 +1,5 @@
+import { isRecord } from "../common/type-guards.js";
+
 export type AgentMetrics = Readonly<{
   turns: number;
   inputTokens: number;
@@ -14,10 +16,6 @@ export function sumMetrics(a: AgentMetrics, b: AgentMetrics): AgentMetrics {
     cost: a.cost + b.cost,
     toolCalls: [...a.toolCalls, ...b.toolCalls],
   };
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
 }
 
 function toNumber(value: unknown) {
