@@ -175,7 +175,7 @@ function renderResultBox(params: {
   if (entry.status === "running") {
     const dots = workingDots();
     const stats = entry.metrics ? ` ${theme.fg("dim", formatUsageStats(entry.metrics))}` : "";
-    box.addChild(new Text(`Working${dots}${stats}`, 0, 0));
+    box.addChild(new Text(`${theme.fg("accent", `Working${dots}`)}${stats}`, 0, 0));
   } else if (entry.status === "error") {
     const errorMsg = entry.error ?? "unknown error";
     box.addChild(new Text(`${theme.fg("error", "✗")} ${theme.fg("error", errorMsg)}`, 0, 0));
