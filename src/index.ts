@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { getAgentDir } from "@mariozechner/pi-coding-agent";
 import { formatAgentList } from "./command/agents-command.js";
@@ -55,6 +56,12 @@ export default function (pi: ExtensionAPI) {
   let agents: ReadonlyArray<AgentConfig> = [];
   let sessionId = "";
 
+  // Register theme path so pi can discover the theme JSON files
+  pi.on("resources_discover", async () => {
+    const extDir = dirname(fileURLToPath(import.meta.url));
+    return { themePaths: [join(extDir, "..", "themes")] };
+  });
+
   pi.on("session_start", async (_event, ctx) => {
     sessionId = randomUUID();
 
@@ -85,6 +92,15 @@ export default function (pi: ExtensionAPI) {
       });
       pi.registerTool(tool);
       ctx.ui.notify(`[pi-agents] ${agents.length} agent(s) loaded`, "info");
+    }
+  });
+
+  // Apply theme once — must happen after resources_discover so pi knows the theme path
+  let themeApplied = false;
+  pi.on("before_agent_start", async (_event, ctx) => {
+    if (!themeApplied) {
+      themeApplied = true;
+      ctx.ui.setTheme("pi-agents-dark");
     }
   });
 
