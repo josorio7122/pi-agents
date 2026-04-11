@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { createEditTool, createReadTool, createWriteTool } from "@mariozechner/pi-coding-agent";
+import { extractFilePath } from "../common/params.js";
 import type { ExecutableTool } from "../common/tool-types.js";
 import { enforceMaxLines } from "./max-lines.js";
 
@@ -9,13 +10,6 @@ type KnowledgeFile = Readonly<{ path: string; maxLines: number }>;
 interface KnowledgeToolParams {
   readonly cwd: string;
   readonly knowledgeFiles: ReadonlyArray<KnowledgeFile>;
-}
-
-function resolvePathFromParams(params: unknown, cwd: string) {
-  const p = typeof params === "object" && params !== null ? (params as Record<string, unknown>) : {};
-  const raw = p.path ?? p.file_path ?? "";
-  const filePath = typeof raw === "string" ? raw : "";
-  return { filePath, resolved: resolve(cwd, filePath) };
 }
 
 function findKnowledgeMatch(params: {
@@ -47,7 +41,8 @@ function wrapWithKnowledgeGuard(params: {
     description,
     // biome-ignore lint/complexity/useMaxParams: implements Pi's AgentTool.execute (4 positional params)
     async execute(toolCallId: string, toolParams: unknown, signal?: AbortSignal, onUpdate?: unknown) {
-      const { filePath, resolved } = resolvePathFromParams(toolParams, cwd);
+      const filePath = extractFilePath(toolParams);
+      const resolved = resolve(cwd, filePath);
       const match = findKnowledgeMatch({ resolved, knowledgeFiles, cwd });
 
       if (!match) {
@@ -84,7 +79,8 @@ export function createReadKnowledgeTool(params: KnowledgeToolParams): Executable
     description: "Read a knowledge file. Use to load your project or general knowledge.",
     // biome-ignore lint/complexity/useMaxParams: implements Pi's AgentTool.execute (4 positional params)
     async execute(_toolCallId: string, toolParams: unknown, _signal?: AbortSignal, _onUpdate?: unknown) {
-      const { filePath, resolved } = resolvePathFromParams(toolParams, params.cwd);
+      const filePath = extractFilePath(toolParams);
+      const resolved = resolve(params.cwd, filePath);
       const match = findKnowledgeMatch({ resolved, knowledgeFiles: params.knowledgeFiles, cwd: params.cwd });
 
       if (!match) {

@@ -8,6 +8,7 @@ import {
   createReadTool,
   createWriteTool,
 } from "@mariozechner/pi-coding-agent";
+import { extractFilePath } from "../common/params.js";
 import type { ExecutableTool } from "../common/tool-types.js";
 // Each create*Tool factory returns AgentTool<SpecificSchema> — the schema generic
 // varies per tool. We forward params opaquely through the domain-check wrapper,
@@ -75,9 +76,7 @@ export function createToolForAgent(params: {
     ...baseTool,
     // biome-ignore lint/complexity/useMaxParams: implements Pi's AgentTool.execute (4 positional params)
     async execute(toolCallId: string, toolParams: unknown, signal?: AbortSignal, onUpdate?: unknown) {
-      const p = typeof toolParams === "object" && toolParams !== null ? (toolParams as Record<string, unknown>) : {};
-      const rawPath = p.path ?? p.file_path ?? "";
-      const filePath = typeof rawPath === "string" ? rawPath : "";
+      const filePath = extractFilePath(toolParams);
 
       if (filePath) {
         const op = name === "read" || name === "grep" || name === "find" || name === "ls" ? "read" : "write";
