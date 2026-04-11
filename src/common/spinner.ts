@@ -11,14 +11,15 @@ export const SPINNER_FRAMES: ReadonlyArray<string> = [
   "\u280F",
 ];
 
-const WORKING_DOTS_FRAMES: ReadonlyArray<string> = [".", "..", "...", "...."];
+const WORKING_DOTS_FRAMES: ReadonlyArray<string> = [".   ", "..  ", "... ", "...."];
 
 export const ANIMATION_FRAME_MS = 80;
+const WORKING_DOTS_FRAME_MS = 400;
 
 export function spinnerFrame() {
   return SPINNER_FRAMES[Math.floor(Date.now() / ANIMATION_FRAME_MS) % SPINNER_FRAMES.length] ?? "\u280B";
 }
 
 export function workingDots() {
-  return WORKING_DOTS_FRAMES[Math.floor(Date.now() / ANIMATION_FRAME_MS) % WORKING_DOTS_FRAMES.length] ?? ".";
+  return WORKING_DOTS_FRAMES[Math.floor(Date.now() / WORKING_DOTS_FRAME_MS) % WORKING_DOTS_FRAMES.length] ?? ".   ";
 }
