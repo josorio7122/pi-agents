@@ -4,7 +4,8 @@ import { expandPath } from "./paths.js";
 export async function readFileSafe(filePath: string) {
   try {
     return await readFile(expandPath(filePath), "utf-8");
-  } catch {
-    return "";
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") return "";
+    throw err;
   }
 }
