@@ -8,6 +8,12 @@ export type RunAgentFn = (params: {
   readonly onMetrics?: (metrics: AgentMetrics) => void;
 }) => Promise<RunAgentResult>;
 
+const CANCELLED_RESULT: RunAgentResult = {
+  output: "",
+  metrics: { turns: 0, inputTokens: 0, outputTokens: 0, cost: 0, toolCalls: [] },
+  error: "Agent execution cancelled",
+};
+
 type AgentMode =
   | { readonly mode: "single"; readonly agent: string; readonly task: string }
   | { readonly mode: "parallel"; readonly tasks: ReadonlyArray<{ agent: string; task: string }> }
@@ -65,15 +71,10 @@ export async function executeParallel(params: {
 }) {
   const results: Array<RunAgentResult | undefined> = new Array(params.tasks.length).fill(undefined);
   const executing = new Set<Promise<void>>();
-  const cancelled: RunAgentResult = {
-    output: "",
-    metrics: { turns: 0, inputTokens: 0, outputTokens: 0, cost: 0, toolCalls: [] },
-    error: "Agent execution cancelled",
-  };
 
   for (let i = 0; i < params.tasks.length; i++) {
     if (params.signal?.aborted) {
-      for (let j = i; j < params.tasks.length; j++) results[j] = cancelled;
+      for (let j = i; j < params.tasks.length; j++) results[j] = CANCELLED_RESULT;
       break;
     }
     const idx = i;
@@ -112,11 +113,7 @@ export async function executeChain(params: {
 
   for (let i = 0; i < params.steps.length; i++) {
     if (params.signal?.aborted) {
-      completed.push({
-        output: "",
-        metrics: { turns: 0, inputTokens: 0, outputTokens: 0, cost: 0, toolCalls: [] },
-        error: "Agent execution cancelled",
-      });
+      completed.push(CANCELLED_RESULT);
       return { output: previousOutput, steps: completed };
     }
     const step = params.steps[i];
