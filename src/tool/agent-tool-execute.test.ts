@@ -1,7 +1,8 @@
 import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { AgentConfig } from "../discovery/validator.js";
 import { createAgentTool } from "./agent-tool.js";
+import { executeAgentTool } from "./agent-tool-execute.js";
 
 const fakeCtx = {} as unknown as ExtensionContext;
 
@@ -118,5 +119,30 @@ describe("createAgentTool — execute errors", () => {
         fakeCtx,
       ),
     ).rejects.toThrow("Unknown agent");
+  });
+});
+
+describe("executeAgentTool — animation cleanup", () => {
+  it("cleans up animation interval when execution throws after animation starts", async () => {
+    const clearSpy = vi.spyOn(globalThis, "clearInterval");
+    const emitProgress = vi.fn();
+    const agent = makeAgent();
+
+    const runAgentFn = vi.fn().mockRejectedValue(new Error("agent not found in run"));
+    const makeRunAgent = vi.fn().mockReturnValue(runAgentFn);
+
+    await expect(
+      executeAgentTool({
+        toolParams: { agent: "scout", task: "test" },
+        agents: [agent],
+        findAgent: (name) => (name === "scout" ? agent : undefined),
+        makeRunAgent,
+        emitProgress,
+        signal: undefined,
+      }),
+    ).rejects.toThrow("agent not found in run");
+
+    expect(clearSpy).toHaveBeenCalledTimes(1);
+    clearSpy.mockRestore();
   });
 });

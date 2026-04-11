@@ -56,7 +56,6 @@ async function executeSingleMode(params: {
     },
   });
   throttled.flush();
-  animation.stop();
 
   const details = { mode: "single", results: [toResultEntry({ agentName: mode.agent, result })] };
   return { content: [{ type: "text" as const, text: truncateOutput(result.output) }], details };
@@ -98,7 +97,6 @@ async function executeParallelMode(params: {
     },
   });
   throttled.flush();
-  animation.stop();
 
   const finalEntries = results.map((r, i) => toResultEntry({ agentName: taskDefs[i]?.agent ?? r.output, result: r }));
   const combined = results.map((r) => r.output).join("\n\n---\n\n");
@@ -145,7 +143,6 @@ async function executeChainMode(params: {
     },
   });
   throttled.flush();
-  animation.stop();
 
   const finalEntries = chainResult.steps.map((r, i) =>
     toResultEntry({ agentName: stepDefs[i]?.agent ?? "", result: r, step: i + 1 }),
@@ -156,7 +153,7 @@ async function executeChainMode(params: {
   };
 }
 
-export function executeAgentTool(params: {
+export async function executeAgentTool(params: {
   readonly toolParams: Record<string, unknown>;
   readonly agents: ReadonlyArray<AgentConfig>;
   readonly findAgent: (name: string) => AgentConfig | undefined;
@@ -182,12 +179,15 @@ export function executeAgentTool(params: {
   }
 
   const animation = withAnimation(emitProgress);
-
-  if (mode.mode === "single") {
-    return executeSingleMode({ mode, findAgent, makeRunAgent, animation, signal });
+  try {
+    if (mode.mode === "single") {
+      return await executeSingleMode({ mode, findAgent, makeRunAgent, animation, signal });
+    }
+    if (mode.mode === "parallel") {
+      return await executeParallelMode({ mode, findAgent, makeRunAgent, animation, signal });
+    }
+    return await executeChainMode({ mode, findAgent, makeRunAgent, animation, signal });
+  } finally {
+    animation.stop();
   }
-  if (mode.mode === "parallel") {
-    return executeParallelMode({ mode, findAgent, makeRunAgent, animation, signal });
-  }
-  return executeChainMode({ mode, findAgent, makeRunAgent, animation, signal });
 }
