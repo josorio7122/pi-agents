@@ -1,3 +1,4 @@
+import { ANIMATION_FRAME_MS } from "../common/spinner.js";
 import { createThrottle } from "../common/throttle.js";
 import type { AgentConfig } from "../discovery/validator.js";
 import type { AgentMetrics } from "../invocation/metrics.js";
@@ -17,7 +18,7 @@ function withAnimation(emitProgress: EmitProgress) {
   let lastDetails: AgentResultDetails | undefined;
   const interval = setInterval(() => {
     if (lastDetails) emitProgress(lastDetails);
-  }, 80);
+  }, ANIMATION_FRAME_MS);
   return {
     update(details: AgentResultDetails) {
       lastDetails = details;
