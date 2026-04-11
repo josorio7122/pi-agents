@@ -1,7 +1,7 @@
 import { getMarkdownTheme } from "@mariozechner/pi-coding-agent";
 import { Container, Markdown, Spacer, Text } from "@mariozechner/pi-tui";
 import { colorize } from "../common/color.js";
-import { spinnerFrame, workingDots } from "../common/spinner.js";
+import { workingDots } from "../common/spinner.js";
 import type { AgentMetrics } from "../invocation/metrics.js";
 import { BorderedBox } from "../tui/bordered-box.js";
 import { formatUsageStats } from "./format.js";
@@ -131,7 +131,7 @@ export function renderAgentResult(params: {
 
   if (!details?.results) {
     const box = new BorderedBox({ borderColor: borderColor(theme) });
-    box.addChild(new Text(`${spinnerFrame()} initializing...`, 0, 0));
+    box.addChild(new Text(`${theme.fg("accent", `Working${workingDots()}`)}`, 0, 0));
     return box;
   }
 

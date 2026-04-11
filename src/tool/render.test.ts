@@ -101,7 +101,7 @@ describe("renderAgentResult", () => {
     });
     const lines = c.render(120).map(strip);
     const text = lines.join("\n");
-    expect(text).toContain("initializing...");
+    expect(text).toContain("Working");
     expect(lines.some((l) => l.includes("┌"))).toBe(true);
   });
 

@@ -108,7 +108,7 @@ describe("createAgentTool", () => {
       fakeContext,
     );
     const text = rendered.render(120).join("\n");
-    expect(text).toContain("initializing...");
+    expect(text).toContain("Working");
   });
 
   it("renderResult shows done state with details", () => {
