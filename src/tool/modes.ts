@@ -1,4 +1,4 @@
-import type { AgentMetrics } from "../invocation/metrics.js";
+import { type AgentMetrics, sumMetrics } from "../invocation/metrics.js";
 import type { RunAgentResult } from "../invocation/session-helpers.js";
 
 export type { RunAgentResult };
@@ -136,16 +136,8 @@ export async function executeChain(params: {
 }
 
 export function aggregateMetricsArray(metrics: ReadonlyArray<AgentMetrics>): AgentMetrics {
-  return metrics.reduce<AgentMetrics>(
-    (acc, m) => ({
-      turns: acc.turns + m.turns,
-      inputTokens: acc.inputTokens + m.inputTokens,
-      outputTokens: acc.outputTokens + m.outputTokens,
-      cost: acc.cost + m.cost,
-      toolCalls: [...acc.toolCalls, ...m.toolCalls],
-    }),
-    { turns: 0, inputTokens: 0, outputTokens: 0, cost: 0, toolCalls: [] },
-  );
+  const zero: AgentMetrics = { turns: 0, inputTokens: 0, outputTokens: 0, cost: 0, toolCalls: [] };
+  return metrics.reduce<AgentMetrics>((acc, m) => sumMetrics(acc, m), zero);
 }
 
 export function aggregateMetrics(results: ReadonlyArray<RunAgentResult>): AgentMetrics {

@@ -6,6 +6,16 @@ export type AgentMetrics = Readonly<{
   toolCalls: ReadonlyArray<Readonly<{ name: string; args: Record<string, unknown> }>>;
 }>;
 
+export function sumMetrics(a: AgentMetrics, b: AgentMetrics): AgentMetrics {
+  return {
+    turns: a.turns + b.turns,
+    inputTokens: a.inputTokens + b.inputTokens,
+    outputTokens: a.outputTokens + b.outputTokens,
+    cost: a.cost + b.cost,
+    toolCalls: [...a.toolCalls, ...b.toolCalls],
+  };
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }

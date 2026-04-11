@@ -20,7 +20,7 @@ export { enforceMaxLines } from "./domain/max-lines.js";
 export { buildDomainWithKnowledge } from "./domain/scoped-tools.js";
 export { appendToLog, ensureLogExists, readLog } from "./invocation/conversation-log.js";
 export type { AgentMetrics } from "./invocation/metrics.js";
-export { createMetricsTracker } from "./invocation/metrics.js";
+export { createMetricsTracker, sumMetrics } from "./invocation/metrics.js";
 export { runAgent } from "./invocation/session.js";
 // Invocation
 export type { RunAgentParams, RunAgentResult } from "./invocation/session-helpers.js";
