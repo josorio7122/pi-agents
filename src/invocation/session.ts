@@ -11,14 +11,13 @@ import { readFileSafe } from "../common/fs.js";
 import { parseModelId } from "../common/model.js";
 import { expandPath } from "../common/paths.js";
 import { buildDomainWithKnowledge } from "../domain/scoped-tools.js";
-import { createSubmitTool } from "../domain/submit-tool.js";
 import { assembleSystemPrompt } from "../prompt/assembly.js";
+import { buildAgentTools } from "./build-tools.js";
 import { appendToLog } from "./conversation-log.js";
 import { createMetricsTracker } from "./metrics.js";
 import { dumpAgentSession } from "./session-dump.js";
 import type { RunAgentParams, RunAgentResult } from "./session-helpers.js";
 import { extractAssistantOutput } from "./session-helpers.js";
-import { createToolForAgent } from "./tool-wrapper.js";
 
 export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> {
   const {
@@ -85,43 +84,16 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
     { path: expandPath(fm.knowledge.general.path), maxLines: fm.knowledge.general["max-lines"] },
   ];
 
-  // Create domain-scoped tools (built-in only — these go through SDK's tools option)
-  const builtinTools = fm.tools
-    .map((t) =>
-      createToolForAgent({ name: t, cwd, domain: fullDomain, conversationLogPath, agentName: fm.name, knowledgeFiles }),
-    )
-    .filter((t): t is NonNullable<typeof t> => t != null);
-  // Inject knowledge tools — read-knowledge always, write/edit only when updatable
-  const hasUpdatableKnowledge = knowledgeEntries.some((e) => e.updatable);
-  const knowledgeToolNames = hasUpdatableKnowledge
-    ? ["read-knowledge", "write-knowledge", "edit-knowledge"]
-    : ["read-knowledge"];
-  const knowledgeToolDefs = knowledgeToolNames
-    .map((t) =>
-      createToolForAgent({
-        name: t,
-        cwd,
-        domain: fullDomain,
-        conversationLogPath,
-        agentName: fm.name,
-        knowledgeFiles,
-      }),
-    )
-    .filter((t): t is NonNullable<typeof t> => t != null);
-
-  // Inject read-conversation tool
-  const conversationTool = createToolForAgent({
-    name: "read-conversation",
+  // Build all agent tools
+  const { builtinTools, customTools: builtCustomTools } = buildAgentTools({
+    tools: fm.tools,
     cwd,
     domain: fullDomain,
     conversationLogPath,
     agentName: fm.name,
     knowledgeFiles,
+    knowledgeEntries,
   });
-  const conversationToolDefs = conversationTool ? [conversationTool] : [];
-
-  // Inject submit tool — every agent must call this to deliver output
-  const submitTool = createSubmitTool();
 
   // Write caller task to conversation log BEFORE invocation
   await appendToLog(conversationLogPath, {
@@ -136,12 +108,7 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
     cwd,
     model,
     tools: builtinTools,
-    customTools: [
-      ...knowledgeToolDefs,
-      ...conversationToolDefs,
-      submitTool,
-      ...((customTools ?? []) as typeof knowledgeToolDefs),
-    ],
+    customTools: [...builtCustomTools, ...((customTools ?? []) as typeof builtCustomTools)],
     sessionManager: SessionManager.inMemory(),
     settingsManager: SettingsManager.inMemory({ compaction: { enabled: false } }),
     modelRegistry,
