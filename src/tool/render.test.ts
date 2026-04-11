@@ -152,7 +152,7 @@ describe("renderAgentResult", () => {
     });
     const lines = c.render(120).map(strip);
     const text = lines.join("\n");
-    expect(text).toContain("working...");
+    expect(text).toContain("Working");
     const tops = lines.filter((l) => l.startsWith("┌"));
     expect(tops).toHaveLength(2);
   });
@@ -174,7 +174,7 @@ describe("renderAgentResult", () => {
     });
     const lines = c.render(120).map(strip);
     const text = lines.join("\n");
-    expect(text).toContain("working...");
+    expect(text).toContain("Working");
     const tops = lines.filter((l) => l.startsWith("┌"));
     expect(tops).toHaveLength(2);
   });

@@ -90,7 +90,7 @@ describe("renderAgentResult — chain, error & aggregates", () => {
     const text = lines.join("\n");
     expect(text).toContain("✓");
     expect(text).toContain("scout");
-    expect(text).toContain("working...");
+    expect(text).toContain("Working");
     const tops = lines.filter((l) => l.startsWith("┌"));
     expect(tops).toHaveLength(2);
   });

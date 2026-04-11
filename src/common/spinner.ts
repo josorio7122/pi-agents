@@ -11,6 +11,12 @@ export const SPINNER_FRAMES: ReadonlyArray<string> = [
   "\u280F",
 ];
 
+const WORKING_DOTS_FRAMES: ReadonlyArray<string> = [".", "..", "...", "...."];
+
 export function spinnerFrame() {
   return SPINNER_FRAMES[Math.floor(Date.now() / 80) % SPINNER_FRAMES.length] ?? "\u280B";
+}
+
+export function workingDots() {
+  return WORKING_DOTS_FRAMES[Math.floor(Date.now() / 80) % WORKING_DOTS_FRAMES.length] ?? ".";
 }

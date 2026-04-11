@@ -1,7 +1,7 @@
 import { getMarkdownTheme } from "@mariozechner/pi-coding-agent";
 import { Container, Markdown, Spacer, Text } from "@mariozechner/pi-tui";
 import { colorize } from "../common/color.js";
-import { spinnerFrame } from "../common/spinner.js";
+import { spinnerFrame, workingDots } from "../common/spinner.js";
 import type { AgentMetrics } from "../invocation/metrics.js";
 import { BorderedBox } from "../tui/bordered-box.js";
 import { formatUsageStats } from "./format.js";
@@ -171,9 +171,9 @@ function renderResultBox(params: {
   const box = new BorderedBox({ header, borderColor: borderColor(theme) });
 
   if (entry.status === "running") {
-    const spinner = spinnerFrame();
+    const dots = workingDots();
     const stats = entry.metrics ? ` ${theme.fg("dim", formatUsageStats(entry.metrics))}` : "";
-    box.addChild(new Text(`${theme.fg("accent", spinner)} working...${stats}`, 0, 0));
+    box.addChild(new Text(`Working${dots}${stats}`, 0, 0));
   } else if (entry.status === "error") {
     const errorMsg = entry.error ?? "unknown error";
     box.addChild(new Text(`${theme.fg("error", "✗")} ${theme.fg("error", errorMsg)}`, 0, 0));
