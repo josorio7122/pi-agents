@@ -2,6 +2,7 @@ import { getMarkdownTheme } from "@mariozechner/pi-coding-agent";
 import { Container, Markdown, Spacer, Text } from "@mariozechner/pi-tui";
 import { colorize } from "../common/color.js";
 import { workingDots } from "../common/spinner.js";
+import { isRecord } from "../common/type-guards.js";
 import type { AgentMetrics } from "../invocation/metrics.js";
 import { BorderedBox } from "../tui/bordered-box.js";
 import { formatUsageStats } from "./format.js";
@@ -115,9 +116,10 @@ export function renderAgentCall(params: {
 // ── renderResult ────────────────────────────────────────────
 
 function isAgentResultDetails(value: unknown): value is AgentResultDetails {
-  if (!value || typeof value !== "object") return false;
-  const v = value as Record<string, unknown>;
-  return (v.mode === "single" || v.mode === "parallel" || v.mode === "chain") && Array.isArray(v.results);
+  if (!isRecord(value)) return false;
+  return (
+    (value.mode === "single" || value.mode === "parallel" || value.mode === "chain") && Array.isArray(value.results)
+  );
 }
 
 export function renderAgentResult(params: {

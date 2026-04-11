@@ -1,3 +1,4 @@
+import { isRecord } from "../common/type-guards.js";
 import { type AgentMetrics, sumMetrics } from "../invocation/metrics.js";
 import type { RunAgentResult } from "../invocation/session-helpers.js";
 
@@ -32,10 +33,7 @@ function toTaskArray(value: unknown) {
   return value
     .filter(
       (item): item is { agent: string; task: string } =>
-        typeof item === "object" &&
-        item !== null &&
-        typeof (item as Record<string, unknown>).agent === "string" &&
-        typeof (item as Record<string, unknown>).task === "string",
+        isRecord(item) && typeof item.agent === "string" && typeof item.task === "string",
     )
     .map((item) => ({ agent: item.agent, task: item.task }));
 }
