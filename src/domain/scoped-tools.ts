@@ -1,9 +1,4 @@
-type DomainEntry = Readonly<{
-  path: string;
-  read: boolean;
-  write: boolean;
-  delete: boolean;
-}>;
+import type { DomainEntry } from "./types.js";
 
 type KnowledgeEntry = Readonly<{
   path: string;

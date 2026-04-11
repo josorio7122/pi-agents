@@ -1,13 +1,7 @@
 import { relative, resolve } from "node:path";
+import type { DomainEntry } from "./types.js";
 
 type Operation = "read" | "write" | "delete";
-
-type DomainEntry = Readonly<{
-  path: string;
-  read: boolean;
-  write: boolean;
-  delete: boolean;
-}>;
 
 type CheckResult = { readonly allowed: true } | { readonly allowed: false; readonly reason: string };
 
