@@ -67,7 +67,7 @@ describe("createToolForAgent", () => {
 
     const tool = createToolForAgent({ name: "read", ...makeDefaultParams(env) });
     const result = await tool!.execute("call-1", { path: "src/hello.txt" });
-    expect(result).toBeDefined();
+    expect(result.content[0].text).toContain("hello world");
   });
 
   it("logs domain violation to conversation log on blocked write", async () => {
