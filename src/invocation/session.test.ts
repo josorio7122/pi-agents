@@ -80,11 +80,11 @@ describe("runAgent (faux provider)", () => {
     expect(result.metrics.turns).toBeGreaterThanOrEqual(0);
   });
 
-  it("injects conversation log into prompt", async () => {
+  it("makes conversation log available to agent via read-conversation tool", async () => {
     faux = registerFauxProvider();
     const project = await makeTempProject();
     const { appendToLog } = await import("./conversation-log.js");
-    appendToLog(project.conversationLogPath, {
+    await appendToLog(project.conversationLogPath, {
       ts: "2026-01-01T00:00:00Z",
       from: "user",
       to: "test-agent",
@@ -102,6 +102,10 @@ describe("runAgent (faux provider)", () => {
       modelOverride: faux.getModel(),
     });
     expect(result.error).toBeUndefined();
+    // Verify the conversation log file contains the pre-existing entry
+    // (the agent accesses it via read-conversation tool, not prompt injection)
+    const logContent = await readLog(project.conversationLogPath);
+    expect(logContent).toContain("Previous conversation entry");
   });
 
   it("uses custom caller in conversation log entries", async () => {
