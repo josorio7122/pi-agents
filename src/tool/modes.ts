@@ -94,7 +94,7 @@ export async function executeParallel(params: {
   }
   await Promise.all(executing);
 
-  return results as RunAgentResult[];
+  return results.map((r) => r ?? CANCELLED_RESULT);
 }
 
 export type ChainResult = Readonly<{
