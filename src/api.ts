@@ -38,6 +38,8 @@ export type { AgentFrontmatter } from "./schema/frontmatter.js";
 // Schema
 export { AgentFrontmatterSchema } from "./schema/frontmatter.js";
 export { validateRoleTools } from "./schema/validation.js";
+// Agent tool factory
+export { createAgentTool } from "./tool/agent-tool.js";
 // Formatting
 export { formatTokens, formatUsageStats } from "./tool/format.js";
 export type { ChainResult, RunAgentFn } from "./tool/modes.js";
