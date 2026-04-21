@@ -17,6 +17,16 @@ async function loadContextFileFromDir(dir: string) {
   return undefined;
 }
 
+function* walkUp(start: string): Generator<string> {
+  let current = resolve(start);
+  while (true) {
+    yield current;
+    const parent = resolve(current, "..");
+    if (parent === current) return;
+    current = parent;
+  }
+}
+
 export async function discoverContextFiles(params: { readonly cwd: string; readonly agentDir?: string }) {
   const { cwd, agentDir = getAgentDir() } = params;
   const contextFiles: ContextFile[] = [];
@@ -31,20 +41,12 @@ export async function discoverContextFiles(params: { readonly cwd: string; reado
 
   // 2. Walk UP from cwd to root, collecting from each ancestor
   const ancestorFiles: ContextFile[] = [];
-  let currentDir = resolve(cwd);
-  const root = resolve("/");
-
-  while (true) {
-    const contextFile = await loadContextFileFromDir(currentDir);
+  for (const dir of walkUp(cwd)) {
+    const contextFile = await loadContextFileFromDir(dir);
     if (contextFile && !seenPaths.has(contextFile.path)) {
       ancestorFiles.unshift(contextFile); // root → ... → parent → cwd order
       seenPaths.add(contextFile.path);
     }
-
-    if (currentDir === root) break;
-    const parentDir = resolve(currentDir, "..");
-    if (parentDir === currentDir) break;
-    currentDir = parentDir;
   }
 
   contextFiles.push(...ancestorFiles);

@@ -14,12 +14,10 @@ export function safeParse<T extends TSchema>(schema: T, data: unknown): SafePars
   if (Value.Check(schema, data)) {
     return { success: true, data: data as Static<T> };
   }
-  const issues: SafeParseIssue[] = [];
-  for (const err of Value.Errors(schema, data)) {
-    issues.push({
-      path: err.path.split("/").filter((p) => p.length > 0),
-      message: err.message,
-    });
-  }
+
+  const issues = Array.from(Value.Errors(schema, data), (err) => ({
+    path: err.path.split("/").filter((p) => p.length > 0),
+    message: err.message,
+  }));
   return { success: false, error: { issues } };
 }

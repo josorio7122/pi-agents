@@ -4,6 +4,10 @@ type ParseResult =
   | { readonly ok: true; readonly value: { readonly frontmatter: Record<string, unknown>; readonly body: string } }
   | { readonly ok: false; readonly error: string };
 
+/**
+ * Compat alias for downstream consumers (e.g. pi-teams). Prefer `extractFrontmatter`
+ * in new code — `validateAgent` already trims the body, so this trim is redundant.
+ */
 export function parseAgentFile(content: string): ParseResult {
   const extracted = extractFrontmatter(content);
   if (!extracted.ok) return extracted;

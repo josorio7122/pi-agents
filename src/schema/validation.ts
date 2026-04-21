@@ -1,26 +1,19 @@
 type Role = "worker" | "lead" | "orchestrator";
 
-const EXECUTION_TOOLS = ["bash", "edit"] as const;
-const COORDINATION_TOOLS = ["delegate"] as const;
+const FORBIDDEN_TOOLS_BY_ROLE: Readonly<Record<Role, ReadonlyArray<string>>> = {
+  worker: ["delegate"],
+  lead: ["bash", "edit"],
+  orchestrator: ["bash", "edit"],
+};
+
+const REASON_BY_ROLE: Readonly<Record<Role, string>> = {
+  worker: "workers execute, they don't coordinate.",
+  lead: "leads coordinate, they don't execute.",
+  orchestrator: "orchestrators coordinate, they don't execute.",
+};
 
 export function validateRoleTools(role: Role, tools: readonly string[]) {
-  const errors: string[] = [];
-
-  if (role === "worker") {
-    for (const t of COORDINATION_TOOLS) {
-      if (tools.includes(t)) {
-        errors.push(`Worker cannot have "${t}" — workers execute, they don't coordinate.`);
-      }
-    }
-  }
-
-  if (role === "lead" || role === "orchestrator") {
-    for (const t of EXECUTION_TOOLS) {
-      if (tools.includes(t)) {
-        errors.push(`${role} cannot have "${t}" — ${role}s coordinate, they don't execute.`);
-      }
-    }
-  }
-
-  return errors;
+  return FORBIDDEN_TOOLS_BY_ROLE[role]
+    .filter((t) => tools.includes(t))
+    .map((t) => `${role === "worker" ? "Worker" : role} cannot have "${t}" — ${REASON_BY_ROLE[role]}`);
 }

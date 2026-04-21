@@ -13,38 +13,29 @@ export function checkDomain(params: {
 }): CheckResult {
   const { filePath, operation, domain, cwd } = params;
 
-  // Normalize to relative path
   const abs = resolve(cwd, filePath);
   const rel = relative(cwd, abs);
 
-  // Find most specific matching domain entry (longest prefix)
-  let bestMatch: DomainEntry | undefined;
-  let bestLength = -1;
-
-  for (const entry of domain) {
-    // "." matches all paths (wildcard) — lowest specificity
-    if (entry.path === ".") {
-      if (bestLength < 0) {
-        bestLength = 0;
-        bestMatch = entry;
-      }
-      continue;
-    }
-
+  function matchLength(entry: DomainEntry): number {
+    if (entry.path === ".") return 0;
     const normalized = entry.path.endsWith("/") ? entry.path : `${entry.path}/`;
     const relWithSlash = rel.endsWith("/") ? rel : `${rel}/`;
-
-    if (relWithSlash.startsWith(normalized) || rel === entry.path.replace(/\/$/, "")) {
-      if (normalized.length > bestLength) {
-        bestLength = normalized.length;
-        bestMatch = entry;
-      }
-    }
+    const prefixMatch = relWithSlash.startsWith(normalized);
+    const exactMatch = rel === entry.path.replace(/\/$/, "");
+    return prefixMatch || exactMatch ? normalized.length : -1;
   }
 
-  if (!bestMatch) {
+  const best = domain.reduce<{ entry: DomainEntry; length: number } | undefined>((acc, entry) => {
+    const length = matchLength(entry);
+    if (length < 0) return acc;
+    if (!acc || length > acc.length) return { entry, length };
+    return acc;
+  }, undefined);
+
+  if (!best) {
     return { allowed: false, reason: `Path "${rel}" is not in agent's domain` };
   }
+  const bestMatch = best.entry;
 
   const permissionMap = { read: bestMatch.read, write: bestMatch.write, delete: bestMatch.delete };
   const permitted = permissionMap[operation];

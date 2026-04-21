@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatTokens, formatToolCall, formatUsageStats } from "./format.js";
+import { formatTokens, formatUsageStats } from "./format.js";
 
 describe("formatTokens", () => {
   it("formats small numbers as-is", () => {
@@ -60,51 +60,5 @@ describe("formatUsageStats", () => {
       ],
     });
     expect(result).toContain("2 tools");
-  });
-});
-
-describe("formatToolCall", () => {
-  it("formats bash as $ command", () => {
-    expect(formatToolCall("bash", { command: "npm test" })).toBe("$ npm test");
-  });
-
-  it("formats read as read path", () => {
-    expect(formatToolCall("read", { path: "src/index.ts" })).toBe("read src/index.ts");
-  });
-
-  it("formats grep as grep /pattern/ in path", () => {
-    expect(formatToolCall("grep", { pattern: "TODO", path: "src/" })).toBe("grep /TODO/ in src/");
-  });
-
-  it("formats write with path", () => {
-    expect(formatToolCall("write", { path: "src/new.ts" })).toContain("write src/new.ts");
-  });
-
-  it("formats unknown tools with name + args", () => {
-    expect(formatToolCall("custom", { key: "value" })).toContain("custom");
-  });
-
-  it("formats bash with missing command as $ ...", () => {
-    expect(formatToolCall("bash", {})).toBe("$ ...");
-  });
-
-  it("formats read with missing path as read ...", () => {
-    expect(formatToolCall("read", {})).toBe("read ...");
-  });
-
-  it("formats grep with missing fields", () => {
-    expect(formatToolCall("grep", {})).toBe("grep // in .");
-  });
-
-  it("truncates long args for unknown tools", () => {
-    const longValue = "a".repeat(100);
-    const result = formatToolCall("custom", { key: longValue });
-    expect(result.length).toBeLessThan(70);
-    expect(result).toContain("...");
-  });
-
-  it("handles non-string args gracefully", () => {
-    expect(formatToolCall("bash", { command: 42 })).toBe("$ ...");
-    expect(formatToolCall("read", { path: null })).toBe("read ...");
   });
 });

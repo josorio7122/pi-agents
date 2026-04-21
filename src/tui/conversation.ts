@@ -6,7 +6,7 @@ import type { RenderTheme } from "../tool/render-types.js";
 import { BorderedBox } from "./bordered-box.js";
 import type { ConversationEvent } from "./types.js";
 
-function agentLabel(params: { readonly config: AgentConfig; readonly theme: RenderTheme }) {
+function agentLabel(params: { readonly config: AgentConfig }) {
   const fm = params.config.frontmatter;
   return `${fm.icon} ${colorize(fm.color, fm.name)}`;
 }
@@ -21,11 +21,11 @@ function eventHeader(params: {
     const from = agents.get(event.from);
     const to = agents.get(event.to);
     if (!from || !to) return `${event.from} → ${event.to}`;
-    return `${agentLabel({ config: from, theme })} ${theme.fg("dim", "→")} ${agentLabel({ config: to, theme })}`;
+    return `${agentLabel({ config: from })} ${theme.fg("dim", "→")} ${agentLabel({ config: to })}`;
   }
   const config = agents.get(event.agent);
   if (!config) return event.agent;
-  return agentLabel({ config, theme });
+  return agentLabel({ config });
 }
 
 function eventBody(event: ConversationEvent) {

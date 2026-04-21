@@ -24,6 +24,7 @@
     "lint:blanks": "bash scripts/check-blank-lines.sh",
     "check": "npm run lint && npm run lint:blanks && npm run typecheck && npm run test",
     "format": "biome format --write src/",
+    "simulate": "tsx scripts/simulate-ui.ts",
     "prepare": "simple-git-hooks"
   },
   "peerDependencies": {
@@ -34,13 +35,14 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.10",
-    "@mariozechner/pi-ai": "^0.65.0",
-    "@mariozechner/pi-coding-agent": "^0.65.0",
-    "@mariozechner/pi-tui": "^0.65.0",
-    "@sinclair/typebox": "^0.34.49",
+    "@mariozechner/pi-ai": "*",
+    "@mariozechner/pi-coding-agent": "*",
+    "@mariozechner/pi-tui": "*",
+    "@sinclair/typebox": "*",
     "@types/node": "^25.5.0",
     "lint-staged": "^16.4.0",
     "simple-git-hooks": "^2.13.1",
+    "tsx": "^4.21.0",
     "typescript": "^6.0.2",
     "vitest": "^4.1.2"
   },

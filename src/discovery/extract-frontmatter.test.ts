@@ -37,4 +37,26 @@ describe("extractFrontmatter", () => {
     if (result.ok) return;
     expect(result.error).toContain("no YAML fields");
   });
+
+  it("handles frontmatter with invalid YAML gracefully", () => {
+    // parseFrontmatter may throw on malformed YAML, or return empty frontmatter.
+    // Either way, extractFrontmatter must not return ok: true with garbage data.
+    try {
+      const result = extractFrontmatter("---\n: invalid: yaml: [\n---\nBody here");
+      // If it doesn't throw, it must be an error result
+      expect(result.ok).toBe(false);
+    } catch (err) {
+      // Throwing is acceptable — YAML parsing failure
+      expect(err).toBeDefined();
+    }
+  });
+
+  it("handles file with multiple --- separators", () => {
+    const content = "---\nname: test\n---\n# Agent\n\n---\n\nMore content after separator";
+    const result = extractFrontmatter(content);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    // Body should include everything after the closing ---
+    expect(result.value.body).toContain("More content after separator");
+  });
 });

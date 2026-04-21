@@ -11,6 +11,7 @@ import { parseModelId } from "../common/model.js";
 import { expandPath } from "../common/paths.js";
 import { loadSkillContents } from "../common/skills.js";
 import { buildDomainWithKnowledge } from "../domain/scoped-tools.js";
+import type { AssemblyContext } from "../prompt/assembly.js";
 import { assembleSystemPrompt } from "../prompt/assembly.js";
 import { buildAgentTools } from "./build-tools.js";
 import { appendToLog } from "./conversation-log.js";
@@ -44,10 +45,9 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
   const sharedContextContents = sharedContext ?? (await discoverContextFiles({ cwd }));
 
   // Assemble system prompt (pure)
-  const assemblyCtx = {
+  const assemblyCtx: AssemblyContext = {
     agentConfig,
     sessionDir,
-
     skillContents,
     ...(extraVariables ? { extraVariables } : {}),
     ...(sharedContextContents.length > 0 ? { sharedContextContents } : {}),
@@ -62,22 +62,25 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
   }
 
   // Build domain with implicit knowledge paths
+  const projectKnowledgePath = expandPath(fm.knowledge.project.path);
+  const generalKnowledgePath = expandPath(fm.knowledge.general.path);
+
   const knowledgeEntries = [
-    { path: expandPath(fm.knowledge.project.path), updatable: fm.knowledge.project.updatable },
-    { path: expandPath(fm.knowledge.general.path), updatable: fm.knowledge.general.updatable },
+    { path: projectKnowledgePath, updatable: fm.knowledge.project.updatable },
+    { path: generalKnowledgePath, updatable: fm.knowledge.general.updatable },
   ];
 
-  const fullDomain = buildDomainWithKnowledge(
-    fm.reports
-      ? { domain: fm.domain, knowledgeEntries, reportsDir: { path: fm.reports.path, updatable: fm.reports.updatable } }
-      : { domain: fm.domain, knowledgeEntries },
-  );
-
-  // Knowledge files with max-lines for post-write enforcement
   const knowledgeFiles = [
-    { path: expandPath(fm.knowledge.project.path), maxLines: fm.knowledge.project["max-lines"] },
-    { path: expandPath(fm.knowledge.general.path), maxLines: fm.knowledge.general["max-lines"] },
+    { path: projectKnowledgePath, maxLines: fm.knowledge.project["max-lines"] },
+    { path: generalKnowledgePath, maxLines: fm.knowledge.general["max-lines"] },
   ];
+
+  const reportsDir = fm.reports ? { path: fm.reports.path, updatable: fm.reports.updatable } : undefined;
+  const fullDomain = buildDomainWithKnowledge({
+    domain: fm.domain,
+    knowledgeEntries,
+    ...(reportsDir ? { reportsDir } : {}),
+  });
 
   // Build all agent tools
   const { builtinTools, customTools: builtCustomTools } = buildAgentTools({
@@ -99,11 +102,16 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
   });
 
   // Create agent session
+  // Merge all tools (builtin wrappers + knowledge/conversation/submit + caller-provided)
+  // into customTools, then pass their names as the allowlist so pi activates ONLY our
+  // wrapped versions — never the raw built-ins (which would bypass domain checks).
+  const allCustomTools = [...builtinTools, ...builtCustomTools, ...(customTools ?? [])];
+  const activeToolNames = allCustomTools.map((t) => t.name);
   const { session } = await createAgentSession({
     cwd,
     model,
-    tools: builtinTools,
-    customTools: [...builtCustomTools, ...((customTools ?? []) as typeof builtCustomTools)],
+    tools: activeToolNames,
+    customTools: allCustomTools,
     sessionManager: SessionManager.inMemory(),
     settingsManager: SettingsManager.inMemory({ compaction: { enabled: false } }),
     modelRegistry,

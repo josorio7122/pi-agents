@@ -6,7 +6,7 @@ import { isRecord } from "../common/type-guards.js";
 import type { AgentMetrics } from "../invocation/metrics.js";
 import { BorderedBox } from "../tui/bordered-box.js";
 import { formatUsageStats } from "./format.js";
-import { aggregateMetrics } from "./modes.js";
+import { aggregateMetricsArray, detectMode } from "./modes.js";
 import type { AgentResultDetails, AgentResultEntry, FindAgent, RenderTheme } from "./render-types.js";
 
 // ── helpers ────────────────────────────────────────────────
@@ -52,39 +52,40 @@ function taskBox(params: {
   return box;
 }
 
-function renderParallelCall(params: {
-  readonly tasks: Array<Record<string, unknown>>;
+function renderListCall(params: {
+  readonly items: ReadonlyArray<{ readonly agent: string; readonly task: string }>;
+  readonly title: string;
+  readonly stepped: boolean;
   readonly theme: RenderTheme;
   readonly findAgent: FindAgent;
   readonly mdTheme: ReturnType<typeof getMarkdownTheme>;
 }) {
-  const { tasks, theme, findAgent, mdTheme } = params;
+  const { items, title, stepped, theme, findAgent, mdTheme } = params;
   const container = new Container();
-  container.addChild(new Text(`» ${theme.bold(`parallel (${tasks.length} tasks)`)}`, 0, 0));
-  for (const t of tasks) {
-    container.addChild(taskBox({ t, theme, findAgent, mdTheme }));
-  }
-  return container;
-}
-
-function renderChainCall(params: {
-  readonly chain: Array<Record<string, unknown>>;
-  readonly theme: RenderTheme;
-  readonly findAgent: FindAgent;
-  readonly mdTheme: ReturnType<typeof getMarkdownTheme>;
-}) {
-  const { chain, theme, findAgent, mdTheme } = params;
-  const container = new Container();
-  container.addChild(new Text(`› ${theme.bold(`chain (${chain.length} steps)`)}`, 0, 0));
-  for (let i = 0; i < chain.length; i++) {
-    const step = chain[i];
-    if (!step) continue;
-    container.addChild(taskBox({ t: step, theme, findAgent, mdTheme, stepPrefix: `${i + 1}. ` }));
+  const symbol = stepped ? "›" : "»";
+  container.addChild(new Text(`${symbol} ${theme.bold(title)}`, 0, 0));
+  for (const [i, item] of items.entries()) {
+    const stepPrefix = stepped ? `${i + 1}. ` : undefined;
+    container.addChild(
+      taskBox({ t: item as Record<string, unknown>, theme, findAgent, mdTheme, ...(stepPrefix ? { stepPrefix } : {}) }),
+    );
   }
   return container;
 }
 
 // ── renderCall ──────────────────────────────────────────────
+
+type ModeOrError = ReturnType<typeof detectMode>;
+
+function extractSingleModeAgent(mode: ModeOrError, args: Record<string, unknown>) {
+  if ("mode" in mode && mode.mode === "single") return mode.agent;
+  return typeof args?.agent === "string" ? args.agent : "...";
+}
+
+function extractSingleModeTask(mode: ModeOrError, args: Record<string, unknown>) {
+  if ("mode" in mode && mode.mode === "single") return mode.task;
+  return typeof args?.task === "string" ? args.task : "";
+}
 
 export function renderAgentCall(params: {
   readonly args: Record<string, unknown>;
@@ -93,20 +94,32 @@ export function renderAgentCall(params: {
 }) {
   const { args, theme, findAgent } = params;
   const mdTheme = getMarkdownTheme();
+  const mode = detectMode(args);
 
-  const tasks = Array.isArray(args?.tasks) ? (args.tasks as Array<Record<string, unknown>>) : undefined;
-  const chain = Array.isArray(args?.chain) ? (args.chain as Array<Record<string, unknown>>) : undefined;
-
-  if (tasks && tasks.length > 0) {
-    return renderParallelCall({ tasks, theme, findAgent, mdTheme });
+  if ("mode" in mode && mode.mode === "parallel") {
+    return renderListCall({
+      items: mode.tasks,
+      title: `parallel (${mode.tasks.length} tasks)`,
+      stepped: false,
+      theme,
+      findAgent,
+      mdTheme,
+    });
   }
-  if (chain && chain.length > 0) {
-    return renderChainCall({ chain, theme, findAgent, mdTheme });
+  if ("mode" in mode && mode.mode === "chain") {
+    return renderListCall({
+      items: mode.chain,
+      title: `chain (${mode.chain.length} steps)`,
+      stepped: true,
+      theme,
+      findAgent,
+      mdTheme,
+    });
   }
 
-  // Single mode
-  const agentName = typeof args?.agent === "string" ? args.agent : "...";
-  const task = typeof args?.task === "string" ? args.task : "";
+  // Single mode (or incomplete args — defensive fallback)
+  const agentName = extractSingleModeAgent(mode, args);
+  const task = extractSingleModeTask(mode, args);
   const header = agentHeader({ agentName, theme, findAgent });
   const box = new BorderedBox({ header, borderColor: borderColor(theme) });
   box.addChild(new Markdown(task, 0, 0, mdTheme));
@@ -151,7 +164,7 @@ export function renderAgentResult(params: {
   if (details.results.length > 1) {
     const withMetrics = details.results.filter((e): e is AgentResultEntry & { metrics: AgentMetrics } => !!e.metrics);
     if (withMetrics.length > 0) {
-      const agg = aggregateMetrics(withMetrics.map((e) => ({ output: "", metrics: e.metrics })));
+      const agg = aggregateMetricsArray(withMetrics.map((e) => e.metrics));
       container.addChild(new Spacer(1));
       container.addChild(new Text(theme.fg("dim", `Σ ${formatUsageStats(agg)}`), 0, 0));
     }

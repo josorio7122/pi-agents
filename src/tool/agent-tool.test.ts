@@ -58,7 +58,7 @@ describe("createAgentTool", () => {
       sessionDir: "/tmp/sessions/abc",
       conversationLogPath: "/tmp/sessions/abc/conversation.jsonl",
     });
-    const guidelines = tool.promptGuidelines!.join("\n");
+    const guidelines = (tool.promptGuidelines ?? []).join("\n");
     expect(guidelines).toContain("scout");
     expect(guidelines).toContain("investigator");
     expect(guidelines).toContain("🔍");

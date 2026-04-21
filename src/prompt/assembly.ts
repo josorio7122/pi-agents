@@ -14,26 +14,32 @@ function serializeBlock(data: unknown) {
   return JSON.stringify(data, null, 2);
 }
 
+function section(title: string, body: string): string {
+  if (!body) return "";
+  return `\n\n---\n\n## ${title}\n${body}`;
+}
+
 function renderSkillsSection(skillContents: AssemblyContext["skillContents"]): string {
   if (skillContents.length === 0) return "";
   const entries = skillContents.map((s) => `\n### ${s.name} (${s.when})\n\n${s.content}\n`).join("");
-  return `\n\n---\n\n## Skills\n${entries}`;
+  return section("Skills", entries);
 }
 
 function renderKnowledgeSection(knowledge: AgentFrontmatter["knowledge"]): string {
-  return `\n\n---\n\n## Knowledge Files
-- **Project:** \`${knowledge.project.path}\` — ${knowledge.project.description}
+  const body = `- **Project:** \`${knowledge.project.path}\` — ${knowledge.project.description}
 - **General:** \`${knowledge.general.path}\` — ${knowledge.general.description}
 
 Use \`read-knowledge\` to load these files. Use \`write-knowledge\` or \`edit-knowledge\` to update them.`;
+  return section("Knowledge Files", body);
 }
 
 function renderSharedContextSection(files: AssemblyContext["sharedContextContents"]): string {
   if (!files || files.length === 0) return "";
   const entries = files.map((f) => `\n### ${f.path}\n\n${f.content}\n`).join("");
-  return `\n\n---\n\n## Shared Context\n${entries}`;
+  return section("Shared Context", entries);
 }
 
+// Reports section uses a soft break (no horizontal rule) — flows under shared-context.
 function renderReportsSection(reports: AgentFrontmatter["reports"]): string {
   if (!reports) return "";
   return `\n\n## Reports\nDirectory: ${reports.path}\nWrite report artifacts here. The directory is created automatically on first write.`;
