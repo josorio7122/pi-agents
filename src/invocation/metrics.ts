@@ -41,22 +41,27 @@ export function createMetricsTracker() {
   return {
     // Accepts AgentSessionEvent or any record — we duck-type the fields we need
     handle(event: Readonly<Record<string, unknown>>) {
-      if (event.type === "turn_end") {
-        turns++;
-      }
-      if (event.type === "message_end") {
-        const usage = extractUsage(event);
-        if (usage) {
-          inputTokens += usage.input;
-          outputTokens += usage.output;
-          cost += usage.cost;
+      switch (event.type) {
+        case "turn_end":
+          turns++;
+          return;
+        case "message_end": {
+          const usage = extractUsage(event);
+          if (usage) {
+            inputTokens += usage.input;
+            outputTokens += usage.output;
+            cost += usage.cost;
+          }
+          return;
         }
-      }
-      if (event.type === "tool_execution_start") {
-        toolCalls.push({
-          name: typeof event.toolName === "string" ? event.toolName : "unknown",
-          args: isRecord(event.args) ? event.args : {},
-        });
+        case "tool_execution_start":
+          toolCalls.push({
+            name: typeof event.toolName === "string" ? event.toolName : "unknown",
+            args: isRecord(event.args) ? event.args : {},
+          });
+          return;
+        default:
+          return;
       }
     },
     snapshot(): AgentMetrics {
@@ -65,7 +70,7 @@ export function createMetricsTracker() {
         inputTokens,
         outputTokens,
         cost,
-        toolCalls: toolCalls.map((tc) => ({ ...tc })),
+        toolCalls: [...toolCalls],
       };
     },
   };

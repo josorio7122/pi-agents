@@ -3,12 +3,13 @@ import { createThrottle } from "../common/throttle.js";
 import type { AgentConfig } from "../discovery/validator.js";
 import type { AgentMetrics } from "../invocation/metrics.js";
 import type { RunAgentResult } from "./modes.js";
-import { collectAgentNames, detectMode, executeChain, executeParallel, executeSingle } from "./modes.js";
+import { collectAgentNames, detectMode, executeChain, executeParallel } from "./modes.js";
 import type { AgentResultDetails, AgentResultEntry } from "./render-types.js";
 import { runningEntry, toResultEntry } from "./render-types.js";
 import { truncateOutput } from "./truncate.js";
 
 type EmitProgress = (details: AgentResultDetails) => void;
+type Mode = "single" | "parallel" | "chain";
 type MakeRunAgent = (
   config: AgentConfig,
   signal?: AbortSignal,
@@ -30,6 +31,31 @@ function withAnimation(emitProgress: EmitProgress) {
   };
 }
 
+function withThrottledAnimation(params: {
+  readonly mode: Mode;
+  readonly animation: ReturnType<typeof withAnimation>;
+  readonly initialEntries: ReadonlyArray<AgentResultEntry>;
+}) {
+  const { mode, animation } = params;
+  const entries: AgentResultEntry[] = [...params.initialEntries];
+  animation.update({ mode, results: [...entries] });
+  const throttled = createThrottle(() => {
+    animation.update({ mode, results: [...entries] });
+  });
+  return {
+    throttled,
+    setEntry(index: number, next: AgentResultEntry) {
+      entries[index] = next;
+      throttled.flush();
+    },
+    updateMetrics(index: number, metrics: AgentMetrics) {
+      const prev = entries[index];
+      if (prev) entries[index] = { ...prev, metrics };
+      throttled();
+    },
+  };
+}
+
 async function executeSingleMode(params: {
   readonly mode: { readonly agent: string; readonly task: string };
   readonly findAgent: (name: string) => AgentConfig | undefined;
@@ -41,21 +67,16 @@ async function executeSingleMode(params: {
   const config = findAgent(mode.agent);
   if (!config) throw new Error(`Agent "${mode.agent}" not found`);
 
-  const entry: AgentResultEntry[] = [runningEntry({ agentName: mode.agent })];
-  animation.update({ mode: "single", results: [...entry] });
-
-  const throttled = createThrottle(() => {
-    animation.update({ mode: "single", results: [...entry] });
+  const { throttled, updateMetrics } = withThrottledAnimation({
+    mode: "single",
+    animation,
+    initialEntries: [runningEntry({ agentName: mode.agent })],
   });
 
-  const result = await executeSingle({
+  const runAgent = makeRunAgent(config, signal);
+  const result = await runAgent({
     task: mode.task,
-    runAgent: makeRunAgent(config, signal),
-    onMetrics: (m) => {
-      const prev = entry[0];
-      if (prev) entry[0] = { ...prev, metrics: m };
-      throttled();
-    },
+    onMetrics: (m) => updateMetrics(0, m),
   });
   throttled.flush();
 
@@ -77,11 +98,10 @@ async function executeParallelMode(params: {
     return { agent: t.agent, task: t.task, runAgent: makeRunAgent(agentConfig, signal) };
   });
 
-  const entries: AgentResultEntry[] = taskDefs.map((t) => runningEntry({ agentName: t.agent }));
-  animation.update({ mode: "parallel", results: [...entries] });
-
-  const throttled = createThrottle(() => {
-    animation.update({ mode: "parallel", results: [...entries] });
+  const { throttled, setEntry, updateMetrics } = withThrottledAnimation({
+    mode: "parallel",
+    animation,
+    initialEntries: taskDefs.map((t) => runningEntry({ agentName: t.agent })),
   });
 
   const results = await executeParallel({
@@ -90,14 +110,9 @@ async function executeParallelMode(params: {
     ...(signal ? { signal } : {}),
     onProgress: (idx, r) => {
       const def = taskDefs[idx];
-      if (def) entries[idx] = toResultEntry({ agentName: def.agent, result: r });
-      throttled.flush();
+      if (def) setEntry(idx, toResultEntry({ agentName: def.agent, result: r }));
     },
-    onTaskMetrics: (idx, m) => {
-      const prev = entries[idx];
-      if (prev) entries[idx] = { ...prev, metrics: m };
-      throttled();
-    },
+    onTaskMetrics: (idx, m) => updateMetrics(idx, m),
   });
   throttled.flush();
 
@@ -123,11 +138,10 @@ async function executeChainMode(params: {
     return { agent: s.agent, task: s.task, runAgent: makeRunAgent(agentConfig, signal) };
   });
 
-  const chainEntries: AgentResultEntry[] = stepDefs.map((s, i) => runningEntry({ agentName: s.agent, step: i + 1 }));
-  animation.update({ mode: "chain", results: [...chainEntries] });
-
-  const throttled = createThrottle(() => {
-    animation.update({ mode: "chain", results: [...chainEntries] });
+  const { throttled, setEntry, updateMetrics } = withThrottledAnimation({
+    mode: "chain",
+    animation,
+    initialEntries: stepDefs.map((s, i) => runningEntry({ agentName: s.agent, step: i + 1 })),
   });
 
   const chainResult = await executeChain({
@@ -135,16 +149,9 @@ async function executeChainMode(params: {
     ...(signal ? { signal } : {}),
     onStepComplete: (stepIdx, r) => {
       const stepDef = stepDefs[stepIdx];
-      if (stepDef) {
-        chainEntries[stepIdx] = toResultEntry({ agentName: stepDef.agent, result: r, step: stepIdx + 1 });
-      }
-      throttled.flush();
+      if (stepDef) setEntry(stepIdx, toResultEntry({ agentName: stepDef.agent, result: r, step: stepIdx + 1 }));
     },
-    onStepMetrics: (stepIdx, m) => {
-      const prev = chainEntries[stepIdx];
-      if (prev) chainEntries[stepIdx] = { ...prev, metrics: m };
-      throttled();
-    },
+    onStepMetrics: (stepIdx, m) => updateMetrics(stepIdx, m),
   });
   throttled.flush();
 

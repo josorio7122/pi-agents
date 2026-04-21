@@ -16,20 +16,16 @@ export async function dumpAgentSession(params: DumpParams) {
     await mkdir(agentDir, { recursive: true });
     const ts = new Date().toISOString().replace(/[:.]/g, "-");
     const filename = `${ts}_${params.agentName}.jsonl`;
-    const lines: string[] = [
-      JSON.stringify({
-        type: "agent_session",
-        agent: params.agentName,
-        caller: params.caller,
-        task: params.task,
-        timestamp: ts,
-        extractedOutput: params.output,
-      }),
-    ];
-    for (const msg of params.messages) {
-      lines.push(JSON.stringify({ type: "message", message: msg }));
-    }
-    await writeFile(join(agentDir, filename), lines.join("\n") + "\n");
+    const header = JSON.stringify({
+      type: "agent_session",
+      agent: params.agentName,
+      caller: params.caller,
+      task: params.task,
+      timestamp: ts,
+      extractedOutput: params.output,
+    });
+    const body = params.messages.map((msg) => JSON.stringify({ type: "message", message: msg }));
+    await writeFile(join(agentDir, filename), `${[header, ...body].join("\n")}\n`);
   } catch {
     // Non-critical — don't fail the agent run if dump fails
   }

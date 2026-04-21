@@ -1,9 +1,20 @@
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
 import { describe, expect, it } from "vitest";
+import type { ExecutableTool } from "../common/tool-types.js";
 import { ensureLogExists, readLog } from "./conversation-log.js";
 import { createToolForAgent } from "./tool-wrapper.js";
+
+// Test-only stub — pi's ToolDefinition.execute requires a 5th `ctx` arg,
+// but our domain-check wrapper never reads from it.
+const fakeCtx = {} as ExtensionContext;
+
+// biome-ignore lint/complexity/useMaxParams: test helper mirroring ToolDefinition.execute
+function exec(tool: ExecutableTool, id: string, params: unknown) {
+  return tool.execute(id, params, undefined, undefined, fakeCtx);
+}
 
 async function makeTempEnv() {
   const cwd = mkdtempSync(join(tmpdir(), "tool-wrapper-"));
@@ -24,6 +35,11 @@ function makeDefaultParams(env: Awaited<ReturnType<typeof makeTempEnv>>) {
   };
 }
 
+function requireTool<T>(tool: T | undefined, name: string): T {
+  if (!tool) throw new Error(`expected tool "${name}" to be defined`);
+  return tool;
+}
+
 describe("createToolForAgent", () => {
   it("returns undefined for unknown tool name", async () => {
     const env = await makeTempEnv();
@@ -33,29 +49,30 @@ describe("createToolForAgent", () => {
 
   it("returns bash tool without domain wrapping", async () => {
     const env = await makeTempEnv();
-    const tool = createToolForAgent({ name: "bash", ...makeDefaultParams(env) });
-    expect(tool).toBeDefined();
-    expect(tool!.name).toBe("bash");
+    const tool = requireTool(createToolForAgent({ name: "bash", ...makeDefaultParams(env) }), "bash");
+    expect(tool.name).toBe("bash");
   });
 
   it("returns read tool with domain wrapping", async () => {
     const env = await makeTempEnv();
-    const tool = createToolForAgent({ name: "read", ...makeDefaultParams(env) });
-    expect(tool).toBeDefined();
-    expect(tool!.name).toBe("read");
+    const tool = requireTool(createToolForAgent({ name: "read", ...makeDefaultParams(env) }), "read");
+    expect(tool.name).toBe("read");
   });
 
   it("blocks file read outside domain", async () => {
     const env = await makeTempEnv();
     writeFileSync(join(env.cwd, "secret.txt"), "secret");
 
-    const tool = createToolForAgent({
-      name: "read",
-      ...makeDefaultParams(env),
-      domain: [{ path: "src/", read: true, write: false, delete: false }],
-    });
+    const tool = requireTool(
+      createToolForAgent({
+        name: "read",
+        ...makeDefaultParams(env),
+        domain: [{ path: "src/", read: true, write: false, delete: false }],
+      }),
+      "read",
+    );
 
-    await expect(tool!.execute("call-1", { path: "secret.txt" })).rejects.toThrow("Domain violation");
+    await expect(exec(tool, "call-1", { path: "secret.txt" })).rejects.toThrow("Domain violation");
 
     const log = await readLog(env.logPath);
     expect(log).toContain("Domain violation");
@@ -65,8 +82,8 @@ describe("createToolForAgent", () => {
     const env = await makeTempEnv();
     writeFileSync(join(env.srcDir, "hello.txt"), "hello world");
 
-    const tool = createToolForAgent({ name: "read", ...makeDefaultParams(env) });
-    const result = await tool!.execute("call-1", { path: "src/hello.txt" });
+    const tool = requireTool(createToolForAgent({ name: "read", ...makeDefaultParams(env) }), "read");
+    const result = await exec(tool, "call-1", { path: "src/hello.txt" });
     const first = result.content[0];
     if (!first || first.type !== "text") throw new Error("expected text content");
     expect(first.text).toContain("hello world");
@@ -76,13 +93,16 @@ describe("createToolForAgent", () => {
     const env = await makeTempEnv();
     writeFileSync(join(env.srcDir, "existing.txt"), "data");
 
-    const tool = createToolForAgent({
-      name: "write",
-      ...makeDefaultParams(env),
-      domain: [{ path: "src/", read: true, write: false, delete: false }],
-    });
+    const tool = requireTool(
+      createToolForAgent({
+        name: "write",
+        ...makeDefaultParams(env),
+        domain: [{ path: "src/", read: true, write: false, delete: false }],
+      }),
+      "write",
+    );
 
-    await expect(tool!.execute("call-1", { path: "src/existing.txt", content: "new" })).rejects.toThrow(
+    await expect(exec(tool, "call-1", { path: "src/existing.txt", content: "new" })).rejects.toThrow(
       "Domain violation",
     );
 
@@ -96,28 +116,32 @@ describe("createToolForAgent", () => {
     const knowledgePath = join(env.cwd, ".pi", "knowledge", "project", "test.yaml");
     mkdirSync(join(env.cwd, ".pi", "knowledge", "project"), { recursive: true });
 
-    const tool = createToolForAgent({
-      name: "write-knowledge",
-      ...makeDefaultParams(env),
-      knowledgeFiles: [{ path: knowledgePath, maxLines: 100 }],
-    });
+    const tool = requireTool(
+      createToolForAgent({
+        name: "write-knowledge",
+        ...makeDefaultParams(env),
+        knowledgeFiles: [{ path: knowledgePath, maxLines: 100 }],
+      }),
+      "write-knowledge",
+    );
 
-    expect(tool).toBeDefined();
-    expect(tool!.name).toBe("write-knowledge");
+    expect(tool.name).toBe("write-knowledge");
   });
 
   it("creates edit-knowledge tool", async () => {
     const env = await makeTempEnv();
     const knowledgePath = join(env.cwd, ".pi", "knowledge", "project", "test.yaml");
 
-    const tool = createToolForAgent({
-      name: "edit-knowledge",
-      ...makeDefaultParams(env),
-      knowledgeFiles: [{ path: knowledgePath, maxLines: 100 }],
-    });
+    const tool = requireTool(
+      createToolForAgent({
+        name: "edit-knowledge",
+        ...makeDefaultParams(env),
+        knowledgeFiles: [{ path: knowledgePath, maxLines: 100 }],
+      }),
+      "edit-knowledge",
+    );
 
-    expect(tool).toBeDefined();
-    expect(tool!.name).toBe("edit-knowledge");
+    expect(tool.name).toBe("edit-knowledge");
   });
 
   it("write-knowledge allows writing to knowledge path", async () => {
@@ -125,13 +149,16 @@ describe("createToolForAgent", () => {
     const knowledgePath = join(env.cwd, ".pi", "knowledge", "project", "test.yaml");
     mkdirSync(join(env.cwd, ".pi", "knowledge", "project"), { recursive: true });
 
-    const tool = createToolForAgent({
-      name: "write-knowledge",
-      ...makeDefaultParams(env),
-      knowledgeFiles: [{ path: knowledgePath, maxLines: 100 }],
-    });
+    const tool = requireTool(
+      createToolForAgent({
+        name: "write-knowledge",
+        ...makeDefaultParams(env),
+        knowledgeFiles: [{ path: knowledgePath, maxLines: 100 }],
+      }),
+      "write-knowledge",
+    );
 
-    await tool!.execute("call-1", { path: knowledgePath, content: "learned: something" });
+    await exec(tool, "call-1", { path: knowledgePath, content: "learned: something" });
     const content = readFileSync(knowledgePath, "utf-8");
     expect(content).toBe("learned: something");
   });
@@ -140,13 +167,16 @@ describe("createToolForAgent", () => {
     const env = await makeTempEnv();
     const knowledgePath = join(env.cwd, ".pi", "knowledge", "project", "test.yaml");
 
-    const tool = createToolForAgent({
-      name: "write-knowledge",
-      ...makeDefaultParams(env),
-      knowledgeFiles: [{ path: knowledgePath, maxLines: 100 }],
-    });
+    const tool = requireTool(
+      createToolForAgent({
+        name: "write-knowledge",
+        ...makeDefaultParams(env),
+        knowledgeFiles: [{ path: knowledgePath, maxLines: 100 }],
+      }),
+      "write-knowledge",
+    );
 
-    await expect(tool!.execute("call-1", { path: "src/index.ts", content: "bad" })).rejects.toThrow(
+    await expect(exec(tool, "call-1", { path: "src/index.ts", content: "bad" })).rejects.toThrow(
       "write-knowledge can only write to knowledge files",
     );
   });
@@ -156,17 +186,20 @@ describe("createToolForAgent", () => {
     const knowledgePath = join(env.cwd, ".pi", "knowledge", "project", "test.yaml");
     mkdirSync(join(env.cwd, ".pi", "knowledge", "project"), { recursive: true });
 
-    const tool = createToolForAgent({
-      name: "write",
-      ...makeDefaultParams(env),
-      domain: [
-        { path: "src/", read: true, write: true, delete: false },
-        { path: ".pi/knowledge/", read: true, write: true, delete: false },
-      ],
-      knowledgeFiles: [{ path: knowledgePath, maxLines: 100 }],
-    });
+    const tool = requireTool(
+      createToolForAgent({
+        name: "write",
+        ...makeDefaultParams(env),
+        domain: [
+          { path: "src/", read: true, write: true, delete: false },
+          { path: ".pi/knowledge/", read: true, write: true, delete: false },
+        ],
+        knowledgeFiles: [{ path: knowledgePath, maxLines: 100 }],
+      }),
+      "write",
+    );
 
-    await expect(tool!.execute("call-1", { path: knowledgePath, content: "bypass" })).rejects.toThrow(
+    await expect(exec(tool, "call-1", { path: knowledgePath, content: "bypass" })).rejects.toThrow(
       "Use write-knowledge to update knowledge files",
     );
   });
@@ -177,18 +210,21 @@ describe("createToolForAgent", () => {
     mkdirSync(join(env.cwd, ".pi", "knowledge", "project"), { recursive: true });
     writeFileSync(knowledgePath, "old: value");
 
-    const tool = createToolForAgent({
-      name: "edit",
-      ...makeDefaultParams(env),
-      domain: [
-        { path: "src/", read: true, write: true, delete: false },
-        { path: ".pi/knowledge/", read: true, write: true, delete: false },
-      ],
-      knowledgeFiles: [{ path: knowledgePath, maxLines: 100 }],
-    });
+    const tool = requireTool(
+      createToolForAgent({
+        name: "edit",
+        ...makeDefaultParams(env),
+        domain: [
+          { path: "src/", read: true, write: true, delete: false },
+          { path: ".pi/knowledge/", read: true, write: true, delete: false },
+        ],
+        knowledgeFiles: [{ path: knowledgePath, maxLines: 100 }],
+      }),
+      "edit",
+    );
 
     await expect(
-      tool!.execute("call-1", { path: knowledgePath, edits: [{ oldText: "old", newText: "new" }] }),
+      exec(tool, "call-1", { path: knowledgePath, edits: [{ oldText: "old", newText: "new" }] }),
     ).rejects.toThrow("Use edit-knowledge to update knowledge files");
   });
 });

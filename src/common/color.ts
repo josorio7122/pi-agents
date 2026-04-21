@@ -1,3 +1,9 @@
+// This module is the documented exception to AGENTS.md's "no raw ANSI escapes
+// in production code" rule. Pi's Theme.fg only exposes named color slots
+// (accent/muted/dim/text/success/error/warning); true-color hex values — used
+// by agents to render their own brand colors — require emitting the 24-bit
+// ANSI escape directly. This is the ONLY place in `src/` that constructs
+// `\x1b[...]` sequences. Do not add more raw ANSI elsewhere.
 const HEX_PATTERN = /^#[0-9a-fA-F]{6}$/;
 
 export function colorize(hex: string, text: string) {

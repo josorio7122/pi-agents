@@ -10,17 +10,14 @@ export function buildDomainWithKnowledge(params: {
   readonly knowledgeEntries: ReadonlyArray<KnowledgeEntry>;
   readonly reportsDir?: Readonly<{ path: string; updatable: boolean }>;
 }) {
-  const implicitWritable = params.knowledgeEntries
-    .filter((e) => e.updatable)
-    .map((e) => ({ path: e.path, read: true, write: true, delete: false }));
-
-  const implicitReadOnly = params.knowledgeEntries
-    .filter((e) => !e.updatable)
-    .map((e) => ({ path: e.path, read: true, write: false, delete: false }));
-
-  const reportsEntry = params.reportsDir
+  const knowledge = params.knowledgeEntries.map((e) => ({
+    path: e.path,
+    read: true,
+    write: e.updatable,
+    delete: false,
+  }));
+  const reports = params.reportsDir
     ? [{ path: params.reportsDir.path, read: true, write: params.reportsDir.updatable, delete: false }]
     : [];
-
-  return [...params.domain, ...implicitWritable, ...implicitReadOnly, ...reportsEntry];
+  return [...params.domain, ...knowledge, ...reports];
 }

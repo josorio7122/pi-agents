@@ -1,14 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { AgentMetrics } from "../invocation/metrics.js";
 import type { RunAgentFn } from "./modes.js";
-import {
-  aggregateMetrics,
-  aggregateMetricsArray,
-  detectMode,
-  executeChain,
-  executeParallel,
-  executeSingle,
-} from "./modes.js";
+import { aggregateMetricsArray, detectMode, executeChain, executeParallel } from "./modes.js";
 
 const emptyMetrics: AgentMetrics = { turns: 0, inputTokens: 0, outputTokens: 0, cost: 0, toolCalls: [] };
 
@@ -47,13 +40,6 @@ describe("detectMode", () => {
   it("rejects when no mode specified", () => {
     const result = detectMode({});
     expect("error" in result).toBe(true);
-  });
-});
-
-describe("executeSingle", () => {
-  it("calls runAgent and returns result", async () => {
-    const result = await executeSingle({ task: "build it", runAgent: fakeRunAgent });
-    expect(result.output).toBe("Done: build it");
   });
 });
 
@@ -183,44 +169,5 @@ describe("aggregateMetricsArray", () => {
     expect(result.outputTokens).toBe(0);
     expect(result.cost).toBe(0);
     expect(result.toolCalls).toHaveLength(0);
-  });
-});
-
-describe("aggregateMetrics", () => {
-  it("sums metrics across results", () => {
-    const results = [
-      {
-        output: "a",
-        metrics: {
-          turns: 2,
-          inputTokens: 1000,
-          outputTokens: 200,
-          cost: 0.01,
-          toolCalls: [{ name: "read", args: {} }],
-        },
-      },
-      {
-        output: "b",
-        metrics: {
-          turns: 3,
-          inputTokens: 2000,
-          outputTokens: 400,
-          cost: 0.02,
-          toolCalls: [{ name: "bash", args: {} }],
-        },
-      },
-    ];
-    const agg = aggregateMetrics(results);
-    expect(agg.turns).toBe(5);
-    expect(agg.inputTokens).toBe(3000);
-    expect(agg.outputTokens).toBe(600);
-    expect(agg.cost).toBe(0.03);
-    expect(agg.toolCalls).toHaveLength(2);
-  });
-
-  it("returns zeros for empty array", () => {
-    const agg = aggregateMetrics([]);
-    expect(agg.turns).toBe(0);
-    expect(agg.toolCalls).toHaveLength(0);
   });
 });

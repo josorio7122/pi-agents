@@ -47,7 +47,7 @@ The rule targets *literal* string assembly, not variable concatenation.
 - **Never shadow pi's types.** Import `Theme`, `ThemeColor`, `ToolDefinition`, `ExtensionContext`, `AgentToolResult`, `ExtensionAPI` directly from `@mariozechner/pi-coding-agent`. Do not redeclare them with our own names.
 - **No raw ANSI escapes (`\x1b[...]`) in production code.** Use `theme.fg(slot, text)`, `theme.strikethrough(text)`, `theme.bold(text)`.
 - **Canonical `ThemeColor` slots only:** `accent`, `muted`, `dim`, `text`, `success`, `error`, `warning`. Don't invent new slot names.
-- **Peer deps for pi core packages use `"*"`** per pi's `docs/packages.md`. Never pin them in `peerDependencies`. `@mariozechner/pi-ai`, `@mariozechner/pi-coding-agent`, `@mariozechner/pi-tui`, `@sinclair/typebox` live in `peerDependencies` as `"*"`. Dev versions may pin to a specific minor while pi-agents lags pi HEAD (currently `^0.65.0`); the pin documents the exact API our `src/` is written against.
+- **Peer deps for pi core packages use `"*"`** per pi's `docs/packages.md`. Never pin them in `peerDependencies` OR `devDependencies`. `@mariozechner/pi-ai`, `@mariozechner/pi-coding-agent`, `@mariozechner/pi-tui`, `@sinclair/typebox` are `"*"` in both so the repo always tracks pi HEAD. If pi ships a breaking change, update `src/` in the same PR that bumps the lockfile — don't pin around it.
 
 ## TypeScript
 

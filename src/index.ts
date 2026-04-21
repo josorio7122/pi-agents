@@ -6,50 +6,72 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { getAgentDir } from "@mariozechner/pi-coding-agent";
 import { formatAgentList } from "./command/agents-command.js";
 import { resolveConversationPath } from "./common/paths.js";
-import { parseAgentFile } from "./discovery/parser.js";
+import { extractFrontmatter } from "./discovery/extract-frontmatter.js";
 import { scanForAgentFiles } from "./discovery/scanner.js";
 import type { AgentConfig, DiscoveryDiagnostic } from "./discovery/validator.js";
 import { validateAgent } from "./discovery/validator.js";
 import { createAgentTool } from "./tool/agent-tool.js";
 
-async function discoverAgents(params: { readonly projectDir: string; readonly userDir: string }) {
-  const diagnostics: DiscoveryDiagnostic[] = [];
-  const agentMap = new Map<string, AgentConfig>();
-
-  for (const [dir, source] of [[params.userDir, "user"] as const, [params.projectDir, "project"] as const]) {
-    for (const filePath of await scanForAgentFiles(dir)) {
-      let content: string;
-      try {
-        content = await readFile(filePath, "utf-8");
-      } catch {
-        diagnostics.push({ level: "warning", filePath, message: "Could not read file" });
-        continue;
-      }
-
-      const parsed = parseAgentFile(content);
-      if (!parsed.ok) {
-        diagnostics.push({ level: "error", filePath, message: parsed.error });
-        continue;
-      }
-
-      const validated = validateAgent({
-        frontmatter: parsed.value.frontmatter,
-        body: parsed.value.body,
-        filePath,
-        source,
-      });
-
-      if (!validated.ok) {
-        for (const d of validated.errors) diagnostics.push(d);
-        continue;
-      }
-
-      // Project overrides user (same name)
-      agentMap.set(validated.value.frontmatter.name, validated.value);
-    }
+async function loadAgentFile(params: {
+  readonly filePath: string;
+  readonly source: "project" | "user";
+}): Promise<
+  | { readonly ok: true; readonly value: AgentConfig }
+  | { readonly ok: false; readonly errors: ReadonlyArray<DiscoveryDiagnostic> }
+> {
+  const content = await readFile(params.filePath, "utf-8").catch(() => undefined);
+  if (content === undefined) {
+    return {
+      ok: false,
+      errors: [{ level: "warning", filePath: params.filePath, message: "Could not read file" }],
+    };
+  }
+  const extracted = extractFrontmatter(content);
+  if (!extracted.ok) {
+    return {
+      ok: false,
+      errors: [{ level: "error", filePath: params.filePath, message: extracted.error }],
+    };
   }
 
-  return { agents: Array.from(agentMap.values()), diagnostics };
+  const validated = validateAgent({
+    frontmatter: extracted.value.frontmatter,
+    body: extracted.value.body,
+    filePath: params.filePath,
+    source: params.source,
+  });
+  if (!validated.ok) return { ok: false, errors: validated.errors };
+  return { ok: true, value: validated.value };
+}
+
+async function loadAgentsFromDir(params: { readonly dir: string; readonly source: "project" | "user" }): Promise<{
+  readonly agents: ReadonlyArray<AgentConfig>;
+  readonly diagnostics: ReadonlyArray<DiscoveryDiagnostic>;
+}> {
+  const filePaths = await scanForAgentFiles(params.dir);
+  const results = await Promise.all(filePaths.map((filePath) => loadAgentFile({ filePath, source: params.source })));
+  const agents: AgentConfig[] = [];
+  const diagnostics: DiscoveryDiagnostic[] = [];
+  for (const r of results) {
+    if (r.ok) agents.push(r.value);
+    else diagnostics.push(...r.errors);
+  }
+  return { agents, diagnostics };
+}
+
+async function discoverAgents(params: { readonly projectDir: string; readonly userDir: string }) {
+  const userResult = await loadAgentsFromDir({ dir: params.userDir, source: "user" });
+  const projectResult = await loadAgentsFromDir({ dir: params.projectDir, source: "project" });
+
+  // Project overrides user (same name)
+  const agentMap = new Map<string, AgentConfig>();
+  for (const a of userResult.agents) agentMap.set(a.frontmatter.name, a);
+  for (const a of projectResult.agents) agentMap.set(a.frontmatter.name, a);
+
+  return {
+    agents: Array.from(agentMap.values()),
+    diagnostics: [...userResult.diagnostics, ...projectResult.diagnostics],
+  };
 }
 
 export default function (pi: ExtensionAPI) {
@@ -76,9 +98,13 @@ export default function (pi: ExtensionAPI) {
       ctx.ui.notify(`[pi-agents] ${d.level}: ${d.filePath} — ${d.message}`, d.level === "error" ? "error" : "warning");
     }
 
-    const conversationTemplate = agents[0]?.frontmatter.conversation.path;
-    const conversationLogPath = conversationTemplate
-      ? resolveConversationPath({ template: conversationTemplate, sessionId, cwd: ctx.cwd })
+    const templates = new Set(agents.map((a) => a.frontmatter.conversation.path));
+    if (templates.size > 1) {
+      ctx.ui.notify("[pi-agents] warning: agents disagree on conversation.path; using default", "warning");
+    }
+    const uniqueTemplate: string | undefined = templates.size === 1 ? [...templates][0] : undefined;
+    const conversationLogPath = uniqueTemplate
+      ? resolveConversationPath({ template: uniqueTemplate, sessionId, cwd: ctx.cwd })
       : join(ctx.cwd, ".pi", "sessions", sessionId, "conversation.jsonl");
 
     // Register agent tool with discovered agents

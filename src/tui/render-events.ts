@@ -1,3 +1,4 @@
+import { workingDots } from "../common/spinner.js";
 import type { AgentStatus, ConversationEvent } from "./types.js";
 
 export function buildPartialEvents(params: {
@@ -15,7 +16,7 @@ export function buildPartialEvents(params: {
     const status = getStatus(e.to);
     const hasActivity = status.status === "running" && status.metrics && status.metrics.turns > 0;
     const phase = hasActivity ? "working" : "initializing";
-    const dots = ".".repeat((Math.floor(Date.now() / 500) % 3) + 1);
+    const dots = workingDots().trimEnd();
     return { type: "response" as const, agent: e.to, output: `${phase}${dots}` };
   });
   return [...events, ...pendingBoxes];

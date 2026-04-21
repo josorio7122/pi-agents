@@ -9,6 +9,7 @@ git clone https://github.com/josorio7122/pi-agents
 cd pi-agents
 npm install
 npm run check          # lint + blank-line check + typecheck + unit tests
+npm run simulate       # visual QA of agent TUI rendering (single/parallel/chain)
 ```
 
 ## Running end-to-end tests

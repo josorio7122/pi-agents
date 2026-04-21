@@ -1,4 +1,5 @@
 import type { AgentConfig } from "../discovery/validator.js";
+import { resolveVariables } from "../prompt/variables.js";
 
 const TEMPLATE = `Each agent runs in an isolated session. It ONLY sees the task string you write — not this conversation.
 
@@ -23,5 +24,5 @@ function describeAgent(a: AgentConfig) {
 export function buildPromptGuidelines(agents: ReadonlyArray<AgentConfig>) {
   const agentLines = agents.map(describeAgent).join("\n");
   const firstName = agents[0]?.frontmatter.name ?? "agent";
-  return TEMPLATE.replace("{{AGENTS}}", agentLines).replace("{{FIRST_AGENT}}", firstName).split("\n");
+  return resolveVariables(TEMPLATE, { AGENTS: agentLines, FIRST_AGENT: firstName }).split("\n");
 }

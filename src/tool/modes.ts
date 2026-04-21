@@ -39,25 +39,27 @@ function toTaskArray(value: unknown) {
 }
 
 export function detectMode(params: Record<string, unknown>): ModeOrError {
-  const hasSingle = typeof params.agent === "string" && typeof params.task === "string";
-  const hasParallel = Array.isArray(params.tasks) && params.tasks.length > 0;
-  const hasChain = Array.isArray(params.chain) && params.chain.length > 0;
-
-  const count = Number(hasSingle) + Number(hasParallel) + Number(hasChain);
-  if (count === 0) return { error: "No mode specified. Provide agent+task, tasks array, or chain array." };
-  if (count > 1) return { error: "Multiple modes specified. Provide exactly one of: agent+task, tasks, or chain." };
-
-  if (hasSingle) return { mode: "single", agent: String(params.agent), task: String(params.task) };
-  if (hasParallel) return { mode: "parallel", tasks: toTaskArray(params.tasks) };
-  return { mode: "chain", chain: toTaskArray(params.chain) };
-}
-
-export async function executeSingle(params: {
-  readonly task: string;
-  readonly runAgent: RunAgentFn;
-  readonly onMetrics?: (metrics: AgentMetrics) => void;
-}) {
-  return params.runAgent({ task: params.task, ...(params.onMetrics ? { onMetrics: params.onMetrics } : {}) });
+  const candidates: Array<() => AgentMode> = [];
+  if (typeof params.agent === "string" && typeof params.task === "string") {
+    candidates.push(() => ({ mode: "single", agent: String(params.agent), task: String(params.task) }));
+  }
+  if (Array.isArray(params.tasks) && params.tasks.length > 0) {
+    candidates.push(() => ({ mode: "parallel", tasks: toTaskArray(params.tasks) }));
+  }
+  if (Array.isArray(params.chain) && params.chain.length > 0) {
+    candidates.push(() => ({ mode: "chain", chain: toTaskArray(params.chain) }));
+  }
+  if (candidates.length === 0) {
+    return { error: "No mode specified. Provide agent+task, tasks array, or chain array." };
+  }
+  if (candidates.length > 1) {
+    return { error: "Multiple modes specified. Provide exactly one of: agent+task, tasks, or chain." };
+  }
+  const build = candidates[0];
+  if (!build) {
+    return { error: "No mode specified. Provide agent+task, tasks array, or chain array." };
+  }
+  return build();
 }
 
 export async function executeParallel(params: {
@@ -109,13 +111,11 @@ export async function executeChain(params: {
   let previousOutput = "";
   const completed: RunAgentResult[] = [];
 
-  for (let i = 0; i < params.steps.length; i++) {
+  for (const [i, step] of params.steps.entries()) {
     if (params.signal?.aborted) {
       completed.push(CANCELLED_RESULT);
       return { output: previousOutput, steps: completed };
     }
-    const step = params.steps[i];
-    if (!step) continue;
 
     const taskWithPrevious = step.task.replaceAll("{previous}", previousOutput);
     const metricsOpt = params.onStepMetrics ? { onMetrics: (m: AgentMetrics) => params.onStepMetrics?.(i, m) } : {};
@@ -136,8 +136,4 @@ export async function executeChain(params: {
 export function aggregateMetricsArray(metrics: ReadonlyArray<AgentMetrics>): AgentMetrics {
   const zero: AgentMetrics = { turns: 0, inputTokens: 0, outputTokens: 0, cost: 0, toolCalls: [] };
   return metrics.reduce<AgentMetrics>((acc, m) => sumMetrics(acc, m), zero);
-}
-
-export function aggregateMetrics(results: ReadonlyArray<RunAgentResult>): AgentMetrics {
-  return aggregateMetricsArray(results.map((r) => r.metrics));
 }

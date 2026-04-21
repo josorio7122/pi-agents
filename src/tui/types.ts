@@ -8,6 +8,5 @@ export type AgentStatus = Readonly<
 >;
 
 export type ConversationEvent = Readonly<
-  | { type: "delegation"; from: string; to: string; task: string; _scopeId?: number }
-  | { type: "response"; agent: string; output: string; _scopeId?: number }
+  { type: "delegation"; from: string; to: string; task: string } | { type: "response"; agent: string; output: string }
 >;

@@ -28,7 +28,7 @@ export { createMetricsTracker, sumMetrics } from "./invocation/metrics.js";
 export { runAgent } from "./invocation/session.js";
 // Invocation
 export type { RunAgentParams, RunAgentResult } from "./invocation/session-helpers.js";
-export { createToolForAgent } from "./invocation/tool-wrapper.js";
+export { createToolForAgent, dispatchBuiltinTool, wrapWithDomainCheck } from "./invocation/tool-wrapper.js";
 export type { AssemblyContext } from "./prompt/assembly.js";
 // Prompt
 export { assembleSystemPrompt } from "./prompt/assembly.js";
@@ -51,7 +51,6 @@ export {
   detectMode,
   executeChain,
   executeParallel,
-  executeSingle,
 } from "./tool/modes.js";
 // Rendering
 export type { RenderTheme } from "./tool/render-types.js";

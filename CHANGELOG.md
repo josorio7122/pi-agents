@@ -7,6 +7,16 @@ adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Changed
+- Upgraded to pi 0.68: `createAgentSession.tools` is now a `string[]`
+  allowlist; our domain-wrapped built-ins ship via `customTools` instead,
+  with their names echoed in `tools` so pi activates only the wrapped
+  versions (raw built-ins never execute, domain checks always run). Tool
+  factories switched from `createReadTool` etc. to `createReadToolDefinition`
+  etc. `ExecutableTool` is now a schema-erased alias for pi's `ToolDefinition`
+  (5-arity `execute` with `ctx: ExtensionContext`).
+- pi core dev-deps changed from `^0.65.0` pin to `"*"` — the repo always
+  tracks pi HEAD. Dependabot `pi-peers` group no longer constrains to patch
+  updates.
 - Repo tooling aligned with pi-tasks: stricter `tsconfig.json` (NodeNext,
   verbatimModuleSyntax, isolatedModules, noEmit), blank-line check script
   wired into `npm run check`, peer-dependency layout for pi core packages.

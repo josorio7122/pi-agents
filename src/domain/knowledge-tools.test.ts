@@ -1,8 +1,19 @@
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
 import { describe, expect, it } from "vitest";
+import type { ExecutableTool } from "../common/tool-types.js";
 import { createEditKnowledgeTool, createReadKnowledgeTool, createWriteKnowledgeTool } from "./knowledge-tools.js";
+
+// Test-only stub — pi's ToolDefinition.execute requires a 5th `ctx` arg,
+// but our domain/knowledge tools never read from it.
+const fakeCtx = {} as ExtensionContext;
+
+// biome-ignore lint/complexity/useMaxParams: test helper mirroring ToolDefinition.execute
+function exec(tool: ExecutableTool, id: string, params: unknown) {
+  return tool.execute(id, params, undefined, undefined, fakeCtx);
+}
 
 function makeTempEnv() {
   const cwd = mkdtempSync(join(tmpdir(), "knowledge-tools-"));
@@ -32,7 +43,7 @@ describe("createWriteKnowledgeTool", () => {
     const env = makeTempEnv();
     const tool = createWriteKnowledgeTool({ cwd: env.cwd, knowledgeFiles: makeKnowledgeFiles(env) });
 
-    await tool.execute("call-1", { path: env.knowledgePath, content: "discovery: complete\n" });
+    await exec(tool, "call-1", { path: env.knowledgePath, content: "discovery: complete\n" });
 
     const content = readFileSync(env.knowledgePath, "utf-8");
     expect(content).toBe("discovery: complete\n");
@@ -45,7 +56,7 @@ describe("createWriteKnowledgeTool", () => {
     const files = [{ path: relativeKnowledgePath, maxLines: 10 }];
     const tool = createWriteKnowledgeTool({ cwd: env.cwd, knowledgeFiles: files });
 
-    await tool.execute("call-1", { path: relativeKnowledgePath, content: "found: yes\n" });
+    await exec(tool, "call-1", { path: relativeKnowledgePath, content: "found: yes\n" });
 
     const content = readFileSync(env.knowledgePath, "utf-8");
     expect(content).toBe("found: yes\n");
@@ -56,7 +67,7 @@ describe("createWriteKnowledgeTool", () => {
     const tool = createWriteKnowledgeTool({ cwd: env.cwd, knowledgeFiles: makeKnowledgeFiles(env) });
     const otherPath = join(env.cwd, "src", "index.ts");
 
-    await expect(tool.execute("call-1", { path: otherPath, content: "bad" })).rejects.toThrow(
+    await expect(exec(tool, "call-1", { path: otherPath, content: "bad" })).rejects.toThrow(
       "write-knowledge can only write to knowledge files",
     );
   });
@@ -67,7 +78,7 @@ describe("createWriteKnowledgeTool", () => {
     const tool = createWriteKnowledgeTool({ cwd: env.cwd, knowledgeFiles: files });
 
     const longContent = "line1\nline2\nline3\nline4\nline5\n";
-    await tool.execute("call-1", { path: env.knowledgePath, content: longContent });
+    await exec(tool, "call-1", { path: env.knowledgePath, content: longContent });
 
     const content = readFileSync(env.knowledgePath, "utf-8");
     const lines = content.trim().split("\n");
@@ -88,7 +99,7 @@ describe("createReadKnowledgeTool", () => {
     writeFileSync(env.knowledgePath, "system:\n  framework: Express\n");
     const tool = createReadKnowledgeTool({ cwd: env.cwd, knowledgeFiles: makeKnowledgeFiles(env) });
 
-    const result = await tool.execute("call-1", { path: env.knowledgePath });
+    const result = await exec(tool, "call-1", { path: env.knowledgePath });
     const text = extractText(result);
     expect(text).toContain("framework: Express");
   });
@@ -100,7 +111,7 @@ describe("createReadKnowledgeTool", () => {
     const files = [{ path: relativeKnowledgePath, maxLines: 10 }];
     const tool = createReadKnowledgeTool({ cwd: env.cwd, knowledgeFiles: files });
 
-    const result = await tool.execute("call-1", { path: relativeKnowledgePath });
+    const result = await exec(tool, "call-1", { path: relativeKnowledgePath });
     const text = extractText(result);
     expect(text).toContain("found: yes");
   });
@@ -110,7 +121,7 @@ describe("createReadKnowledgeTool", () => {
     const tool = createReadKnowledgeTool({ cwd: env.cwd, knowledgeFiles: makeKnowledgeFiles(env) });
     const otherPath = join(env.cwd, "src", "index.ts");
 
-    await expect(tool.execute("call-1", { path: otherPath })).rejects.toThrow(
+    await expect(exec(tool, "call-1", { path: otherPath })).rejects.toThrow(
       "read-knowledge can only read knowledge files",
     );
   });
@@ -119,7 +130,7 @@ describe("createReadKnowledgeTool", () => {
     const env = makeTempEnv();
     const tool = createReadKnowledgeTool({ cwd: env.cwd, knowledgeFiles: makeKnowledgeFiles(env) });
 
-    const result = await tool.execute("call-1", { path: env.knowledgePath });
+    const result = await exec(tool, "call-1", { path: env.knowledgePath });
     const text = extractText(result);
     expect(text).toContain("(empty");
   });
@@ -137,7 +148,7 @@ describe("createEditKnowledgeTool", () => {
     writeFileSync(env.knowledgePath, "old: value\n");
     const tool = createEditKnowledgeTool({ cwd: env.cwd, knowledgeFiles: makeKnowledgeFiles(env) });
 
-    await tool.execute("call-1", {
+    await exec(tool, "call-1", {
       path: env.knowledgePath,
       edits: [{ oldText: "old: value", newText: "new: value" }],
     });
@@ -151,7 +162,7 @@ describe("createEditKnowledgeTool", () => {
     const tool = createEditKnowledgeTool({ cwd: env.cwd, knowledgeFiles: makeKnowledgeFiles(env) });
     const otherPath = join(env.cwd, "src", "index.ts");
 
-    await expect(tool.execute("call-1", { path: otherPath, edits: [{ oldText: "a", newText: "b" }] })).rejects.toThrow(
+    await expect(exec(tool, "call-1", { path: otherPath, edits: [{ oldText: "a", newText: "b" }] })).rejects.toThrow(
       "edit-knowledge can only edit knowledge files",
     );
   });
@@ -162,7 +173,7 @@ describe("createEditKnowledgeTool", () => {
     writeFileSync(env.knowledgePath, "line1\nline2\n");
     const tool = createEditKnowledgeTool({ cwd: env.cwd, knowledgeFiles: files });
 
-    await tool.execute("call-1", {
+    await exec(tool, "call-1", {
       path: env.knowledgePath,
       edits: [{ oldText: "line2", newText: "line2\nline3\nline4\nline5" }],
     });
