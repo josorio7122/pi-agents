@@ -6,8 +6,8 @@ Only the latest minor version is supported. Security fixes are released as patch
 
 | Version | Supported |
 |---------|-----------|
-| 1.0.x   | ✅        |
-| < 1.0   | ❌        |
+| 0.1.x   | ✅        |
+| < 0.1   | ❌        |
 
 ## Reporting a vulnerability
 
