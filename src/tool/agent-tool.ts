@@ -1,6 +1,7 @@
 import type { ModelRegistry } from "@mariozechner/pi-coding-agent";
 import { defineTool } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
+import { flatten } from "../common/strings.js";
 import type { AgentConfig } from "../discovery/validator.js";
 import type { AgentMetrics } from "../invocation/metrics.js";
 import { runAgent } from "../invocation/session.js";
@@ -46,8 +47,10 @@ export function createAgentTool(params: {
   return defineTool({
     name: "agent",
     label: "Agent",
-    description:
-      "Invoke a specialized agent to perform a task. Modes: single (agent+task), parallel (tasks array), chain (sequential with {previous}).",
+    description: flatten(`
+      Invoke a specialized agent to perform a task.
+      Modes: single (agent+task), parallel (tasks array), chain (sequential with {previous}).
+    `),
     promptSnippet: "Delegate tasks to specialized agents (single, parallel, or chain mode)",
     promptGuidelines: buildPromptGuidelines(agents),
     parameters: Type.Object({

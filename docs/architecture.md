@@ -113,7 +113,7 @@ Shared utilities with no domain knowledge.
 
 ## Adding an Agent
 
-1. Create `.pi/agents/<name>.md` with YAML frontmatter (see [agent-spec.md](agent-spec.md))
+1. Create `.pi/agents/<name>.md` with YAML frontmatter (schema: `src/schema/frontmatter.ts`)
 2. Define domain paths, tools, and knowledge entries
 3. Write the system prompt in the markdown body
 4. The extension auto-discovers the file on session start

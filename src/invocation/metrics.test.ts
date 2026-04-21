@@ -80,6 +80,7 @@ describe("sumMetrics", () => {
       cost: 0.01,
       toolCalls: [{ name: "read", args: { path: "a.ts" } }],
     };
+
     const b: AgentMetrics = {
       turns: 3,
       inputTokens: 2000,

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { AgentFrontmatterSchema } from "./frontmatter.js";
+import { safeParse } from "./parse.js";
 
 const validWorker = {
   name: "backend-dev",
@@ -45,96 +46,96 @@ const validOrchestrator = {
 describe("AgentFrontmatterSchema", () => {
   describe("happy path", () => {
     it("accepts valid worker", () => {
-      expect(AgentFrontmatterSchema.safeParse(validWorker).success).toBe(true);
+      expect(safeParse(AgentFrontmatterSchema, validWorker).success).toBe(true);
     });
 
     it("accepts valid lead", () => {
-      expect(AgentFrontmatterSchema.safeParse(validLead).success).toBe(true);
+      expect(safeParse(AgentFrontmatterSchema, validLead).success).toBe(true);
     });
 
     it("accepts valid orchestrator", () => {
-      expect(AgentFrontmatterSchema.safeParse(validOrchestrator).success).toBe(true);
+      expect(safeParse(AgentFrontmatterSchema, validOrchestrator).success).toBe(true);
     });
   });
 
   describe("missing blocks", () => {
     it("rejects missing name", () => {
       const { name: _, ...data } = validWorker;
-      const result = AgentFrontmatterSchema.safeParse(data);
+      const result = safeParse(AgentFrontmatterSchema, data);
       expect(result.success).toBe(false);
     });
 
     it("rejects missing domain", () => {
       const { domain: _, ...data } = validWorker;
-      const result = AgentFrontmatterSchema.safeParse(data);
+      const result = safeParse(AgentFrontmatterSchema, data);
       expect(result.success).toBe(false);
     });
 
     it("rejects missing tools", () => {
       const { tools: _, ...data } = validWorker;
-      const result = AgentFrontmatterSchema.safeParse(data);
+      const result = safeParse(AgentFrontmatterSchema, data);
       expect(result.success).toBe(false);
     });
 
     it("rejects missing skills", () => {
       const { skills: _, ...data } = validWorker;
-      const result = AgentFrontmatterSchema.safeParse(data);
+      const result = safeParse(AgentFrontmatterSchema, data);
       expect(result.success).toBe(false);
     });
 
     it("rejects missing knowledge", () => {
       const { knowledge: _, ...data } = validWorker;
-      const result = AgentFrontmatterSchema.safeParse(data);
+      const result = safeParse(AgentFrontmatterSchema, data);
       expect(result.success).toBe(false);
     });
 
     it("rejects missing conversation", () => {
       const { conversation: _, ...data } = validWorker;
-      const result = AgentFrontmatterSchema.safeParse(data);
+      const result = safeParse(AgentFrontmatterSchema, data);
       expect(result.success).toBe(false);
     });
 
     it("rejects missing color", () => {
       const { color: _, ...data } = validWorker;
-      const result = AgentFrontmatterSchema.safeParse(data);
+      const result = safeParse(AgentFrontmatterSchema, data);
       expect(result.success).toBe(false);
     });
 
     it("rejects missing icon", () => {
       const { icon: _, ...data } = validWorker;
-      const result = AgentFrontmatterSchema.safeParse(data);
+      const result = safeParse(AgentFrontmatterSchema, data);
       expect(result.success).toBe(false);
     });
   });
 
   describe("invalid values", () => {
     it("rejects invalid role", () => {
-      const result = AgentFrontmatterSchema.safeParse({ ...validWorker, role: "invalid" });
+      const result = safeParse(AgentFrontmatterSchema, { ...validWorker, role: "invalid" });
       expect(result.success).toBe(false);
     });
 
     it("rejects model without provider", () => {
-      const result = AgentFrontmatterSchema.safeParse({ ...validWorker, model: "claude-sonnet-4-6" });
+      const result = safeParse(AgentFrontmatterSchema, { ...validWorker, model: "claude-sonnet-4-6" });
       expect(result.success).toBe(false);
     });
 
     it("accepts model with provider", () => {
-      const result = AgentFrontmatterSchema.safeParse({ ...validWorker, model: "anthropic/claude-sonnet-4-6" });
+      const result = safeParse(AgentFrontmatterSchema, { ...validWorker, model: "anthropic/claude-sonnet-4-6" });
       expect(result.success).toBe(true);
     });
 
     it("rejects invalid hex color", () => {
-      const result = AgentFrontmatterSchema.safeParse({ ...validWorker, color: "not-hex" });
+      const result = safeParse(AgentFrontmatterSchema, { ...validWorker, color: "not-hex" });
       expect(result.success).toBe(false);
     });
 
     it("rejects empty tools array", () => {
-      const result = AgentFrontmatterSchema.safeParse({ ...validWorker, tools: [] });
+      const result = safeParse(AgentFrontmatterSchema, { ...validWorker, tools: [] });
       expect(result.success).toBe(false);
     });
 
     it("accepts custom tool names", () => {
-      const result = AgentFrontmatterSchema.safeParse({
+      const result = safeParse(AgentFrontmatterSchema, {
         ...validWorker,
         tools: ["read", "my-custom-tool", "another_tool"],
       });
@@ -142,12 +143,12 @@ describe("AgentFrontmatterSchema", () => {
     });
 
     it("rejects empty domain array", () => {
-      const result = AgentFrontmatterSchema.safeParse({ ...validWorker, domain: [] });
+      const result = safeParse(AgentFrontmatterSchema, { ...validWorker, domain: [] });
       expect(result.success).toBe(false);
     });
 
     it("rejects conversation path without SESSION_ID", () => {
-      const result = AgentFrontmatterSchema.safeParse({
+      const result = safeParse(AgentFrontmatterSchema, {
         ...validWorker,
         conversation: { path: ".pi/sessions/conversation.jsonl" },
       });
@@ -155,7 +156,7 @@ describe("AgentFrontmatterSchema", () => {
     });
 
     it("rejects negative max-lines", () => {
-      const result = AgentFrontmatterSchema.safeParse({
+      const result = safeParse(AgentFrontmatterSchema, {
         ...validWorker,
         knowledge: {
           ...validWorker.knowledge,
@@ -168,11 +169,11 @@ describe("AgentFrontmatterSchema", () => {
 
   describe("reports (optional)", () => {
     it("accepts agent without reports block", () => {
-      expect(AgentFrontmatterSchema.safeParse(validWorker).success).toBe(true);
+      expect(safeParse(AgentFrontmatterSchema, validWorker).success).toBe(true);
     });
 
     it("accepts agent with valid reports block", () => {
-      const result = AgentFrontmatterSchema.safeParse({
+      const result = safeParse(AgentFrontmatterSchema, {
         ...validWorker,
         reports: { path: ".pi/reports", updatable: true },
       });
@@ -180,7 +181,7 @@ describe("AgentFrontmatterSchema", () => {
     });
 
     it("rejects reports with empty path", () => {
-      const result = AgentFrontmatterSchema.safeParse({
+      const result = safeParse(AgentFrontmatterSchema, {
         ...validWorker,
         reports: { path: "", updatable: true },
       });
@@ -188,7 +189,7 @@ describe("AgentFrontmatterSchema", () => {
     });
 
     it("rejects reports missing updatable", () => {
-      const result = AgentFrontmatterSchema.safeParse({
+      const result = safeParse(AgentFrontmatterSchema, {
         ...validWorker,
         reports: { path: ".pi/reports" },
       });

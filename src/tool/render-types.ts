@@ -1,13 +1,11 @@
-import type { ThemeColor } from "@mariozechner/pi-coding-agent";
+import type { Theme } from "@mariozechner/pi-coding-agent";
 import type { AgentMetrics } from "../invocation/metrics.js";
 import type { RunAgentResult } from "./modes.js";
 
-// Structural subset of Theme used by render functions.
-// Accepts Pi's Theme class and lightweight test fakes alike.
-export type RenderTheme = Readonly<{
-  fg: (color: ThemeColor, text: string) => string;
-  bold: (text: string) => string;
-}>;
+// Structural subset of Pi's Theme used by render functions.
+// Spelled as `Pick<Theme, ...>` so the derivation is explicit — accepts the real
+// Theme class and lightweight test fakes alike.
+export type RenderTheme = Pick<Theme, "fg" | "bold">;
 
 export type AgentDisplay = Readonly<{ icon: string; name: string; color: string; model: string }>;
 export type FindAgent = (name: string) => AgentDisplay | undefined;

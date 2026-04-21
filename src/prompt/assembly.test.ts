@@ -141,6 +141,7 @@ describe("assembleSystemPrompt", () => {
       ...agent,
       systemPrompt: agent.systemPrompt + "\n\n## Teams\n{{TEAMS_BLOCK}}",
     };
+
     const result = assembleSystemPrompt(
       makeCtx({
         agentConfig: agentWithTeams,

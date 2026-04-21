@@ -1,5 +1,6 @@
 import type { AgentFrontmatter } from "../schema/frontmatter.js";
 import { AgentFrontmatterSchema } from "../schema/frontmatter.js";
+import { safeParse } from "../schema/parse.js";
 import { validateRoleTools } from "../schema/validation.js";
 
 export type AgentConfig = Readonly<{
@@ -27,8 +28,8 @@ export function validateAgent(params: {
 }): ValidateResult {
   const diagnostics: DiscoveryDiagnostic[] = [];
 
-  // Validate frontmatter with Zod
-  const parsed = AgentFrontmatterSchema.safeParse(params.frontmatter);
+  // Validate frontmatter against the typebox schema
+  const parsed = safeParse(AgentFrontmatterSchema, params.frontmatter);
   if (!parsed.success) {
     for (const issue of parsed.error.issues) {
       diagnostics.push({

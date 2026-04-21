@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { ConversationEntrySchema } from "./conversation.js";
+import { safeParse } from "./parse.js";
 
 describe("ConversationEntrySchema", () => {
   it("accepts valid entry", () => {
-    const result = ConversationEntrySchema.safeParse({
+    const result = safeParse(ConversationEntrySchema, {
       ts: "2026-03-30T14:22:01Z",
       from: "user",
       to: "backend-dev",
@@ -13,7 +14,7 @@ describe("ConversationEntrySchema", () => {
   });
 
   it("accepts entry with optional type", () => {
-    const result = ConversationEntrySchema.safeParse({
+    const result = safeParse(ConversationEntrySchema, {
       ts: "2026-03-30T14:22:01Z",
       from: "orchestrator",
       to: "eng-lead",
@@ -24,7 +25,7 @@ describe("ConversationEntrySchema", () => {
   });
 
   it("rejects missing from", () => {
-    const result = ConversationEntrySchema.safeParse({
+    const result = safeParse(ConversationEntrySchema, {
       ts: "2026-03-30T14:22:01Z",
       to: "backend-dev",
       message: "test",
@@ -33,7 +34,7 @@ describe("ConversationEntrySchema", () => {
   });
 
   it("rejects missing message", () => {
-    const result = ConversationEntrySchema.safeParse({
+    const result = safeParse(ConversationEntrySchema, {
       ts: "2026-03-30T14:22:01Z",
       from: "user",
       to: "backend-dev",

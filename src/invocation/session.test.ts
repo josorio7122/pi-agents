@@ -159,6 +159,7 @@ describe("runAgent (faux provider)", () => {
     expect(contextStr).toContain("SHARED_RULE: always test first");
     expect(contextStr).toContain("Shared Context");
   });
+
   it("auto-discovers shared context when not provided", async () => {
     faux = registerFauxProvider();
     let capturedContext: unknown;
@@ -184,6 +185,7 @@ describe("runAgent (faux provider)", () => {
     const contextStr = JSON.stringify(capturedContext);
     expect(contextStr).toContain("AUTO_DISCOVERED: project agent rules");
   });
+
   it("returns error for unknown model", async () => {
     const project = await makeTempProject();
     const agent = makeTestAgent(project.dir);
@@ -191,6 +193,7 @@ describe("runAgent (faux provider)", () => {
       ...agent,
       frontmatter: { ...agent.frontmatter, model: "nonexistent/bad-model" },
     };
+
     const result = await runAgent({
       agentConfig: badAgent,
       task: "This should fail",

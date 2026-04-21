@@ -1,0 +1,44 @@
+name: Feature request
+description: Suggest an enhancement to pi-agents.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea! Please check the [Contributing guide](../../CONTRIBUTING.md#what-belongs-in-pi-agents) first — some proposals belong in a separate pi-package rather than in pi-agents.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user pain does this solve? Why is the current behavior insufficient?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Concrete shape — API change, new discovery rule, schema extension, TUI component, etc.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other approaches you thought about and why you rejected them.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Scope
+      description: Which bucket does this proposal fit?
+      options:
+        - agent discovery / session runner / core tool factory (in scope for pi-agents)
+        - pi-core / pi-tui / pi-ai (upstream to pi-mono — https://github.com/badlogic/pi-mono)
+        - specific agent definition (belongs in a separate pi-package or private catalog)
+    validations:
+      required: true

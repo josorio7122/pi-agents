@@ -66,6 +66,7 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
     { path: expandPath(fm.knowledge.project.path), updatable: fm.knowledge.project.updatable },
     { path: expandPath(fm.knowledge.general.path), updatable: fm.knowledge.general.updatable },
   ];
+
   const fullDomain = buildDomainWithKnowledge(
     fm.reports
       ? { domain: fm.domain, knowledgeEntries, reportsDir: { path: fm.reports.path, updatable: fm.reports.updatable } }

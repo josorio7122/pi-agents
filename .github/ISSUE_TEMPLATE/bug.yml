@@ -1,0 +1,75 @@
+name: Bug report
+description: Report something that's broken.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug! Please fill out the sections below so we can reproduce the issue.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug.
+      placeholder: When I invoke an agent via createAgentTool, the domain scoping doesn't block write to /etc…
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Minimal agent frontmatter + tool call sequence that triggers the bug.
+      placeholder: |
+        1. Create `.pi/agents/scout.md` with frontmatter `tools: [read]`, domain: `src/`
+        2. Start pi session, invoke `scout` with task "write to /tmp/x"
+        3. Observe…
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      placeholder: The domain checker should block the write with a "Domain violation" message.
+    validations:
+      required: true
+
+  - type: input
+    id: pi-agents-version
+    attributes:
+      label: pi-agents version
+      description: Output of `npm ls pi-agents` or the tag you installed.
+      placeholder: v1.0.0
+    validations:
+      required: true
+
+  - type: input
+    id: pi-version
+    attributes:
+      label: pi / pi-coding-agent version
+      placeholder: 0.65.x
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, terminal, Node version, model provider.
+      placeholder: |
+        - OS: macOS 14.5
+        - Node: v20.10.0
+        - Model: anthropic/claude-sonnet-4-6
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / output
+      description: Relevant stack traces, conversation log snippets, or captured tool-call JSON.
+      render: shell
+    validations:
+      required: false

@@ -1,11 +1,12 @@
-import { z } from "zod/v4";
+import type { Static } from "@sinclair/typebox";
+import { Type } from "@sinclair/typebox";
 
-export const ConversationEntrySchema = z.object({
-  ts: z.string().min(1),
-  from: z.string().min(1),
-  to: z.string().min(1),
-  message: z.string().min(1),
-  type: z.string().optional(),
+export const ConversationEntrySchema = Type.Object({
+  ts: Type.String({ minLength: 1 }),
+  from: Type.String({ minLength: 1 }),
+  to: Type.String({ minLength: 1 }),
+  message: Type.String({ minLength: 1 }),
+  type: Type.Optional(Type.String()),
 });
 
-export type ConversationEntry = Readonly<z.infer<typeof ConversationEntrySchema>>;
+export type ConversationEntry = Readonly<Static<typeof ConversationEntrySchema>>;

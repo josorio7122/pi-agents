@@ -1,0 +1,21 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      dev-dependencies:
+        dependency-type: development
+        update-types: [minor, patch]
+      pi-peers:
+        patterns: ["@mariozechner/*", "@sinclair/*"]
+        # pi-agents is pinned to pi ^0.65.0; minor bumps past 0.66 break the
+        # createAgentSession.tools shape. Stay on patch until pi upgrade lands.
+        update-types: [patch]
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly

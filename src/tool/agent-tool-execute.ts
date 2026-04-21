@@ -47,6 +47,7 @@ async function executeSingleMode(params: {
   const throttled = createThrottle(() => {
     animation.update({ mode: "single", results: [...entry] });
   });
+
   const result = await executeSingle({
     task: mode.task,
     runAgent: makeRunAgent(config, signal),
@@ -82,6 +83,7 @@ async function executeParallelMode(params: {
   const throttled = createThrottle(() => {
     animation.update({ mode: "parallel", results: [...entries] });
   });
+
   const results = await executeParallel({
     tasks: taskDefs.map((t) => ({ task: t.task, runAgent: t.runAgent })),
     maxConcurrency: 4,
@@ -127,6 +129,7 @@ async function executeChainMode(params: {
   const throttled = createThrottle(() => {
     animation.update({ mode: "chain", results: [...chainEntries] });
   });
+
   const chainResult = await executeChain({
     steps: stepDefs.map((s) => ({ task: s.task, runAgent: s.runAgent })),
     ...(signal ? { signal } : {}),

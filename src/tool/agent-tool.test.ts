@@ -101,6 +101,7 @@ describe("createAgentTool", () => {
       sessionDir: "/tmp/sessions/abc",
       conversationLogPath: "/tmp/sessions/abc/conversation.jsonl",
     });
+
     const rendered = tool.renderResult!(
       { content: [{ type: "text", text: "" }], details: {} },
       { expanded: false, isPartial: false },
@@ -119,6 +120,7 @@ describe("createAgentTool", () => {
       sessionDir: "/tmp/sessions/abc",
       conversationLogPath: "/tmp/sessions/abc/conversation.jsonl",
     });
+
     const rendered = tool.renderResult!(
       {
         content: [{ type: "text", text: "done" }],

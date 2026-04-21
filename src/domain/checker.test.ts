@@ -47,6 +47,7 @@ describe("checkDomain", () => {
       { path: "apps/", read: true, write: false, delete: false },
       { path: "apps/backend/", read: true, write: true, delete: true },
     ];
+
     const result = checkDomain({
       filePath: "apps/backend/src/index.ts",
       operation: "write",

@@ -10,10 +10,11 @@ export { parseModelId } from "./common/model.js";
 export { expandPath, resolveConversationPath } from "./common/paths.js";
 export { loadSkillContents } from "./common/skills.js";
 export { ANIMATION_FRAME_MS, spinnerFrame, workingDots } from "./common/spinner.js";
+export { flatten } from "./common/strings.js";
 export { isRecord } from "./common/type-guards.js";
+export { extractFrontmatter } from "./discovery/extract-frontmatter.js";
 // Discovery
 export { parseAgentFile } from "./discovery/parser.js";
-export { extractFrontmatter } from "./discovery/extract-frontmatter.js";
 export { scanForAgentFiles } from "./discovery/scanner.js";
 export type { AgentConfig, DiscoveryDiagnostic } from "./discovery/validator.js";
 export { validateAgent } from "./discovery/validator.js";

@@ -6,7 +6,10 @@ import type { AgentConfig } from "../discovery/validator.js";
 import { runAgent } from "./session.js";
 import { makeTempProject } from "./session-test-helpers.js";
 
-describe("runAgent e2e — read-only agent with updatable knowledge", () => {
+const runE2E = process.env.PI_E2E === "1";
+const describeE2E = runE2E ? describe : describe.skip;
+
+describeE2E("runAgent e2e — read-only agent with updatable knowledge", () => {
   const authStorage = AuthStorage.create();
   const modelRegistry = ModelRegistry.create(authStorage);
 

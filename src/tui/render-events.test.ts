@@ -18,6 +18,7 @@ describe("buildPartialEvents", () => {
       { type: "delegation", from: "lead", to: "worker", task: "do stuff" },
       { type: "response", agent: "worker", output: "done" },
     ];
+
     const getStatus = () => ({
       status: "done" as const,
       metrics: { turns: 1, inputTokens: 0, outputTokens: 0, cost: 0, toolCalls: [] },

@@ -1,4 +1,5 @@
 import type { AgentConfig } from "../discovery/validator.js";
+import type { AgentFrontmatter } from "../schema/frontmatter.js";
 import { resolveVariables } from "./variables.js";
 
 export type AssemblyContext = Readonly<{
@@ -13,11 +14,35 @@ function serializeBlock(data: unknown) {
   return JSON.stringify(data, null, 2);
 }
 
+function renderSkillsSection(skillContents: AssemblyContext["skillContents"]): string {
+  if (skillContents.length === 0) return "";
+  const entries = skillContents.map((s) => `\n### ${s.name} (${s.when})\n\n${s.content}\n`).join("");
+  return `\n\n---\n\n## Skills\n${entries}`;
+}
+
+function renderKnowledgeSection(knowledge: AgentFrontmatter["knowledge"]): string {
+  return `\n\n---\n\n## Knowledge Files
+- **Project:** \`${knowledge.project.path}\` — ${knowledge.project.description}
+- **General:** \`${knowledge.general.path}\` — ${knowledge.general.description}
+
+Use \`read-knowledge\` to load these files. Use \`write-knowledge\` or \`edit-knowledge\` to update them.`;
+}
+
+function renderSharedContextSection(files: AssemblyContext["sharedContextContents"]): string {
+  if (!files || files.length === 0) return "";
+  const entries = files.map((f) => `\n### ${f.path}\n\n${f.content}\n`).join("");
+  return `\n\n---\n\n## Shared Context\n${entries}`;
+}
+
+function renderReportsSection(reports: AgentFrontmatter["reports"]): string {
+  if (!reports) return "";
+  return `\n\n## Reports\nDirectory: ${reports.path}\nWrite report artifacts here. The directory is created automatically on first write.`;
+}
+
 export function assembleSystemPrompt(ctx: AssemblyContext) {
   const { agentConfig, sessionDir, skillContents, extraVariables, sharedContextContents } = ctx;
   const fm = agentConfig.frontmatter;
 
-  // Build variable map
   const variables: Record<string, string> = {
     SESSION_DIR: sessionDir,
     CONVERSATION_LOG: "Use `read-conversation` to load the conversation history.",
@@ -27,37 +52,11 @@ export function assembleSystemPrompt(ctx: AssemblyContext) {
     ...extraVariables,
   };
 
-  // Resolve variables in system prompt body
-  let prompt = resolveVariables(agentConfig.systemPrompt, variables);
+  const body = resolveVariables(agentConfig.systemPrompt, variables);
+  const skills = renderSkillsSection(skillContents);
+  const knowledge = renderKnowledgeSection(fm.knowledge);
+  const sharedContext = renderSharedContextSection(sharedContextContents);
+  const reports = renderReportsSection(fm.reports);
 
-  // Append skills
-  if (skillContents.length > 0) {
-    prompt += "\n\n---\n\n## Skills\n";
-    for (const skill of skillContents) {
-      prompt += `\n### ${skill.name} (${skill.when})\n\n${skill.content}\n`;
-    }
-  }
-
-  // Append knowledge file paths (content loaded by agent via read-knowledge tool)
-  prompt += "\n\n---\n\n## Knowledge Files\n";
-  prompt += `- **Project:** \`${fm.knowledge.project.path}\` — ${fm.knowledge.project.description}\n`;
-  prompt += `- **General:** \`${fm.knowledge.general.path}\` — ${fm.knowledge.general.description}\n`;
-  prompt += "\nUse `read-knowledge` to load these files. Use `write-knowledge` or `edit-knowledge` to update them.";
-
-  // Append shared context files (AGENTS.md, CLAUDE.md, etc.)
-  if (sharedContextContents && sharedContextContents.length > 0) {
-    prompt += "\n\n---\n\n## Shared Context\n";
-    for (const file of sharedContextContents) {
-      prompt += `\n### ${file.path}\n\n${file.content}\n`;
-    }
-  }
-
-  // Append reports section if agent produces reports
-  if (fm.reports) {
-    prompt += "\n\n## Reports\n";
-    prompt += `Directory: ${fm.reports.path}\n`;
-    prompt += "Write report artifacts here. The directory is created automatically on first write.";
-  }
-
-  return prompt;
+  return `${body}${skills}${knowledge}${sharedContext}${reports}`;
 }

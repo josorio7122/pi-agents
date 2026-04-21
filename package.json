@@ -2,19 +2,48 @@
   "name": "pi-agents",
   "version": "1.0.0",
   "description": "Agent layer specification for pi — composable, self-enhancing AI agents",
+  "keywords": [
+    "pi-package",
+    "agents",
+    "ai"
+  ],
+  "license": "MIT",
+  "author": "josorio7122",
+  "repository": "github:josorio7122/pi-agents",
+  "type": "module",
+  "exports": {
+    ".": "./src/api.ts"
+  },
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "PI_E2E=1 vitest run --config vitest.e2e.config.ts",
     "typecheck": "tsc --noEmit",
     "lint": "biome check src/",
     "lint:fix": "biome check --fix src/",
-    "check": "npm run lint && npm run typecheck && npm run test",
-    "format": "biome format --write src/"
+    "lint:blanks": "bash scripts/check-blank-lines.sh",
+    "check": "npm run lint && npm run lint:blanks && npm run typecheck && npm run test",
+    "format": "biome format --write src/",
+    "prepare": "simple-git-hooks"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "module",
+  "peerDependencies": {
+    "@mariozechner/pi-ai": "*",
+    "@mariozechner/pi-coding-agent": "*",
+    "@mariozechner/pi-tui": "*",
+    "@sinclair/typebox": "*"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.10",
+    "@mariozechner/pi-ai": "^0.65.0",
+    "@mariozechner/pi-coding-agent": "^0.65.0",
+    "@mariozechner/pi-tui": "^0.65.0",
+    "@sinclair/typebox": "^0.34.49",
+    "@types/node": "^25.5.0",
+    "lint-staged": "^16.4.0",
+    "simple-git-hooks": "^2.13.1",
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.2"
+  },
   "pi": {
     "extensions": [
       "./src/index.ts"
@@ -23,20 +52,22 @@
       "./themes"
     ]
   },
-  "dependencies": {
-    "@mariozechner/pi-ai": "^0.65.0",
-    "@mariozechner/pi-coding-agent": "^0.65.0",
-    "@mariozechner/pi-tui": "^0.65.0",
-    "@sinclair/typebox": "^0.34.49",
-    "zod": "^4.3.6"
+  "engines": {
+    "node": ">=20"
   },
-  "devDependencies": {
-    "@biomejs/biome": "^2.4.10",
-    "@types/node": "^25.5.0",
-    "typescript": "^6.0.2",
-    "vitest": "^4.1.2"
+  "files": [
+    "src",
+    "themes",
+    "CHANGELOG.md",
+    "LICENSE",
+    "README.md"
+  ],
+  "simple-git-hooks": {
+    "pre-commit": "npx lint-staged"
   },
-  "exports": {
-    ".": "./src/api.ts"
+  "lint-staged": {
+    "src/**/*.ts": [
+      "biome check --fix --no-errors-on-unmatched"
+    ]
   }
 }

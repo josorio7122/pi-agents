@@ -1,54 +1,58 @@
-import { z } from "zod/v4";
+import type { Static } from "@sinclair/typebox";
+import { Type } from "@sinclair/typebox";
 
-const DomainEntrySchema = z.object({
-  path: z.string().min(1),
-  read: z.boolean(),
-  write: z.boolean(),
-  delete: z.boolean(),
+const DomainEntrySchema = Type.Object({
+  path: Type.String({ minLength: 1 }),
+  read: Type.Boolean(),
+  write: Type.Boolean(),
+  delete: Type.Boolean(),
 });
 
-const SkillSchema = z.object({
-  path: z.string().min(1),
-  when: z.string().min(1),
+const SkillSchema = Type.Object({
+  path: Type.String({ minLength: 1 }),
+  when: Type.String({ minLength: 1 }),
 });
 
-const KnowledgeFileSchema = z.object({
-  path: z.string().min(1),
-  description: z.string().min(1),
-  updatable: z.boolean(),
-  "max-lines": z.number().int().positive(),
+const KnowledgeFileSchema = Type.Object({
+  path: Type.String({ minLength: 1 }),
+  description: Type.String({ minLength: 1 }),
+  updatable: Type.Boolean(),
+  "max-lines": Type.Integer({ minimum: 1 }),
 });
 
-export const AgentFrontmatterSchema = z.object({
+export const AgentFrontmatterSchema = Type.Object({
   // Block 1: Identity
-  name: z.string().min(1),
-  description: z.string().min(1),
-  model: z.string().regex(/^.+\/.+$/),
-  role: z.enum(["worker", "lead", "orchestrator"]),
-  color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
-  icon: z.string().min(1),
+  name: Type.String({ minLength: 1 }),
+  description: Type.String({ minLength: 1 }),
+  model: Type.String({ pattern: "^.+/.+$" }),
+  // Use Type.Union(Type.Literal) rather than StringEnum because this schema
+  // is validated locally with Value.Check; StringEnum is a Type.Unsafe shim
+  // for LLM-provider JSON Schema compatibility and is not runtime-checkable.
+  role: Type.Union([Type.Literal("worker"), Type.Literal("lead"), Type.Literal("orchestrator")]),
+  color: Type.String({ pattern: "^#[0-9a-fA-F]{6}$" }),
+  icon: Type.String({ minLength: 1 }),
   // Block 2: Domain
-  domain: z.array(DomainEntrySchema).min(1),
+  domain: Type.Array(DomainEntrySchema, { minItems: 1 }),
   // Block 3: Capabilities
-  tools: z.array(z.string().min(1)).min(1),
+  tools: Type.Array(Type.String({ minLength: 1 }), { minItems: 1 }),
   // Block 4: Skills
-  skills: z.array(SkillSchema).min(1),
+  skills: Type.Array(SkillSchema, { minItems: 1 }),
   // Block 5: Knowledge
-  knowledge: z.object({
+  knowledge: Type.Object({
     project: KnowledgeFileSchema,
     general: KnowledgeFileSchema,
   }),
   // Block 6: Reports (optional — only for agents that produce report artifacts)
-  reports: z
-    .object({
-      path: z.string().min(1),
-      updatable: z.boolean(),
-    })
-    .optional(),
+  reports: Type.Optional(
+    Type.Object({
+      path: Type.String({ minLength: 1 }),
+      updatable: Type.Boolean(),
+    }),
+  ),
   // Block 7: Conversation
-  conversation: z.object({
-    path: z.string().includes("{{SESSION_ID}}"),
+  conversation: Type.Object({
+    path: Type.String({ pattern: ".*\\{\\{SESSION_ID\\}\\}.*" }),
   }),
 });
 
-export type AgentFrontmatter = Readonly<z.infer<typeof AgentFrontmatterSchema>>;
+export type AgentFrontmatter = Readonly<Static<typeof AgentFrontmatterSchema>>;
