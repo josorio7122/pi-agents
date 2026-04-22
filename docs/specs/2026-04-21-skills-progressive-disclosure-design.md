@@ -94,7 +94,7 @@ Gone: `domain`, `knowledge`, `role`, `reports`, `conversation`.
 - **`skills`** optional with **override-or-inherit** semantics. Absent → `noSkills: false` in the ResourceLoader (pi's default discovery finds whatever the user has in `~/.pi/agent/skills/`, `.pi/skills/`, etc.). Present → `additionalSkillPaths: agent.skills, noSkills: true` (ONLY what's declared; `skills: []` means no skills at all). This matches how `tools` works and gives consumers a clean way to isolate dispatched agents from the user's ambient skills.
 - **`role`** removed — it only drove `validateRoleTools` (forbidden-tool rules per role), which contradicts the "trust the agent" direction.
 - **`reports`** removed — no shipped agent uses it; agents that want to emit structured output can write to any path via the `write` tool.
-- **`conversation`** removed — it was just a path template. pi-agents now computes the per-agent log path internally from `sessionDir`, agent `name`, and session id.
+- **`conversation`** field AND per-agent conversation-log feature removed in full. No frontmatter key, no internal path helper, no JSONL file written anywhere. Dispatched agents rely entirely on pi's native session message history (`sessionManager.getEntries()`, the in-memory agent-session message list, pi's own transcript if the session is persisted). pi-agents stops shadowing that with a parallel log.
 
 ### Skill loading — pi's native path, additive
 
@@ -230,35 +230,44 @@ After the schema shrinks, everything that only exists to support a removed field
 - `checker.ts` + `checker.test.ts` — path-ACL enforcement, the whole reason domain existed.
 - `scoped-tools.ts` + `scoped-tools.test.ts` — `buildDomainWithKnowledge`, wraps built-ins with ACL checks.
 - `knowledge-tools.ts` + `knowledge-tools.test.ts` — `read-knowledge`, `write-knowledge`, `edit-knowledge` custom tools. Unreachable without `knowledge:` frontmatter.
-- `conversation-tool.ts` + `conversation-tool.test.ts` — `read-conversation` custom tool. Dispatched agents get message history through pi's native session, not a bespoke read tool; the internal per-agent log is for the DISPATCHER to replay, not for the agent to read.
+- `conversation-tool.ts` + `conversation-tool.test.ts` — `read-conversation` custom tool. Dead with the conversation-log feature removal.
 - `submit-tool.ts` + `submit-tool.test.ts` — the "emit a report artifact" tool. Dead without `reports:`.
 - `max-lines.ts` + `max-lines.test.ts` — enforces `knowledge[*].max-lines`. Dead with knowledge.
 - `types.ts` — `DomainEntry`, `ScopedTool`, etc.
+
+`src/invocation/conversation-log.ts` + `src/invocation/conversation-log.test.ts` — `appendToLog`, `ensureLogExists`, `readLog`. Entire file is the per-agent JSONL log machinery. Dead.
+
+`src/invocation/session-dump.ts` — `dumpAgentSession`. Writes `<sessionDir>/agents/<ts>_<agent>.jsonl` artifacts. Same feature family as the conversation log, same removal.
+
+`src/invocation/session-knowledge-e2e.test.ts` — e2e test for the knowledge subsystem.
+
+`src/schema/conversation.ts` + `src/schema/conversation.test.ts` — `ConversationEntry` schema + tests. Nothing left to validate without the log.
 
 `src/common/skills.ts` + `src/common/skills.test.ts` — `loadSkillContents`. No caller after skill-loading moves to pi.
 
 `src/invocation/tool-wrapper.ts` + `src/invocation/tool-wrapper.test.ts` — `wrapWithDomainCheck`, `createToolForAgent`, `dispatchBuiltinTool`. The entire file exists to bolt domain checks and the knowledge/conversation custom tools onto the built-in tools. Without domain + knowledge + conversation-tool + submit-tool, the file is dead.
 
-`src/invocation/session-knowledge-e2e.test.ts` — e2e test for the knowledge subsystem.
-
-`src/schema/validation.ts` has only `validateRoleTools`; the whole file goes. (The new "skills requires read" check moves to `src/schema/frontmatter.ts` or a renamed validator module — see item 5 below.)
-
-`src/schema/validation.test.ts` — covers only `validateRoleTools`. Deleted with the module.
+`src/schema/validation.ts` + `src/schema/validation.test.ts` — covers only `validateRoleTools`. Replaced by a co-located `validateFrontmatter` in `src/schema/frontmatter.ts` (see item 2 below).
 
 **Exports pruned from `src/api.ts`:**
 
 Remove these lines:
 ```ts
 export { loadSkillContents } from "./common/skills.js";                    // dead
+export { resolveConversationPath } from "./common/paths.js";               // dead (or audit)
 export { checkDomain } from "./domain/checker.js";                         // dead
 export { enforceMaxLines } from "./domain/max-lines.js";                   // dead
 export { buildDomainWithKnowledge } from "./domain/scoped-tools.js";       // dead
+export { appendToLog, ensureLogExists, readLog }                           // dead
+  from "./invocation/conversation-log.js";
 export { createToolForAgent, dispatchBuiltinTool, wrapWithDomainCheck }    // dead
   from "./invocation/tool-wrapper.js";
+export type { ConversationEntry } from "./schema/conversation.js";         // dead
+export { ConversationEntrySchema } from "./schema/conversation.js";        // dead
 export { validateRoleTools } from "./schema/validation.js";                // dead
 ```
 
-Audit `resolveConversationPath` from `./common/paths.js` (line 10) — it resolved the `conversation.path` template. Check for remaining callers post-cleanup; if none, delete from `common/paths.ts` and `common/paths.test.ts` and drop from api.ts. Likely dead.
+`resolveConversationPath` in `common/paths.ts` only resolved the `conversation.path` template. After the feature removal, check for any stragglers; delete the function and its test. If `common/paths.ts` keeps other helpers (`expandPath`, etc.), leave those alone.
 
 **Module-level deletions inside surviving files:**
 
@@ -277,44 +286,59 @@ In `src/discovery/validator.ts` (if it calls `validateRoleTools` or `checkDomain
 In `src/invocation/session.ts`:
 - `loadSkillContents(fm.skills)` call — dead.
 - Any `wrapWithDomainCheck` or `buildDomainWithKnowledge` calls — dead.
+- Any `ensureLogExists` / `appendToLog` / `dumpAgentSession` calls — dead.
+- `conversationLogPath` params / threading — dead.
 - Any code that reads `fm.domain`, `fm.knowledge`, `fm.role`, `fm.reports`, `fm.conversation` — dead.
 
-In `src/tool/agent-tool-execute.ts` and `src/tool/agent-tool.ts` — audit for references to removed frontmatter fields (reports tool name surfacing, etc.) and delete.
+In `src/invocation/session-helpers.ts` and `src/invocation/session-test-helpers.ts`:
+- `RunAgentParams.conversationLogPath` (or similar) field — delete and simplify the type.
+
+In `src/invocation/build-tools.ts`:
+- Any code that constructs or injects conversation/knowledge/submit tools — delete. `build-tools.ts` may reduce to a trivial passthrough or get absorbed into `session.ts`.
+
+In `src/tool/agent-tool.ts`:
+- `CreateAgentToolConfig.conversationLogPath` (or similar field) — delete. The `createAgentTool` factory no longer accepts a log-path argument. This is a public-API break for consumers (pi-superpowers — handled in §pi-superpowers below).
+
+In `src/tool/agent-tool-execute.ts`:
+- Any reads of `fm.reports` for tool surfacing, any log-writing on completion — delete.
+
+In `src/index.ts` (pi-agents' own demo/test harness):
+- Audit for `conversationLogPath` usages — delete.
 
 **Automated sweep (required — part of the implementation, not optional):**
 
 After the deletions above, run these from the pi-agents root and expect zero matches in `src/` (excluding the spec itself):
 
 ```bash
-grep -rn "domain\|Domain" src/                                   # expect: 0
-grep -rn "knowledge\|Knowledge" src/                             # expect: 0
-grep -rn "reports\b\|Reports\b" src/                             # expect: 0
-grep -rn "conversation:" src/                                    # expect: 0 (the frontmatter key)
-grep -rn "validateRoleTools\|FORBIDDEN_TOOLS_BY_ROLE" src/       # expect: 0
-grep -rn "loadSkillContents\|SkillContent\b" src/                # expect: 0
-grep -rn "role:\s*\"worker\"\|role:\s*\"lead\"" src/             # expect: 0
-grep -rn "wrapWithDomainCheck\|buildDomainWithKnowledge" src/    # expect: 0
-grep -rn "read-knowledge\|write-knowledge\|read-conversation"    # expect: 0
+grep -rn "domain\|Domain" src/                                         # expect: 0
+grep -rn "knowledge\|Knowledge" src/                                   # expect: 0
+grep -rn "reports\b\|Reports\b" src/                                   # expect: 0
+grep -rn "conversation:" src/                                          # expect: 0 (frontmatter key)
+grep -rn "conversationLog\|ConversationEntry\|ConversationLogPath"     # expect: 0
   src/
+grep -rn "appendToLog\|ensureLogExists\|readLog\b" src/                # expect: 0
+grep -rn "dumpAgentSession" src/                                       # expect: 0
+grep -rn "validateRoleTools\|FORBIDDEN_TOOLS_BY_ROLE" src/             # expect: 0
+grep -rn "loadSkillContents\|SkillContent\b" src/                      # expect: 0
+grep -rn "role:\s*\"worker\"\|role:\s*\"lead\"" src/                   # expect: 0
+grep -rn "wrapWithDomainCheck\|buildDomainWithKnowledge" src/          # expect: 0
+grep -rn "read-knowledge\|write-knowledge\|read-conversation" src/     # expect: 0
+grep -rn "resolveConversationPath" src/                                # expect: 0
+grep -rn "sessionDir.*agents\|sessionDir.*superpowers" src/            # expect: 0 for pi-agents
 ```
 
 Biome's `noUnusedImports` / `noUnusedVariables` catch the rest. If it flags anything → delete, don't silence.
 
-**4. Internal conversation-log path — `src/invocation/session.ts`:**
+**4. Conversation log — removed, not relocated.**
 
-Today the conversation-log path came from `fm.conversation.path` via `{{SESSION_ID}}` substitution. Replace with an internal helper in `src/invocation/`:
+There is no internal helper, no `sessionDir/agents/` directory, no `sessionDir/superpowers/dispatch.jsonl`, nothing. pi-agents never opens a file to log dispatched-agent transcripts. The dispatched agent's message history lives wholly within pi's own session-manager and agent-session objects, consistent with how pi's main session behaves.
 
-```ts
-export function agentConversationLogPath(
-  sessionDir: string,
-  agentName: string,
-  sessionId: string,
-): string {
-  return join(sessionDir, "agents", `${agentName}-${sessionId}.jsonl`);
-}
-```
+Consumers that previously needed to replay a dispatched agent's output (e.g., pi-superpowers TUI reconstructing the subagent panel after `/compact`) must now rely on:
+- pi's own session transcript (if the session is persisted).
+- The in-memory `AgentSession.messages` list while the session is live.
+- Their own event subscription from `createAgentTool`'s streaming output if they need to capture-as-they-go.
 
-Directory is created on first write. Consumers (pi-superpowers TUI, etc.) that need to read the log use the helper exported from `src/api.ts`.
+No cross-process rehydration story is offered. If one is needed later, it's a new feature — not a return to this one.
 
 **5. Simplify session construction — `src/invocation/session.ts`:**
 
@@ -431,19 +455,23 @@ Assertions for the new behavior:
 - `src/schema/frontmatter.test.ts` — rewrite fixtures to minimal shape; assert `domain`, `knowledge`, `role`, `reports`, `conversation` keys are rejected; assert `skills` (when present) with relative paths rejected; assert `skills: []` accepted (explicit opt-out); assert `skills` absent accepted (inherit); assert `tools` absent accepted (pi-default); assert `tools: []` rejected (`minItems: 1` on the inner array when the field is declared); assert `model` absent accepted (inherit); assert `model: "inherit"` accepted; assert explicit `provider/name` accepted; assert `model: "bad-format"` rejected.
 - `src/schema/frontmatter.test.ts` — add `validateFrontmatter` cases: skills declared + no read tool → error; skills declared + tools absent → NO error (default pulls in `read`); no skills + no read tool → NO error.
 - `src/prompt/assembly.test.ts` and `assembly-context.test.ts` — rewrite fixtures; assert assembled prompt no longer contains `## Skills`, `## Knowledge Files`, or `## Reports`; assert `SESSION_ID` still substitutes in body text.
-- `src/invocation/session.test.ts` — assert `fm.skills: [path]` builds a resourceLoader with `additionalSkillPaths: [path]` and `noSkills: true`; assert `fm.skills: undefined` builds a resourceLoader with `noSkills: false`; assert `fm.tools: undefined` effective-tools equals pi's default; assert the internal conversation-log path follows the `<sessionDir>/agents/<name>-<sessionId>.jsonl` shape.
+- `src/invocation/session.test.ts` — assert `fm.skills: [path]` builds a resourceLoader with `additionalSkillPaths: [path]` and `noSkills: true`; assert `fm.skills: undefined` builds a resourceLoader with `noSkills: false`; assert `fm.tools: undefined` effective-tools equals pi's default; assert no log file is written anywhere by a dispatch.
 - `src/invocation/resolve-model.test.ts` (new) — assert `undefined` → inherited; assert `"inherit"` → inherited; assert `"provider/name"` → pinned; assert inheritance with no parent model throws the documented error.
 
 Deletions:
 
-- **Delete file outright:** `src/schema/validation.ts`, `src/schema/validation.test.ts`.
 - **Delete directory:** `src/domain/` (all 13 files).
-- **Delete file outright:** `src/common/skills.ts`, `src/common/skills.test.ts`.
-- **Delete file outright:** `src/invocation/tool-wrapper.ts`, `src/invocation/tool-wrapper.test.ts`.
-- **Delete file outright:** `src/invocation/session-knowledge-e2e.test.ts`.
+- **Delete file outright:**
+  - `src/schema/validation.ts` + `.test.ts`
+  - `src/schema/conversation.ts` + `.test.ts`
+  - `src/common/skills.ts` + `.test.ts`
+  - `src/invocation/tool-wrapper.ts` + `.test.ts`
+  - `src/invocation/conversation-log.ts` + `.test.ts`
+  - `src/invocation/session-dump.ts`
+  - `src/invocation/session-knowledge-e2e.test.ts`
 - Prune `src/prompt/assembly.test.ts` / `assembly-context.test.ts` of knowledge/reports/old-skills-format test cases.
 
-Expected test count delta: meaningfully negative (300+ → probably ~220-240 tests). `npm run check` LOC delta for `src/`: roughly -1500 lines including tests, -600 lines excluding.
+Expected test count delta: meaningfully negative (300+ → roughly ~200-220 tests). `npm run check` LOC delta for `src/`: roughly -1800 lines including tests, -700 lines excluding.
 
 ### pi-superpowers (consumer update)
 
@@ -555,9 +583,11 @@ Add optional `skills?: string[]` to `AgentFrontmatterLike`, parsed from upstream
 
 **4. Cleanup elsewhere:**
 
-- `.gitignore` entry for `superpowers/` — pi-superpowers no longer creates per-agent `.md` stubs under `sessionDir/superpowers/`. The per-agent conversation logs are now owned by pi-agents and live under `sessionDir/agents/` (not `sessionDir/superpowers/`). Add `agents/` to `.gitignore`; the `superpowers/` line can be removed.
-- `src/common/paths.ts` — no change; `vendorSkillsDir()` still relevant.
-- `src/index.ts` — `buildAllAgentConfigs` may become synchronous; audit call sites and simplify.
+- **`src/index.ts`** — drop `conversationLogPath: join(sessionDir, "superpowers", "dispatch.jsonl")` from the `createAgentTool(...)` call. `createAgentTool` no longer accepts this field after pi-agents drops it.
+- **`.gitignore`** — remove the `superpowers/` entry entirely. pi-superpowers doesn't write anything under `sessionDir/superpowers/` anymore (no knowledge stubs, no dispatch log). Audit for any stale `agents/` entry — shouldn't be there either. If `sessionDir` artifacts are still being created during e2e, those should go under `sessionDir/` root or a test-specific subdir.
+- **`src/common/paths.ts`** — no change; `vendorSkillsDir()` still relevant. `sessionDir` helpers related to `superpowers/<agent>-*.md` construction (if any remain beyond `agent-config-builder.ts`) — delete.
+- **`src/bootstrap/` / other touch points** — grep for `superpowers/` or `dispatch.jsonl` string literals; delete all references.
+- **`src/index.ts`** — `buildAllAgentConfigs` becomes synchronous (no async file work); audit call sites and simplify.
 
 **5. Tests:**
 
@@ -596,7 +626,8 @@ No tags yet. Tag both repos when the combined change has been exercised end-to-e
 ## Success criteria
 
 - pi-agents schema accepts the minimal frontmatter; rejects `domain`, `knowledge`, `role`, `reports`, `conversation` keys with a clear error.
-- `src/domain/` directory deleted (13 files); `src/common/skills.ts` deleted; `src/invocation/tool-wrapper.ts` deleted; `src/schema/validation.ts` deleted.
+- `src/domain/` directory deleted (13 files); `src/common/skills.ts`, `src/invocation/tool-wrapper.ts`, `src/invocation/conversation-log.ts`, `src/invocation/session-dump.ts`, `src/schema/conversation.ts`, `src/schema/validation.ts` all deleted.
+- No `sessionDir/agents/`, no `sessionDir/superpowers/`, no `dispatch.jsonl` written by pi-agents or pi-superpowers anywhere during a dispatch.
 - Automated grep sweep (see §Changes item 3) returns zero matches for domain, knowledge, role, reports, conversation-as-frontmatter, validateRoleTools, loadSkillContents, and related dead symbols.
 - pi-agents `npm run check` passes; test count drops meaningfully (~20%+).
 - Dispatched agent's system prompt contains `<skills>` XML (when skills present), not a `## Skills` or `## Knowledge Files` section. When `skills: []` (explicit opt-out), no skills section at all.
