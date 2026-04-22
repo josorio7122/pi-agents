@@ -74,26 +74,27 @@ conversation:
   path: ...
 ```
 
-After (6 required fields + 1 optional):
+After (4 required + 3 optional):
 ```yaml
-name: ...             # Identity
-description: ...
-model: inherit        # OPTIONAL — absent or "inherit" = take parent session's model
-color: "#..."
-icon: "..."
-tools: [...]          # Capabilities
-skills:               # RESHAPED: bare absolute paths, minItems: 0
-  - /abs/path/to/skill-a/SKILL.md
-  - /abs/path/to/skill-b/SKILL.md
+name: ...             # Identity — required
+description: ...      #   required
+color: "#..."         #   required
+icon: "..."           #   required
+
+model: inherit        # Optional — absent or "inherit" = take parent session's model
+tools: [...]          # Optional — absent = use pi's active default
+skills: [...]         # Optional — absent = inherit parent's skill discovery;
+                      #            present (even empty) = use only what's declared
 ```
 
 Gone: `domain`, `knowledge`, `role`, `reports`, `conversation`.
 
-- Skills is a flat `string[]` of absolute paths.
-- `model` becomes optional with an `inherit` sentinel.
-- `role` removed — it only drove `validateRoleTools` constraints, which contradicts the "trust the agent" direction.
-- `reports` removed — no shipped agent uses it; agents that want to emit structured output can write to any path via the `write` tool.
-- `conversation` removed — it was just a path template. pi-agents now computes the per-agent log path internally from `sessionDir`, agent `name`, and session id. No need for the agent file to declare it.
+- **`model`** optional with `inherit` sentinel.
+- **`tools`** optional. Absent → pi's active default `["read", "bash", "edit", "write"]`. Present → use the declared array as-is.
+- **`skills`** optional with **override-or-inherit** semantics. Absent → `noSkills: false` in the ResourceLoader (pi's default discovery finds whatever the user has in `~/.pi/agent/skills/`, `.pi/skills/`, etc.). Present → `additionalSkillPaths: agent.skills, noSkills: true` (ONLY what's declared; `skills: []` means no skills at all). This matches how `tools` works and gives consumers a clean way to isolate dispatched agents from the user's ambient skills.
+- **`role`** removed — it only drove `validateRoleTools` (forbidden-tool rules per role), which contradicts the "trust the agent" direction.
+- **`reports`** removed — no shipped agent uses it; agents that want to emit structured output can write to any path via the `write` tool.
+- **`conversation`** removed — it was just a path template. pi-agents now computes the per-agent log path internally from `sessionDir`, agent `name`, and session id.
 
 ### Skill loading — pi's native path, additive
 
@@ -171,74 +172,172 @@ Remove `DomainEntrySchema`, remove `KnowledgeFileSchema`. `AgentFrontmatterSchem
 
 ```ts
 export const AgentFrontmatterSchema = Type.Object({
-  // Identity
+  // Identity — required
   name: Type.String({ minLength: 1 }),
   description: Type.String({ minLength: 1 }),
-  // Model: optional. Absent, empty, or "inherit" → take the parent session's current model.
-  // An explicit "provider/name" string pins to that specific model.
+  color: Type.String({ pattern: "^#[0-9a-fA-F]{6}$" }),
+  icon: Type.String({ minLength: 1 }),
+
+  // Model — optional; absent / "inherit" → parent session's model; else "provider/name" pins.
   model: Type.Optional(
     Type.Union([Type.Literal("inherit"), Type.String({ pattern: "^.+/.+$" })]),
   ),
-  color: Type.String({ pattern: "^#[0-9a-fA-F]{6}$" }),
-  icon: Type.String({ minLength: 1 }),
-  // Capabilities
-  tools: Type.Array(Type.String({ minLength: 1 }), { minItems: 1 }),
-  skills: Type.Array(Type.String({ pattern: "^/" }), { minItems: 0 }),
+
+  // Tools — optional; absent → pi's active default ["read", "bash", "edit", "write"].
+  tools: Type.Optional(Type.Array(Type.String({ minLength: 1 }), { minItems: 1 })),
+
+  // Skills — optional; absent → inherit parent's default discovery;
+  //                    present (even empty) → use ONLY these paths.
+  skills: Type.Optional(Type.Array(Type.String({ pattern: "^/" }), { minItems: 0 })),
 });
 ```
 
 Rationale:
 - Skills are absolute paths (enforced at schema level — no hidden "resolved against what?" semantics).
-- `minItems: 0` — not every agent needs skills.
-- `model` is optional with an `"inherit"` sentinel. Upstream agent files (e.g., Superpowers' `code-reviewer.md`) declare `model: inherit` today, and more generally the dispatched agent should pick up whatever model the user has active in the parent session — not force a pinned choice at agent-authoring time. Keeping `provider/name` as a valid alternative lets authors pin deliberately when they want a specific capability level.
+- Optional `tools` + `skills` + `model` gives the pattern "declare what you want to override, inherit the rest." Consistent across all three capability fields.
+- `skills: []` is meaningful: "this agent gets no skills at all" (explicit opt-out). `skills` absent means "inherit whatever the parent configured."
 - `domain`, `knowledge`, `role`, `reports`, `conversation` all removed. An agent file containing any of them produces a validation error ("unknown key").
 
-**2. Cross-field validation — `src/schema/validation.ts`:**
+**2. Cross-field validation — `src/schema/frontmatter.ts` (move + simplify):**
 
-Remove all domain-related validation. Remove `validateRoleTools` entirely (role no longer exists). Add one new check: if `skills.length > 0 && !tools.includes("read")`, emit:
-> Agent '<name>' declares skills but has no 'read' tool. pi requires the 'read' tool for skill body loading (progressive disclosure). Add 'read' to tools or remove skills.
-
-**3. Delete domain subsystem:**
-
-Remove entirely:
-- `src/domain/` — `checker.ts`, `scoped-tools.ts`, `types.ts`, all tests.
-- All imports of `DomainEntry`, `checkDomain`, `createScoped*Tool` from `src/invocation/`, `src/tool/`, `src/api.ts`.
-- Any domain-wrapping logic in `src/invocation/session.ts` — tools pass through unwrapped.
-
-**4. Delete knowledge / reports / conversation subsystem touches:**
-
-- Remove `renderKnowledgeSection` from `src/prompt/assembly.ts`.
-- Remove `renderReportsSection` from `src/prompt/assembly.ts` (was only conditionally rendered if `fm.reports` existed — dead code now).
-- Remove `KNOWLEDGE_BLOCK` variable substitution.
-- Remove `knowledge` references from `src/schema/validation.ts` cross-field checks.
-- Remove the `{{SESSION_ID}}`-template requirement on `conversation.path`. Per-agent log path is now generated internally.
-
-**4a. Internal conversation-log path — `src/invocation/session.ts`:**
-
-Today the conversation-log path came from `fm.conversation.path` via `{{SESSION_ID}}` substitution. Replace with an internal helper:
+The entire `src/schema/validation.ts` file gets deleted (only `validateRoleTools` lived there, and role is gone). Add one new check — co-locate it with the schema in `src/schema/frontmatter.ts` as `validateFrontmatter(fm)`:
 
 ```ts
-// pi-agents computes this — no longer user-declared.
-function agentConversationLogPath(sessionDir: string, agentName: string, sessionId: string): string {
+export function validateFrontmatter(fm: AgentFrontmatter): string[] {
+  const errors: string[] = [];
+  const effectiveTools = fm.tools ?? PI_DEFAULT_TOOLS;
+  const hasSkills = fm.skills !== undefined && fm.skills.length > 0;
+  if (hasSkills && !effectiveTools.includes("read")) {
+    errors.push(
+      `Agent '${fm.name}' declares skills but has no 'read' tool. ` +
+      `pi requires the 'read' tool for skill body loading (progressive disclosure). ` +
+      `Add 'read' to tools or remove skills.`,
+    );
+  }
+  return errors;
+}
+```
+
+The check runs against `effectiveTools` (post-default-fallback), so `tools: undefined` + `skills: [...]` correctly gets `read` from the default and passes.
+
+**3. Exhaustive dead-code deletion.**
+
+After the schema shrinks, everything that only exists to support a removed field MUST go. **Zero dead code tolerance.**
+
+**Files deleted in full:**
+
+`src/domain/` (entire directory — 13 files):
+- `checker.ts` + `checker.test.ts` — path-ACL enforcement, the whole reason domain existed.
+- `scoped-tools.ts` + `scoped-tools.test.ts` — `buildDomainWithKnowledge`, wraps built-ins with ACL checks.
+- `knowledge-tools.ts` + `knowledge-tools.test.ts` — `read-knowledge`, `write-knowledge`, `edit-knowledge` custom tools. Unreachable without `knowledge:` frontmatter.
+- `conversation-tool.ts` + `conversation-tool.test.ts` — `read-conversation` custom tool. Dispatched agents get message history through pi's native session, not a bespoke read tool; the internal per-agent log is for the DISPATCHER to replay, not for the agent to read.
+- `submit-tool.ts` + `submit-tool.test.ts` — the "emit a report artifact" tool. Dead without `reports:`.
+- `max-lines.ts` + `max-lines.test.ts` — enforces `knowledge[*].max-lines`. Dead with knowledge.
+- `types.ts` — `DomainEntry`, `ScopedTool`, etc.
+
+`src/common/skills.ts` + `src/common/skills.test.ts` — `loadSkillContents`. No caller after skill-loading moves to pi.
+
+`src/invocation/tool-wrapper.ts` + `src/invocation/tool-wrapper.test.ts` — `wrapWithDomainCheck`, `createToolForAgent`, `dispatchBuiltinTool`. The entire file exists to bolt domain checks and the knowledge/conversation custom tools onto the built-in tools. Without domain + knowledge + conversation-tool + submit-tool, the file is dead.
+
+`src/invocation/session-knowledge-e2e.test.ts` — e2e test for the knowledge subsystem.
+
+`src/schema/validation.ts` has only `validateRoleTools`; the whole file goes. (The new "skills requires read" check moves to `src/schema/frontmatter.ts` or a renamed validator module — see item 5 below.)
+
+`src/schema/validation.test.ts` — covers only `validateRoleTools`. Deleted with the module.
+
+**Exports pruned from `src/api.ts`:**
+
+Remove these lines:
+```ts
+export { loadSkillContents } from "./common/skills.js";                    // dead
+export { checkDomain } from "./domain/checker.js";                         // dead
+export { enforceMaxLines } from "./domain/max-lines.js";                   // dead
+export { buildDomainWithKnowledge } from "./domain/scoped-tools.js";       // dead
+export { createToolForAgent, dispatchBuiltinTool, wrapWithDomainCheck }    // dead
+  from "./invocation/tool-wrapper.js";
+export { validateRoleTools } from "./schema/validation.js";                // dead
+```
+
+Audit `resolveConversationPath` from `./common/paths.js` (line 10) — it resolved the `conversation.path` template. Check for remaining callers post-cleanup; if none, delete from `common/paths.ts` and `common/paths.test.ts` and drop from api.ts. Likely dead.
+
+**Module-level deletions inside surviving files:**
+
+In `src/prompt/assembly.ts`:
+- `renderKnowledgeSection` function — dead.
+- `renderReportsSection` function — dead.
+- `renderSkillsSection` function — dead (pi handles skills XML).
+- `KNOWLEDGE_BLOCK`, `SKILLS_BLOCK`, `DOMAIN_BLOCK` entries from the variables map — dead.
+- `skillContents` from `AssemblyContext` — dead.
+
+In `src/schema/frontmatter.ts`:
+- `DomainEntrySchema`, `SkillSchema` (the old `{path, when}` object), `KnowledgeFileSchema` — dead.
+
+In `src/discovery/validator.ts` (if it calls `validateRoleTools` or `checkDomain`) — remove those calls and their diagnostic cases. Audit and simplify.
+
+In `src/invocation/session.ts`:
+- `loadSkillContents(fm.skills)` call — dead.
+- Any `wrapWithDomainCheck` or `buildDomainWithKnowledge` calls — dead.
+- Any code that reads `fm.domain`, `fm.knowledge`, `fm.role`, `fm.reports`, `fm.conversation` — dead.
+
+In `src/tool/agent-tool-execute.ts` and `src/tool/agent-tool.ts` — audit for references to removed frontmatter fields (reports tool name surfacing, etc.) and delete.
+
+**Automated sweep (required — part of the implementation, not optional):**
+
+After the deletions above, run these from the pi-agents root and expect zero matches in `src/` (excluding the spec itself):
+
+```bash
+grep -rn "domain\|Domain" src/                                   # expect: 0
+grep -rn "knowledge\|Knowledge" src/                             # expect: 0
+grep -rn "reports\b\|Reports\b" src/                             # expect: 0
+grep -rn "conversation:" src/                                    # expect: 0 (the frontmatter key)
+grep -rn "validateRoleTools\|FORBIDDEN_TOOLS_BY_ROLE" src/       # expect: 0
+grep -rn "loadSkillContents\|SkillContent\b" src/                # expect: 0
+grep -rn "role:\s*\"worker\"\|role:\s*\"lead\"" src/             # expect: 0
+grep -rn "wrapWithDomainCheck\|buildDomainWithKnowledge" src/    # expect: 0
+grep -rn "read-knowledge\|write-knowledge\|read-conversation"    # expect: 0
+  src/
+```
+
+Biome's `noUnusedImports` / `noUnusedVariables` catch the rest. If it flags anything → delete, don't silence.
+
+**4. Internal conversation-log path — `src/invocation/session.ts`:**
+
+Today the conversation-log path came from `fm.conversation.path` via `{{SESSION_ID}}` substitution. Replace with an internal helper in `src/invocation/`:
+
+```ts
+export function agentConversationLogPath(
+  sessionDir: string,
+  agentName: string,
+  sessionId: string,
+): string {
   return join(sessionDir, "agents", `${agentName}-${sessionId}.jsonl`);
 }
 ```
 
-This lives in `src/invocation/` alongside session construction. Directory is created on first write. Consumers (pi-superpowers TUI, etc.) that need to read the log can use the same helper exported from `src/api.ts`.
+Directory is created on first write. Consumers (pi-superpowers TUI, etc.) that need to read the log use the helper exported from `src/api.ts`.
 
 **5. Simplify session construction — `src/invocation/session.ts`:**
 
-Replace the existing minimal `resourceLoader` object literal with `DefaultResourceLoader`:
+Replace the existing minimal `resourceLoader` object literal with `DefaultResourceLoader` configured per the override-or-inherit semantics:
 
 ```ts
 import { DefaultResourceLoader, getAgentDir } from "@mariozechner/pi-coding-agent";
 
-// ...
+// pi's active default tool set, per dist/core/sdk.js:139.
+const PI_DEFAULT_TOOLS = ["read", "bash", "edit", "write"];
+
+// Effective tools: declared list if present, otherwise pi's default.
+const effectiveTools = fm.tools ?? PI_DEFAULT_TOOLS;
+
+// Skill loader config: presence of the field drives override semantics.
+const skillLoaderOpts = fm.skills !== undefined
+  ? { additionalSkillPaths: [...fm.skills], noSkills: true }   // declared → use ONLY these
+  : { noSkills: false };                                        // absent → pi's defaults
+
 const resourceLoader = new DefaultResourceLoader({
   cwd,
   agentDir: getAgentDir(),
-  additionalSkillPaths: [...fm.skills],   // agent's curated paths
-  // includeDefaults: true is the default — parent's skill locations ALSO scanned
+  ...skillLoaderOpts,
   noExtensions: true,
   noPromptTemplates: true,
   noThemes: true,
@@ -249,7 +348,7 @@ const resourceLoader = new DefaultResourceLoader({
 const { session } = await createAgentSession({
   cwd,
   model: resolveModel(fm.model, ctx),    // see model-resolution below
-  tools: activeToolNames,
+  tools: effectiveTools,
   customTools: allCustomTools,
   sessionManager,
   settingsManager,
@@ -293,18 +392,15 @@ The parent's current model is available on `ExtensionContext` (pi exposes this v
 
 **7. Prompt assembly — `src/prompt/assembly.ts`:**
 
-Remove:
-- `renderSkillsSection` function.
-- `renderKnowledgeSection` function.
-- `renderReportsSection` function.
-- `KNOWLEDGE_BLOCK`, `SKILLS_BLOCK`, `DOMAIN_BLOCK` variable substitutions.
-- `skillContents` from `AssemblyContext`.
+Covered under item 3 above. Summary for cross-reference:
 
-Keep:
-- `renderSharedContextSection` (still relevant — shared-context files flow separately).
-- `resolveVariables` (for `SESSION_ID` and any other template substitution in agent prompt bodies).
+- Delete `renderSkillsSection`, `renderKnowledgeSection`, `renderReportsSection`.
+- Remove `KNOWLEDGE_BLOCK`, `SKILLS_BLOCK`, `DOMAIN_BLOCK` from the variable substitution map.
+- Drop `skillContents` from `AssemblyContext`.
+- Keep `renderSharedContextSection` (still relevant).
+- Keep `resolveVariables` (agents can still use `{{SESSION_ID}}` and similar in their bodies).
 
-The assembled system prompt gets shorter — pi's `buildSystemPrompt` adds skills XML and project context on top.
+`src/prompt/assembly.test.ts` and `src/prompt/assembly-context.test.ts` lose a lot of fixture weight; rewrite to the minimal shape.
 
 **8. Documentation:**
 
@@ -330,12 +426,24 @@ The assembled system prompt gets shorter — pi's `buildSystemPrompt` adds skill
 
 **9. Tests:**
 
-- `src/schema/frontmatter.test.ts` — rewrite fixtures to minimal shape; assert `domain`, `knowledge`, `role`, `reports`, `conversation` keys are rejected; assert `skills: string[]` with relative paths rejected; assert `minItems: 0` for skills; assert `model` is optional; assert `model: "inherit"` validates; assert explicit `provider/name` validates; assert `model: "bad-format"` rejects.
-- `src/schema/validation.test.ts` — remove domain/knowledge/role-tools/reports/conversation validation tests; add "skills require read tool" test. Delete `validateRoleTools` and its tests outright.
-- `src/prompt/assembly.test.ts` and `assembly-context.test.ts` — remove `skillContents`, knowledge-section, and reports-section tests; assert assembled prompt no longer contains `## Skills`, `## Knowledge Files`, or `## Reports`.
-- `src/invocation/session.test.ts` — assert the resourceLoader passed to `createAgentSession` is a `DefaultResourceLoader` with `additionalSkillPaths` matching `fm.skills`; assert `includeDefaults` is truthy (so parent defaults flow through); assert the internal conversation-log path follows the `<sessionDir>/agents/<name>-<sessionId>.jsonl` shape.
+Assertions for the new behavior:
+
+- `src/schema/frontmatter.test.ts` — rewrite fixtures to minimal shape; assert `domain`, `knowledge`, `role`, `reports`, `conversation` keys are rejected; assert `skills` (when present) with relative paths rejected; assert `skills: []` accepted (explicit opt-out); assert `skills` absent accepted (inherit); assert `tools` absent accepted (pi-default); assert `tools: []` rejected (`minItems: 1` on the inner array when the field is declared); assert `model` absent accepted (inherit); assert `model: "inherit"` accepted; assert explicit `provider/name` accepted; assert `model: "bad-format"` rejected.
+- `src/schema/frontmatter.test.ts` — add `validateFrontmatter` cases: skills declared + no read tool → error; skills declared + tools absent → NO error (default pulls in `read`); no skills + no read tool → NO error.
+- `src/prompt/assembly.test.ts` and `assembly-context.test.ts` — rewrite fixtures; assert assembled prompt no longer contains `## Skills`, `## Knowledge Files`, or `## Reports`; assert `SESSION_ID` still substitutes in body text.
+- `src/invocation/session.test.ts` — assert `fm.skills: [path]` builds a resourceLoader with `additionalSkillPaths: [path]` and `noSkills: true`; assert `fm.skills: undefined` builds a resourceLoader with `noSkills: false`; assert `fm.tools: undefined` effective-tools equals pi's default; assert the internal conversation-log path follows the `<sessionDir>/agents/<name>-<sessionId>.jsonl` shape.
 - `src/invocation/resolve-model.test.ts` (new) — assert `undefined` → inherited; assert `"inherit"` → inherited; assert `"provider/name"` → pinned; assert inheritance with no parent model throws the documented error.
-- **Delete entirely:** `src/domain/*.test.ts`, `src/common/skills.test.ts`.
+
+Deletions:
+
+- **Delete file outright:** `src/schema/validation.ts`, `src/schema/validation.test.ts`.
+- **Delete directory:** `src/domain/` (all 13 files).
+- **Delete file outright:** `src/common/skills.ts`, `src/common/skills.test.ts`.
+- **Delete file outright:** `src/invocation/tool-wrapper.ts`, `src/invocation/tool-wrapper.test.ts`.
+- **Delete file outright:** `src/invocation/session-knowledge-e2e.test.ts`.
+- Prune `src/prompt/assembly.test.ts` / `assembly-context.test.ts` of knowledge/reports/old-skills-format test cases.
+
+Expected test count delta: meaningfully negative (300+ → probably ~220-240 tests). `npm run check` LOC delta for `src/`: roughly -1500 lines including tests, -600 lines excluding.
 
 ### pi-superpowers (consumer update)
 
@@ -487,14 +595,19 @@ No tags yet. Tag both repos when the combined change has been exercised end-to-e
 
 ## Success criteria
 
-- pi-agents schema accepts the minimal frontmatter; rejects `domain`/`knowledge` keys with a clear error.
-- `src/domain/` directory deleted; `src/common/skills.ts` deleted; LOC count visibly smaller.
-- pi-agents `npm run check` passes; test count drops meaningfully as domain + knowledge tests disappear.
-- Dispatched agent's system prompt contains `<skills>` XML, not a `## Skills` or `## Knowledge Files` section.
+- pi-agents schema accepts the minimal frontmatter; rejects `domain`, `knowledge`, `role`, `reports`, `conversation` keys with a clear error.
+- `src/domain/` directory deleted (13 files); `src/common/skills.ts` deleted; `src/invocation/tool-wrapper.ts` deleted; `src/schema/validation.ts` deleted.
+- Automated grep sweep (see §Changes item 3) returns zero matches for domain, knowledge, role, reports, conversation-as-frontmatter, validateRoleTools, loadSkillContents, and related dead symbols.
+- pi-agents `npm run check` passes; test count drops meaningfully (~20%+).
+- Dispatched agent's system prompt contains `<skills>` XML (when skills present), not a `## Skills` or `## Knowledge Files` section. When `skills: []` (explicit opt-out), no skills section at all.
+- With `skills` absent, dispatched agent inherits parent session's skill discovery (user's `~/.pi/agent/skills/`, etc.). With `skills` present, ONLY those paths surface.
+- With `tools` absent, dispatched agent gets pi's active default (`read`, `bash`, `edit`, `write`).
+- With `model` absent or `"inherit"`, dispatched agent runs on the parent session's current model.
 - Input-token usage on a no-skill-needed dispatch drops by 25–30k.
 - Agent still successfully uses skills when needed — evidenced by `read` tool-calls to `/abs/.../SKILL.md` paths during e2e.
-- `docs/skills.md` documents the flow and the `read`-tool requirement.
-- `docs/agent-example.md` shows the minimal frontmatter with `read` in `tools:` and a note about the skills dependency.
+- `docs/skills.md` documents progressive disclosure, override-or-inherit, and the `read`-tool requirement.
+- `docs/agent-example.md` shows the minimal frontmatter with pi's default tools and a note about the skills dependency.
+- Biome's `noUnusedImports` / `noUnusedVariables` produce zero warnings after the deletion sweep.
 
 ## References
 
