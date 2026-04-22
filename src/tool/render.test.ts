@@ -88,6 +88,16 @@ describe("renderAgentCall", () => {
     expect(text).toContain("unknown");
     expect(text).toContain("┌");
   });
+
+  it("renders call header as 'Main → <agent>' (caller on the left)", () => {
+    const c = renderAgentCall({
+      args: { agent: "scout", task: "find bugs" },
+      theme: mockTheme,
+      findAgent: mockFindAgent,
+    });
+    const text = c.render(120).map(strip).join("\n");
+    expect(text).toMatch(/Main[^→\n]*→[^→\n]*scout/);
+  });
 });
 
 // ── renderResult ──────────────────────────────────────────
@@ -138,6 +148,22 @@ describe("renderAgentResult", () => {
     expect(text).toContain("Found 3 bugs");
     expect(text).toContain("✓");
     expect(text).toContain("3 turns");
+  });
+
+  it("renders result header as '<agent> → Main' (returning agent on the left)", () => {
+    const c = renderAgentResult({
+      result: {
+        content: [{ type: "text", text: "output" }],
+        details: {
+          mode: "single",
+          results: [{ agent: "scout", status: "done", output: "done" }],
+        },
+      },
+      theme: mockTheme,
+      findAgent: mockFindAgent,
+    });
+    const text = c.render(120).map(strip).join("\n");
+    expect(text).toMatch(/scout[^→\n]*→[^→\n]*Main/);
   });
 
   it("renders running entry with working indicator in bordered box", () => {

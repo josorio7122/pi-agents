@@ -15,9 +15,10 @@ function agentHeader(params: {
   readonly agentName: string;
   readonly theme: RenderTheme;
   readonly findAgent: FindAgent;
+  readonly direction: "call" | "return";
   readonly stepPrefix?: string;
 }) {
-  const { agentName, theme, findAgent, stepPrefix } = params;
+  const { agentName, theme, findAgent, direction, stepPrefix } = params;
   const agent = findAgent(agentName);
   const icon = agent?.icon ?? "●";
   const name = agent?.name ?? agentName;
@@ -27,7 +28,9 @@ function agentHeader(params: {
   const prefix = stepPrefix ?? "";
   const mainLabel = theme.fg("accent", theme.bold("Main"));
   const arrow = theme.fg("dim", "→");
-  return `${prefix}${mainLabel} ${arrow} ${icon} ${styledName}${modelSuffix}`;
+  const agentSide = `${icon} ${styledName}${modelSuffix}`;
+  if (direction === "return") return `${prefix}${agentSide} ${arrow} ${mainLabel}`;
+  return `${prefix}${mainLabel} ${arrow} ${agentSide}`;
 }
 
 function borderColor(theme: RenderTheme) {
@@ -46,7 +49,13 @@ function taskBox(params: {
   const { t, theme, findAgent, mdTheme, stepPrefix } = params;
   const name = typeof t.agent === "string" ? t.agent : "...";
   const task = typeof t.task === "string" ? t.task : "";
-  const header = agentHeader({ agentName: name, theme, findAgent, ...(stepPrefix ? { stepPrefix } : {}) });
+  const header = agentHeader({
+    agentName: name,
+    theme,
+    findAgent,
+    direction: "call",
+    ...(stepPrefix ? { stepPrefix } : {}),
+  });
   const box = new BorderedBox({ header, borderColor: borderColor(theme) });
   box.addChild(new Markdown(task, 0, 0, mdTheme));
   return box;
@@ -120,7 +129,7 @@ export function renderAgentCall(params: {
   // Single mode (or incomplete args — defensive fallback)
   const agentName = extractSingleModeAgent(mode, args);
   const task = extractSingleModeTask(mode, args);
-  const header = agentHeader({ agentName, theme, findAgent });
+  const header = agentHeader({ agentName, theme, findAgent, direction: "call" });
   const box = new BorderedBox({ header, borderColor: borderColor(theme) });
   box.addChild(new Markdown(task, 0, 0, mdTheme));
   return box;
@@ -184,7 +193,7 @@ function renderResultBox(params: {
 }) {
   const { entry, theme, findAgent, showStep, mdTheme } = params;
   const stepPrefix = showStep && entry.step ? `${theme.fg("dim", `${entry.step}.`)} ` : "";
-  const header = agentHeader({ agentName: entry.agent, theme, findAgent, stepPrefix });
+  const header = agentHeader({ agentName: entry.agent, theme, findAgent, direction: "return", stepPrefix });
   const box = new BorderedBox({ header, borderColor: borderColor(theme) });
 
   if (entry.status === "running") {
