@@ -220,25 +220,26 @@ Paths are already absolute — `scanVendorSkills` builds them via `join(skillsDi
 
 Extend `AgentFrontmatterLike` with an optional `skills?: string[]` field parsed from upstream agent YAML frontmatter (by skill name, e.g. `["brainstorming", "test-driven-development"]`). pi-superpowers resolves names → absolute paths at build time. Neither shipped agent (`code-reviewer`, `general-purpose`) uses this field today, so default behavior — all 14 skills — is preserved. Unknown names produce a warning diagnostic from `buildAllAgentConfigs` but do not fail registration.
 
-**3. Domain handling — `src/subagents/agent-config-builder.ts`:**
+**3. Domain extension — `src/subagents/agent-config-builder.ts` (required):**
 
-pi-agents enforces domain ACLs on `read`. Today, every dispatched agent has `domain: [{path: ".", read: true, ...}]`. When pi-superpowers is installed as a normal npm dependency, `node_modules/pi-superpowers/vendor/.../SKILL.md` resolves **under** the user's cwd and the existing `path: "."` entry permits it — no change needed for the common install shape.
+pi-agents enforces domain ACLs on `read`. Today, every dispatched agent has `domain: [{path: ".", read: true, ...}]` — the user's cwd.
 
-However, two edge cases require an explicit domain entry:
+**pi-superpowers is intended to be installed globally** (e.g., `pi install git:github.com/josorio7122/pi-superpowers` into `~/.pi/packages/` or equivalent), which means the vendor skills directory lives **outside** the user's cwd. Without an explicit domain entry, every skill `read` from a dispatched agent would fail with `Path "X" is not in agent's domain`, leaving the agent with a visible manifest it can't act on.
 
-1. **Global install** (e.g., `pi install -g pi-superpowers` or development via `pi -e /abs/path/to/pi-superpowers/src/index.ts`). Vendor skills then live outside the user's cwd and `checkDomain` rejects them with `Path "X" is not in agent's domain`.
-2. **Monorepo / non-project cwd.** If a user runs pi from a directory whose ancestor chain doesn't contain the pi-superpowers install, same failure.
-
-Defensively extend the domain per dispatched agent to include the vendor skills dir as read-only:
+Extend the domain per dispatched agent to include the vendor skills dir as read-only:
 
 ```ts
+import { vendorSkillsDir } from "../common/paths.js";
+// ...
 domain: [
   { path: ".", read: true, write: true, delete: false },
   { path: vendorSkillsDir(), read: true, write: false, delete: false },
 ],
 ```
 
-Cheap insurance — if the vendor path already overlaps cwd, the longest-prefix match logic in `checkDomain` uses whichever entry is more specific. No behavior change for the common case; the failure mode goes away for global/remote installs.
+`vendorSkillsDir()` already returns an absolute path (resolved via `packageRoot()`), so the ACL check works regardless of where the package was installed or what the user's cwd is. `checkDomain`'s longest-prefix-match logic means this entry only applies to vendor skill reads; it doesn't weaken the sandbox for anything else.
+
+This is a required change for the global-install happy path, not defensive insurance for an edge case.
 
 **4. Built-in agent — `src/subagents/builtin-agents.ts`:
 
