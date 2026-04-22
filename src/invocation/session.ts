@@ -69,6 +69,9 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
     noThemes: true,
     noContextFiles: true,
   });
+  // Required: pi's createAgentSession only auto-reloads when IT constructs the loader.
+  // When we provide one, pi assumes it's initialized — skip this and getSkills() returns [].
+  await resourceLoader.reload();
 
   const { session } = await createAgentSession({
     cwd,
