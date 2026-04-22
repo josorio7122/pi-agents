@@ -74,12 +74,11 @@ conversation:
   path: ...
 ```
 
-After (5 required + 1 optional):
+After (4 required + 1 optional):
 ```yaml
 name: ...           # Identity (unchanged)
 description: ...
-model: inherit      # Now OPTIONAL — absent or "inherit" = take parent session's model
-role: worker|lead|orchestrator
+model: inherit      # OPTIONAL — absent or "inherit" = take parent session's model
 color: "#..."
 icon: "..."
 tools: [...]        # Capabilities (unchanged)
@@ -91,7 +90,7 @@ conversation:       # Unchanged
   path: ...
 ```
 
-Domain and knowledge are gone. Skills is a `string[]` of absolute paths. `model` becomes optional with an `inherit` sentinel.
+Domain, knowledge, and role are gone. Skills is a `string[]` of absolute paths. `model` becomes optional with an `inherit` sentinel. `role` removed — it only drove cross-field constraints (`validateRoleTools` forbade certain tools on certain roles), which contradicts the "trust the agent" direction.
 
 ### Skill loading — pi's native path, additive
 
@@ -177,7 +176,6 @@ export const AgentFrontmatterSchema = Type.Object({
   model: Type.Optional(
     Type.Union([Type.Literal("inherit"), Type.String({ pattern: "^.+/.+$" })]),
   ),
-  role: Type.Union([Type.Literal("worker"), Type.Literal("lead"), Type.Literal("orchestrator")]),
   color: Type.String({ pattern: "^#[0-9a-fA-F]{6}$" }),
   icon: Type.String({ minLength: 1 }),
   // Capabilities
@@ -203,7 +201,7 @@ Rationale:
 
 **2. Cross-field validation — `src/schema/validation.ts`:**
 
-Remove all domain-related validation. Add one new check: if `skills.length > 0 && !tools.includes("read")`, emit:
+Remove all domain-related validation. Remove `validateRoleTools` entirely (role no longer exists). Add one new check: if `skills.length > 0 && !tools.includes("read")`, emit:
 > Agent '<name>' declares skills but has no 'read' tool. pi requires the 'read' tool for skill body loading (progressive disclosure). Add 'read' to tools or remove skills.
 
 **3. Delete domain subsystem:**
@@ -321,8 +319,8 @@ The assembled system prompt gets shorter — pi's `buildSystemPrompt` adds skill
 
 **9. Tests:**
 
-- `src/schema/frontmatter.test.ts` — rewrite fixtures to minimal shape; assert `domain` and `knowledge` keys are rejected; assert `skills: string[]` with relative paths rejected; assert `minItems: 0` for skills; assert `reports` stays optional; assert `model` is optional; assert `model: "inherit"` validates; assert explicit `provider/name` validates; assert `model: "bad-format"` rejects.
-- `src/schema/validation.test.ts` — remove domain/knowledge validation tests; add "skills require read tool" test.
+- `src/schema/frontmatter.test.ts` — rewrite fixtures to minimal shape; assert `domain`, `knowledge`, and `role` keys are rejected; assert `skills: string[]` with relative paths rejected; assert `minItems: 0` for skills; assert `reports` stays optional; assert `model` is optional; assert `model: "inherit"` validates; assert explicit `provider/name` validates; assert `model: "bad-format"` rejects.
+- `src/schema/validation.test.ts` — remove domain/knowledge/role-tools validation tests; add "skills require read tool" test. Also delete `validateRoleTools` and its tests outright.
 - `src/prompt/assembly.test.ts` and `assembly-context.test.ts` — remove `skillContents` and knowledge-section tests; assert assembled prompt no longer contains `## Skills` or `## Knowledge Files`.
 - `src/invocation/session.test.ts` — assert the resourceLoader passed to `createAgentSession` is a `DefaultResourceLoader` with `additionalSkillPaths` matching `fm.skills`; assert `includeDefaults` is truthy (so parent defaults flow through).
 - `src/invocation/resolve-model.test.ts` (new) — assert `undefined` → inherited; assert `"inherit"` → inherited; assert `"provider/name"` → pinned; assert inheritance with no parent model throws the documented error.
@@ -343,8 +341,7 @@ export type PiAgentConfig = {
   frontmatter: {
     name: string;
     description: string;
-    model: string;
-    role: "worker" | "lead" | "orchestrator";
+    model?: string;       // optional — pi-agents inherits from parent when absent
     color: string;
     icon: string;
     tools: string[];
@@ -356,7 +353,13 @@ export type PiAgentConfig = {
   source: "project" | "user";
 };
 
-const DEFAULT_TOOLS = ["read", "write", "edit", "bash", "grep", "glob"];
+// Matches pi's active default tool set.
+// Source: @mariozechner/pi-coding-agent dist/core/sdk.js:139,
+//         dist/core/system-prompt.js:48, dist/core/agent-session.js:1887.
+// Full universe of pi tools is ["read", "bash", "edit", "write", "grep", "find", "ls"]
+// (dist/core/tools/index.js:17 — `allToolNames`); agents declare grep/find/ls
+// explicitly in their own frontmatter when needed.
+const DEFAULT_TOOLS = ["read", "bash", "edit", "write"];
 
 function resolveSkillsForAgent(
   upstream: AgentFrontmatterLike,
@@ -397,7 +400,6 @@ export async function buildAgentConfig(
       name: upstream.name,
       description: upstream.description ?? upstream.name,
       ...(model !== undefined ? { model } : {}),   // omit to inherit
-      role: "worker",
       color: "#f5a623",
       icon: "🦸",
       tools,
@@ -417,8 +419,15 @@ Deletions:
 - `ensureStubFile` function and the two `await ensureStubFile(...)` calls for `<agent>-project.md` / `<agent>-general.md`.
 - `domain:` block construction.
 - `knowledge:` block construction.
+- `role: "worker"` field.
 - `PINNED_DEFAULT_MODEL` constant — no longer needed. pi-agents handles inheritance.
 - Imports for `mkdir`, `writeFile`, `dirname`, `fileExists`.
+
+The old `DEFAULT_TOOLS = ["read", "write", "edit", "bash", "grep", "glob"]` is wrong on two counts:
+- `glob` is not a pi tool (not in `allToolNames`); it was carried over from Claude Code. Agents calling `glob` would hit "unknown tool" at runtime.
+- Including `grep` puts pi-superpowers ahead of pi's own default active set, which surprises anyone who reads pi docs and then reads this.
+
+The new `DEFAULT_TOOLS = ["read", "bash", "edit", "write"]` matches pi's active default verbatim. Superpowers agents that need `grep`/`find`/`ls` (e.g., code-reviewer for pattern search) declare them explicitly in their own upstream frontmatter.
 
 The resulting file drops from ~108 LOC to ~55 LOC. Upstream agents declaring `model: inherit` or omitting model now actually inherit — previously pi-superpowers replaced those with a pinned fallback.
 
