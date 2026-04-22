@@ -78,7 +78,7 @@ After (5 required + 1 optional):
 ```yaml
 name: ...           # Identity (unchanged)
 description: ...
-model: ...
+model: inherit      # Now OPTIONAL — absent or "inherit" = take parent session's model
 role: worker|lead|orchestrator
 color: "#..."
 icon: "..."
@@ -91,7 +91,7 @@ conversation:       # Unchanged
   path: ...
 ```
 
-Domain and knowledge are gone. Skills is a `string[]` of absolute paths.
+Domain and knowledge are gone. Skills is a `string[]` of absolute paths. `model` becomes optional with an `inherit` sentinel.
 
 ### Skill loading — pi's native path, additive
 
@@ -136,6 +136,17 @@ Agent sees XML manifest; uses `read` on demand to fetch full bodies
 
 **Additive, not substitutive:** `includeDefaults: true` (the default) means the dispatched agent sees everything the parent pi session sees in its skill locations, PLUS anything the agent declares explicitly. This is the CC mental model — "skills are ambient; agents can add more."
 
+### Model inheritance
+
+An agent's `model` field is now optional:
+
+- `model: "anthropic/claude-sonnet-4-6"` — pin to this specific model.
+- `model: "inherit"` or field omitted — use whatever model is active in the parent pi session at dispatch time.
+
+Rationale: agents shouldn't hard-code model choice unless they genuinely need specific capability. For most dispatched work, the user's currently-selected model in the parent session is the right answer — same cost profile, same capability level, no surprises when the user deliberately switches models.
+
+If the parent session has no active model (rare — e.g., `--no-session` before any prompt has resolved a model), pi-agents throws a clear error at dispatch time rather than silently falling back.
+
 ### Validation path
 
 `buildSystemPrompt` only injects skills XML if:
@@ -161,7 +172,11 @@ export const AgentFrontmatterSchema = Type.Object({
   // Identity
   name: Type.String({ minLength: 1 }),
   description: Type.String({ minLength: 1 }),
-  model: Type.String({ pattern: "^.+/.+$" }),
+  // model: optional. Absent, empty, or "inherit" → take the parent session's current model.
+  // An explicit "provider/name" string pins to that specific model.
+  model: Type.Optional(
+    Type.Union([Type.Literal("inherit"), Type.String({ pattern: "^.+/.+$" })]),
+  ),
   role: Type.Union([Type.Literal("worker"), Type.Literal("lead"), Type.Literal("orchestrator")]),
   color: Type.String({ pattern: "^#[0-9a-fA-F]{6}$" }),
   icon: Type.String({ minLength: 1 }),
@@ -183,6 +198,7 @@ export const AgentFrontmatterSchema = Type.Object({
 Rationale:
 - Skills are absolute paths (enforced at schema level — no hidden "resolved against what?" semantics).
 - `minItems: 0` — not every agent needs skills.
+- `model` is optional with an `"inherit"` sentinel. Rationale: upstream agent files (e.g., Superpowers' `code-reviewer.md`) declare `model: inherit` today, and more generally the dispatched agent should pick up whatever model the user has active in the parent session — not force a pinned choice at agent-authoring time. Keeping `provider/name` as a valid alternative lets authors pin deliberately when they want a specific capability level.
 - `domain` and `knowledge` keys removed entirely. An agent file containing either produces a validation error ("unknown key").
 
 **2. Cross-field validation — `src/schema/validation.ts`:**
@@ -224,13 +240,47 @@ const resourceLoader = new DefaultResourceLoader({
 });
 
 const { session } = await createAgentSession({
-  cwd, model, tools: activeToolNames, customTools: allCustomTools,
-  sessionManager, settingsManager, modelRegistry,
+  cwd,
+  model: resolveModel(fm.model, ctx),    // see model-resolution below
+  tools: activeToolNames,
+  customTools: allCustomTools,
+  sessionManager,
+  settingsManager,
+  modelRegistry,
   resourceLoader,
 });
 ```
 
 Remove the `loadSkillContents(fm.skills)` call. pi handles skill loading from here.
+
+**5a. Model resolution — new helper in `src/invocation/`:**
+
+```ts
+// Resolves the effective model for a dispatched agent.
+// - Undefined or "inherit" in frontmatter → parent session's current model from ctx.
+// - Explicit "provider/name" → use that, after format validation.
+// - Parent context lacks a model (rare — --no-session before first prompt) → throw with
+//   a clear error so the dispatcher surfaces it, rather than silently picking a default.
+export function resolveModel(
+  fmModel: string | undefined,
+  ctx: { currentModel?: Model },
+): Model {
+  if (fmModel && fmModel !== "inherit") {
+    // Parse "provider/name" → Model via modelRegistry.
+    return parseModelId(fmModel);
+  }
+  const inherited = ctx.currentModel;
+  if (!inherited) {
+    throw new Error(
+      `agent declares 'model: inherit' (or omits model) but no model is active in the parent session. ` +
+      `Select a model with /model or start pi with --model provider/name.`,
+    );
+  }
+  return inherited;
+}
+```
+
+The parent's current model is available on `ExtensionContext` (pi exposes this via the tool-execute ctx). If it's not exposed explicitly today, that's the one pi-agents change we'd need to coordinate upstream; otherwise we derive it from `modelRegistry` + some "active model" signal. Implementation detail for the plan.
 
 **6. Delete `src/common/skills.ts`.** `loadSkillContents` has no remaining caller. Remove the export from `src/api.ts`.
 
@@ -271,10 +321,11 @@ The assembled system prompt gets shorter — pi's `buildSystemPrompt` adds skill
 
 **9. Tests:**
 
-- `src/schema/frontmatter.test.ts` — rewrite fixtures to minimal shape; assert `domain` and `knowledge` keys are rejected; assert `skills: string[]` with relative paths rejected; assert `minItems: 0` for skills; assert `reports` stays optional.
+- `src/schema/frontmatter.test.ts` — rewrite fixtures to minimal shape; assert `domain` and `knowledge` keys are rejected; assert `skills: string[]` with relative paths rejected; assert `minItems: 0` for skills; assert `reports` stays optional; assert `model` is optional; assert `model: "inherit"` validates; assert explicit `provider/name` validates; assert `model: "bad-format"` rejects.
 - `src/schema/validation.test.ts` — remove domain/knowledge validation tests; add "skills require read tool" test.
 - `src/prompt/assembly.test.ts` and `assembly-context.test.ts` — remove `skillContents` and knowledge-section tests; assert assembled prompt no longer contains `## Skills` or `## Knowledge Files`.
 - `src/invocation/session.test.ts` — assert the resourceLoader passed to `createAgentSession` is a `DefaultResourceLoader` with `additionalSkillPaths` matching `fm.skills`; assert `includeDefaults` is truthy (so parent defaults flow through).
+- `src/invocation/resolve-model.test.ts` (new) — assert `undefined` → inherited; assert `"inherit"` → inherited; assert `"provider/name"` → pinned; assert inheritance with no parent model throws the documented error.
 - **Delete entirely:** `src/domain/*.test.ts`, `src/common/skills.test.ts`.
 
 ### pi-superpowers (consumer update)
@@ -306,8 +357,6 @@ export type PiAgentConfig = {
 };
 
 const DEFAULT_TOOLS = ["read", "write", "edit", "bash", "grep", "glob"];
-const PINNED_DEFAULT_MODEL = "openai-codex/gpt-5.4";
-const MODEL_FORMAT = /^.+\/.+$/;
 
 function resolveSkillsForAgent(
   upstream: AgentFrontmatterLike,
@@ -321,7 +370,19 @@ function resolveSkillsForAgent(
     .filter((p): p is string => p !== undefined);
 }
 
-// resolveModel unchanged from current code.
+// Model resolution: honor SUPERPOWERS_AGENT_MODEL env override; otherwise pass
+// the upstream value through (including undefined / "inherit") so pi-agents can
+// resolve to the parent session's current model at dispatch time.
+function resolveModel(upstream: string | undefined): string | undefined {
+  const override = process.env.SUPERPOWERS_AGENT_MODEL;
+  if (override) {
+    if (!/^.+\/.+$/.test(override)) {
+      throw new Error(`invalid SUPERPOWERS_AGENT_MODEL '${override}' — expected 'provider/model' format`);
+    }
+    return override;
+  }
+  return upstream;   // undefined and "inherit" pass through to pi-agents
+}
 
 export async function buildAgentConfig(
   upstream: AgentFrontmatterLike,
@@ -335,7 +396,7 @@ export async function buildAgentConfig(
     frontmatter: {
       name: upstream.name,
       description: upstream.description ?? upstream.name,
-      model,
+      ...(model !== undefined ? { model } : {}),   // omit to inherit
       role: "worker",
       color: "#f5a623",
       icon: "🦸",
@@ -356,9 +417,10 @@ Deletions:
 - `ensureStubFile` function and the two `await ensureStubFile(...)` calls for `<agent>-project.md` / `<agent>-general.md`.
 - `domain:` block construction.
 - `knowledge:` block construction.
+- `PINNED_DEFAULT_MODEL` constant — no longer needed. pi-agents handles inheritance.
 - Imports for `mkdir`, `writeFile`, `dirname`, `fileExists`.
 
-The resulting file drops from ~108 LOC to ~60 LOC.
+The resulting file drops from ~108 LOC to ~55 LOC. Upstream agents declaring `model: inherit` or omitting model now actually inherit — previously pi-superpowers replaced those with a pinned fallback.
 
 **2. Agent frontmatter extension — `src/subagents/frontmatter.ts`:**
 
