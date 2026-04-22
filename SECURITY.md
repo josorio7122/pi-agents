@@ -22,8 +22,9 @@ I'll acknowledge within 72 hours and provide a fix timeline within 7 days. Do no
 ## Scope
 
 In scope:
-- The agent-discovery pipeline (`src/discovery/`) — anything a malformed `.pi/agents/**/*.md` can trigger.
-- The agent-execution session runner (`src/invocation/`) — domain-scoping, tool-wrapper boundary, conversation log.
+- The agent-discovery pipeline (`src/discovery/`) — anything a malformed `.pi/agents/**/*.md` can trigger through frontmatter parsing or validation.
+- The frontmatter schema (`src/schema/frontmatter.ts`) — schema contract, `validateFrontmatter` cross-field check, `additionalProperties: false` rejection of unknown keys.
+- The session runner (`src/invocation/`) — model resolution (`resolve-model.ts`), `DefaultResourceLoader` construction with `additionalSkillPaths`, `createAgentSession` wiring, abort handling.
 - The tool factory (`src/tool/agent-tool.ts`) and public API (`src/api.ts`).
 
 Out of scope:
