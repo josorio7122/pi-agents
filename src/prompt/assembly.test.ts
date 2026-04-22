@@ -1,155 +1,60 @@
 import { describe, expect, it } from "vitest";
-import type { AgentConfig } from "../discovery/validator.js";
-import type { AssemblyContext } from "./assembly.js";
 import { assembleSystemPrompt } from "./assembly.js";
 
-const agent: AgentConfig = {
+const baseConfig = {
   frontmatter: {
-    name: "backend-dev",
-    description: "Builds APIs.",
-    model: "anthropic/claude-sonnet-4-6",
-    role: "worker",
-    color: "#36f9f6",
-    icon: "💻",
-    domain: [{ path: "apps/backend/", read: true, write: true, delete: true }],
-    tools: ["read", "write", "bash"],
-    skills: [{ path: ".pi/skills/mental-model.md", when: "Read at task start." }],
-    knowledge: {
-      project: {
-        path: ".pi/knowledge/project/backend-dev.yaml",
-        description: "Track patterns.",
-        updatable: true,
-        "max-lines": 10000,
-      },
-      general: {
-        path: ".pi/knowledge/general/backend-dev.yaml",
-        description: "General strategies.",
-        updatable: true,
-        "max-lines": 5000,
-      },
-    },
-    conversation: { path: ".pi/sessions/{{SESSION_ID}}/conversation.jsonl" },
+    name: "scout",
+    description: "test",
+    color: "#ff0000",
+    icon: "🔍",
   },
-  systemPrompt:
-    "# Backend Dev\n\nSession: {{SESSION_DIR}}\nLog: {{CONVERSATION_LOG}}\n\n## Domain\n{{DOMAIN_BLOCK}}\n\n## Knowledge\n{{KNOWLEDGE_BLOCK}}\n\n## Skills\n{{SKILLS_BLOCK}}\n\n## Team\n{{TEAM_BLOCK}}",
-  filePath: ".pi/agents/backend-dev.md",
-  source: "project",
+  systemPrompt: "Hello {{SESSION_DIR}}.",
+  filePath: "/abs/scout.md",
+  source: "project" as const,
 };
 
-function makeCtx(overrides?: Partial<AssemblyContext>): AssemblyContext {
-  return {
-    agentConfig: agent,
-    sessionDir: "/tmp/sessions/abc123",
-
-    skillContents: [
-      { name: "mental-model", when: "Read at task start.", content: "# Mental Model\n\nUpdate your knowledge." },
-    ],
-    ...overrides,
-  };
-}
+const baseCtx = {
+  agentConfig: baseConfig,
+  sessionDir: "/tmp/session",
+};
 
 describe("assembleSystemPrompt", () => {
-  it("resolves {{SESSION_DIR}}", () => {
-    const result = assembleSystemPrompt(makeCtx());
-    expect(result).toContain("/tmp/sessions/abc123");
-    expect(result).not.toContain("{{SESSION_DIR}}");
+  it("substitutes SESSION_DIR in the body", () => {
+    const out = assembleSystemPrompt(baseCtx as never);
+    expect(out).toContain("Hello /tmp/session.");
   });
 
-  it("resolves {{CONVERSATION_LOG}} with tool reference", () => {
-    const result = assembleSystemPrompt(makeCtx());
-    expect(result).toContain("read-conversation");
-    expect(result).not.toContain("{{CONVERSATION_LOG}}");
+  it("substitutes extraVariables in the body", () => {
+    const out = assembleSystemPrompt({
+      ...baseCtx,
+      agentConfig: { ...baseConfig, systemPrompt: "Team={{TEAM}}." },
+      extraVariables: { TEAM: "alpha" },
+    } as never);
+    expect(out).toContain("Team=alpha.");
   });
 
-  it("does not inject conversation log content into prompt", () => {
-    const result = assembleSystemPrompt(makeCtx());
-    expect(result).not.toContain("conversation history between all participants");
+  it("renders shared context section when files provided", () => {
+    const out = assembleSystemPrompt({
+      ...baseCtx,
+      sharedContextContents: [{ path: "/abs/CONTEXT.md", content: "shared" }],
+    } as never);
+    expect(out).toContain("## Shared Context");
+    expect(out).toContain("### /abs/CONTEXT.md");
+    expect(out).toContain("shared");
   });
 
-  it("resolves {{DOMAIN_BLOCK}} as YAML", () => {
-    const result = assembleSystemPrompt(makeCtx());
-    expect(result).toContain("apps/backend/");
-    expect(result).not.toContain("{{DOMAIN_BLOCK}}");
+  it("omits shared context section when absent", () => {
+    const out = assembleSystemPrompt(baseCtx as never);
+    expect(out).not.toContain("## Shared Context");
   });
 
-  it("resolves {{KNOWLEDGE_BLOCK}} as YAML", () => {
-    const result = assembleSystemPrompt(makeCtx());
-    expect(result).toContain("Track patterns.");
-    expect(result).not.toContain("{{KNOWLEDGE_BLOCK}}");
+  it("omits shared context section when empty array", () => {
+    const out = assembleSystemPrompt({ ...baseCtx, sharedContextContents: [] } as never);
+    expect(out).not.toContain("## Shared Context");
   });
 
-  it("resolves {{SKILLS_BLOCK}} as YAML", () => {
-    const result = assembleSystemPrompt(makeCtx());
-    expect(result).toContain("mental-model");
-    expect(result).not.toContain("{{SKILLS_BLOCK}}");
-  });
-
-  it("leaves {{TEAM_BLOCK}} unresolved when not in extraVariables", () => {
-    const result = assembleSystemPrompt(makeCtx());
-    expect(result).toContain("{{TEAM_BLOCK}}");
-  });
-
-  it("resolves {{TEAM_BLOCK}} when provided via extraVariables", () => {
-    const result = assembleSystemPrompt(makeCtx({ extraVariables: { TEAM_BLOCK: "my-team-content" } }));
-    expect(result).toContain("my-team-content");
-    expect(result).not.toContain("{{TEAM_BLOCK}}");
-  });
-
-  it("includes skill contents with when instruction", () => {
-    const result = assembleSystemPrompt(makeCtx());
-    expect(result).toContain("# Mental Model");
-    expect(result).toContain("Update your knowledge.");
-    expect(result).toContain("Read at task start.");
-  });
-
-  it("includes knowledge file paths and descriptions", () => {
-    const result = assembleSystemPrompt(makeCtx());
-    expect(result).toContain(".pi/knowledge/project/backend-dev.yaml");
-    expect(result).toContain("Track patterns.");
-    expect(result).toContain(".pi/knowledge/general/backend-dev.yaml");
-    expect(result).toContain("General strategies.");
-  });
-
-  it("does not inject knowledge file content into prompt", () => {
-    const result = assembleSystemPrompt(makeCtx());
-    expect(result).not.toContain("framework: Express");
-    expect(result).not.toContain("Read tests first");
-  });
-
-  it("mentions read-knowledge tool", () => {
-    const result = assembleSystemPrompt(makeCtx());
-    expect(result).toContain("read-knowledge");
-  });
-
-  it("includes reports section when agent has reports block", () => {
-    const agentWithReports: AgentConfig = {
-      ...agent,
-      frontmatter: { ...agent.frontmatter, reports: { path: ".pi/reports", updatable: true } },
-    };
-    const result = assembleSystemPrompt(makeCtx({ agentConfig: agentWithReports }));
-    expect(result).toContain("## Reports");
-    expect(result).toContain("Directory: .pi/reports");
-  });
-
-  it("omits reports section when agent has no reports block", () => {
-    const result = assembleSystemPrompt(makeCtx());
-    expect(result).not.toContain("## Reports");
-  });
-
-  it("resolves extraVariables in system prompt", () => {
-    const agentWithTeams: AgentConfig = {
-      ...agent,
-      systemPrompt: agent.systemPrompt + "\n\n## Teams\n{{TEAMS_BLOCK}}",
-    };
-
-    const result = assembleSystemPrompt(
-      makeCtx({
-        agentConfig: agentWithTeams,
-        extraVariables: { TEAMS_BLOCK: "- name: eng-lead\n  leads: Engineering" },
-      }),
-    );
-    expect(result).toContain("- name: eng-lead");
-    expect(result).toContain("leads: Engineering");
-    expect(result).not.toContain("{{TEAMS_BLOCK}}");
+  it("contains no '## Skills' section (pi injects skill XML downstream)", () => {
+    const out = assembleSystemPrompt(baseCtx as never);
+    expect(out).not.toContain("## Skills");
   });
 });

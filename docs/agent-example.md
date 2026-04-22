@@ -1,152 +1,70 @@
 # Agent Example
 
-A minimal agent definition showing all 7 required frontmatter blocks plus the system prompt.
+A minimal agent definition showing the required fields plus optional ones. For richer scenarios, see [`docs/skills.md`](skills.md) for skill authoring and https://agentskills.io/specification for the SKILL.md format.
 
-This is a simple read-only scout agent. For a full library of agents, see [pi-teams-catalog](https://github.com/josorio7122/pi-teams-catalog) (private).
-
-## Complete Agent File: `scout.md`
+## Minimal agent file: `scout.md`
 
 ```yaml
 ---
 name: scout
 description: Fast codebase recon — reads files, finds patterns, returns structured findings.
-model: anthropic/claude-haiku-4-5
-role: worker
 color: "#36f9f6"
-icon: "🔍"
-domain:
-  - path: src/
-    read: true
-    write: false
-    delete: false
-  - path: docs/
-    read: true
-    write: false
-    delete: false
+icon: 🔍
+---
+You are a scout. Your job is to read files and report findings.
+```
+
+Everything else is optional. This agent:
+
+- Runs on whatever model is active in the parent pi session (no `model:` → inherit).
+- Uses pi's active default tool set: `read`, `bash`, `edit`, `write` (no `tools:` → default).
+- Inherits pi's skill discovery from the user's own configured locations (no `skills:` → inherit).
+
+## Fuller example with explicit overrides
+
+```yaml
+---
+name: scout-plus
+description: Scout with grep, pinned to Haiku for speed, and curated skills.
+model: anthropic/claude-haiku-4-5
+color: "#36f9f6"
+icon: 🔍
 tools:
   - read
+  - bash
   - grep
   - find
   - ls
 skills:
-  - path: .pi/agent-skills/mental-model.md
-    when: Read knowledge files at task start. Update after completing work.
-  - path: .pi/agent-skills/active-listener.md
-    when: Always. Read conversation log before responding.
-knowledge:
-  project:
-    path: .pi/knowledge/scout.yaml
-    description: Track codebase structure, key files, and patterns.
-    updatable: true
-    max-lines: 5000
-  general:
-    path: ~/.pi/agent/general/scout.yaml
-    description: General code exploration strategies.
-    updatable: true
-    max-lines: 2000
-conversation:
-  path: .pi/sessions/{{SESSION_ID}}/conversation.jsonl
+  - /abs/path/to/skills/pattern-matching/SKILL.md
+  - /abs/path/to/skills/structured-output/SKILL.md
 ---
-# Scout
-
-You are a codebase reconnaissance agent. You investigate quickly and return
-structured findings. Your output will be consumed by other agents or the user.
-
-## Variables
-
-- **Session:** `{{SESSION_DIR}}`
-- **Conversation Log:** `{{CONVERSATION_LOG}}`
-
-## Domain
-
-\```yaml
-{{DOMAIN_BLOCK}}
-\```
-
-## Knowledge
-
-\```yaml
-{{KNOWLEDGE_BLOCK}}
-\```
-
-## Skills
-
-\```yaml
-{{SKILLS_BLOCK}}
-\```
-
-## Instructions
-
-1. Read your knowledge files FIRST
-2. Use `grep` and `find` to locate code — do NOT read entire files
-3. Read only key sections (function signatures, type definitions, exports)
-4. Return findings in the structured format below
-
-## Output Format
-
-\```markdown
-## Files Found
-- `src/schema/frontmatter.ts` — Zod schemas for agent blocks
-
-## Key Patterns
-- All types use `Readonly<{...}>`
-
-## Start Here
-`src/index.ts` — extension entry point
-\```
+You are a scout. Your job is to read files and report findings.
+Prefer grep over bash for pattern search.
 ```
 
-## Block Reference
+This agent:
 
-| Block | Frontmatter Key | Required | Purpose |
-|-------|----------------|:--------:|---------|
-| 1. Identity | `name`, `description`, `model`, `role`, `color`, `icon` | ✅ | Who the agent is |
-| 2. Domain | `domain` (array of `{path, read, write, delete}`) | ✅ | What files the agent can access |
-| 3. Capabilities | `tools` (array from: read, write, edit, grep, bash, find, ls, delegate) | ✅ | What tools the agent can use |
-| 4. Skills | `skills` (array of `{path, when}`) | ✅ | Methodology/checklist files injected into context |
-| 5. Knowledge | `knowledge.project` + `knowledge.general` (each: path, description, updatable, max-lines) | ✅ | Persistent memory — project-specific and cross-project |
-| 6. Conversation | `conversation.path` (must include `{{SESSION_ID}}`) | ✅ | Append-only JSONL conversation log |
-| 7. System Prompt | Markdown body after `---` | ✅ | Instructions, persona, constraints, output format |
+- Pins to `anthropic/claude-haiku-4-5` (overrides inheritance).
+- Declares its own tool list (note `read` must be included when `skills` is declared).
+- Sees ONLY the two listed skill files — user's global skills are not surfaced.
 
-## Model Format
+## pi tool reference
 
-```
-provider/model-id
-```
+pi's full tool universe (from `@mariozechner/pi-coding-agent dist/core/tools/index.js`):
 
-Examples:
-- `anthropic/claude-haiku-4-5` — fast, cheap (recon, measurement)
-- `anthropic/claude-sonnet-4-6` — balanced (building, executing)
-- `anthropic/claude-opus-4-6` — deep reasoning (reviewing, diagnosing)
+| Tool | Purpose |
+|------|---------|
+| `read` | Read a file — **required** when `skills` is declared. |
+| `bash` | Run shell commands. |
+| `edit` | Modify a file. |
+| `write` | Create or overwrite a file. |
+| `grep` | Content search (ripgrep-backed). |
+| `find` | Pattern-based file search. |
+| `ls` | Directory listing. |
 
-## Variables Available in System Prompt
+When `tools:` is omitted, the agent receives pi's active default set: `["read", "bash", "edit", "write"]`.
 
-| Variable | Replaced With |
-|----------|--------------|
-| `{{SESSION_DIR}}` | Session directory path |
-| `{{SESSION_ID}}` | Session UUID |
-| `{{CONVERSATION_LOG}}` | Conversation history (JSONL) |
-| `{{DOMAIN_BLOCK}}` | Domain configuration (JSON) |
-| `{{KNOWLEDGE_BLOCK}}` | Knowledge configuration (JSON) |
-| `{{SKILLS_BLOCK}}` | Skills configuration (JSON) |
+## Schema reference
 
-## Invocation
-
-The parent LLM invokes agents via the registered tool:
-
-```json
-// Single
-{ "agent": "scout", "task": "find all exported functions in src/" }
-
-// Parallel
-{ "tasks": [
-  { "agent": "scout", "task": "find API routes" },
-  { "agent": "scout", "task": "find test files" }
-]}
-
-// Chain (output of step 1 feeds step 2 via {previous})
-{ "chain": [
-  { "agent": "scout", "task": "find auth code" },
-  { "agent": "backend-dev", "task": "fix the bug in {previous}" }
-]}
-```
+See [`src/schema/frontmatter.ts`](../src/schema/frontmatter.ts) for the authoritative schema. Required: `name`, `description`, `color`, `icon`. Optional: `model`, `tools`, `skills`.

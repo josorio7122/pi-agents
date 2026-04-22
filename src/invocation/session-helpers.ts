@@ -10,12 +10,11 @@ export type RunAgentParams = Readonly<{
   task: string;
   cwd: string;
   sessionDir: string;
-  conversationLogPath: string;
   modelRegistry: ModelRegistry;
   modelOverride?: Model<Api>;
+  inheritedModel?: Model<Api>;
   signal?: AbortSignal;
   onUpdate?: (metrics: AgentMetrics) => void;
-  caller?: string;
   extraVariables?: Readonly<Record<string, string>>;
   customTools?: ReadonlyArray<ExecutableTool>;
   sharedContext?: ReadonlyArray<ContextFile>;

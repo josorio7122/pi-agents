@@ -4,10 +4,10 @@ pi-agents is a Pi extension that turns `.md` files into composable AI agents wit
 
 ## Pipeline
 
-Every agent invocation flows through five stages:
+Every agent invocation flows through four stages:
 
 ```
-Discovery → Validation → Domain → Invocation → Rendering
+Discovery → Validation → Invocation → Rendering
 ```
 
 ### Discovery (`src/discovery/`)
@@ -26,29 +26,8 @@ Zod schemas define the contract for agent configuration and runtime data.
 
 | File | Purpose |
 |------|---------|
-| `frontmatter.ts` | The 7-block agent schema (identity, domain, tools, skills, knowledge, reports, conversation) |
-| `conversation.ts` | JSONL conversation log entry schema |
-| `validation.ts` | Role-tool cross-validation rules |
-
-### Domain (`src/domain/`)
-
-Enforces what each agent can read, write, and delete. Path-based ACL resolved at tool execution time.
-
-| File | Purpose |
-|------|---------|
-| `checker.ts` | Longest-prefix domain matching — checks if a path is allowed |
-| `scoped-tools.ts` | Builds full domain by merging explicit domain + knowledge paths + report paths |
-| `knowledge-tools.ts` | `write-knowledge` / `edit-knowledge` — dedicated tools for updatable knowledge files |
-| `max-lines.ts` | Enforces max-lines on knowledge files after every write |
-
-**Enforcement table:**
-
-| Tool | Knowledge path | Non-knowledge path |
-|------|---------------|-------------------|
-| `write` | ❌ Blocked | ✅ If in domain |
-| `edit` | ❌ Blocked | ✅ If in domain |
-| `write-knowledge` | ✅ + max-lines | ❌ Blocked |
-| `edit-knowledge` | ✅ + max-lines | ❌ Blocked |
+| `frontmatter.ts` | The minimal agent schema (4 required: name, description, color, icon; 3 optional: model, tools, skills) |
+| `validation.ts` | Frontmatter validation rules (e.g., read-tool requirement when skills are declared) |
 
 ### Invocation (`src/invocation/`)
 
@@ -58,17 +37,15 @@ Creates an SDK session, executes the agent, and tracks metrics.
 |------|---------|
 | `session.ts` | Core orchestrator — builds prompt, creates tools, runs agent session |
 | `session-helpers.ts` | `RunAgentParams`/`RunAgentResult` types + `extractAssistantOutput` |
-| `tool-wrapper.ts` | Wraps SDK tools with domain checks and knowledge guards |
 | `metrics.ts` | Factory for tracking turns, tokens, cost, tool calls |
-| `conversation-log.ts` | JSONL append log for inter-agent conversation history |
 
 ### Prompt (`src/prompt/`)
 
-Assembles the system prompt from agent config + runtime context.
+Assembles the system prompt from agent config + runtime context. Skills surface as an XML manifest via pi's `DefaultResourceLoader`; the agent fetches full bodies with `read` on demand. See [`docs/skills.md`](skills.md).
 
 | File | Purpose |
 |------|---------|
-| `assembly.ts` | Combines body + skills + knowledge + shared context + reports |
+| `assembly.ts` | Combines body + shared context |
 | `variables.ts` | `{{KEY}}` template substitution |
 
 ### Tool (`src/tool/`)
@@ -114,9 +91,10 @@ Shared utilities with no domain knowledge.
 ## Adding an Agent
 
 1. Create `.pi/agents/<name>.md` with YAML frontmatter (schema: `src/schema/frontmatter.ts`)
-2. Define domain paths, tools, and knowledge entries
-3. Write the system prompt in the markdown body
-4. The extension auto-discovers the file on session start
+2. Provide required fields: `name`, `description`, `color`, `icon`
+3. Optionally override `model`, `tools`, or `skills` (see [`docs/agent-example.md`](agent-example.md))
+4. Write the system prompt in the markdown body
+5. The extension auto-discovers the file on session start
 
 No code changes required. The frontmatter schema in `src/schema/frontmatter.ts` defines all valid configuration.
 

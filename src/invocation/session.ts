@@ -1,22 +1,17 @@
 import type { Api, Model } from "@mariozechner/pi-ai";
 import {
   createAgentSession,
-  createExtensionRuntime,
-  type ResourceLoader,
+  DefaultResourceLoader,
+  getAgentDir,
   SessionManager,
   SettingsManager,
 } from "@mariozechner/pi-coding-agent";
 import { discoverContextFiles } from "../common/context-files.js";
-import { parseModelId } from "../common/model.js";
-import { expandPath } from "../common/paths.js";
-import { loadSkillContents } from "../common/skills.js";
-import { buildDomainWithKnowledge } from "../domain/scoped-tools.js";
 import type { AssemblyContext } from "../prompt/assembly.js";
 import { assembleSystemPrompt } from "../prompt/assembly.js";
 import { buildAgentTools } from "./build-tools.js";
-import { appendToLog } from "./conversation-log.js";
 import { createMetricsTracker } from "./metrics.js";
-import { dumpAgentSession } from "./session-dump.js";
+import { resolveModel } from "./resolve-model.js";
 import type { RunAgentParams, RunAgentResult } from "./session-helpers.js";
 import { extractAssistantOutput } from "./session-helpers.js";
 
@@ -26,87 +21,55 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
     task,
     cwd,
     sessionDir,
-    conversationLogPath,
     modelRegistry,
     modelOverride,
+    inheritedModel,
     signal,
     onUpdate,
-    caller = "user",
     extraVariables,
     customTools,
     sharedContext,
   } = params;
   const fm = agentConfig.frontmatter;
 
-  // Read skill files upfront — conversation log and knowledge are NOT pre-loaded (agents use tools)
-  const skillContents = await loadSkillContents(fm.skills);
-
-  // Auto-discover shared context files if not provided
   const sharedContextContents = sharedContext ?? (await discoverContextFiles({ cwd }));
 
-  // Assemble system prompt (pure)
   const assemblyCtx: AssemblyContext = {
     agentConfig,
     sessionDir,
-    skillContents,
     ...(extraVariables ? { extraVariables } : {}),
     ...(sharedContextContents.length > 0 ? { sharedContextContents } : {}),
   };
   const systemPrompt = assembleSystemPrompt(assemblyCtx);
 
-  // Resolve model (override for testing, otherwise from registry)
-  const { provider, modelId } = parseModelId(fm.model);
-  const model: Model<Api> | undefined = modelOverride ?? modelRegistry.find(provider, modelId);
-  if (!model) {
-    return { output: "", metrics: createMetricsTracker().snapshot(), error: `Model not found: ${fm.model}` };
+  let model: Model<Api>;
+  try {
+    model = modelOverride ?? resolveModel({ fmModel: fm.model, inherited: inheritedModel, registry: modelRegistry });
+  } catch (err) {
+    return { output: "", metrics: createMetricsTracker().snapshot(), error: String(err) };
   }
 
-  // Build domain with implicit knowledge paths
-  const projectKnowledgePath = expandPath(fm.knowledge.project.path);
-  const generalKnowledgePath = expandPath(fm.knowledge.general.path);
-
-  const knowledgeEntries = [
-    { path: projectKnowledgePath, updatable: fm.knowledge.project.updatable },
-    { path: generalKnowledgePath, updatable: fm.knowledge.general.updatable },
-  ];
-
-  const knowledgeFiles = [
-    { path: projectKnowledgePath, maxLines: fm.knowledge.project["max-lines"] },
-    { path: generalKnowledgePath, maxLines: fm.knowledge.general["max-lines"] },
-  ];
-
-  const reportsDir = fm.reports ? { path: fm.reports.path, updatable: fm.reports.updatable } : undefined;
-  const fullDomain = buildDomainWithKnowledge({
-    domain: fm.domain,
-    knowledgeEntries,
-    ...(reportsDir ? { reportsDir } : {}),
-  });
-
-  // Build all agent tools
   const { builtinTools, customTools: builtCustomTools } = buildAgentTools({
     tools: fm.tools,
     cwd,
-    domain: fullDomain,
-    conversationLogPath,
-    agentName: fm.name,
-    knowledgeFiles,
-    knowledgeEntries,
   });
-
-  // Write caller task to conversation log BEFORE invocation
-  await appendToLog(conversationLogPath, {
-    ts: new Date().toISOString(),
-    from: caller,
-    to: fm.name,
-    message: task,
-  });
-
-  // Create agent session
-  // Merge all tools (builtin wrappers + knowledge/conversation/submit + caller-provided)
-  // into customTools, then pass their names as the allowlist so pi activates ONLY our
-  // wrapped versions — never the raw built-ins (which would bypass domain checks).
   const allCustomTools = [...builtinTools, ...builtCustomTools, ...(customTools ?? [])];
   const activeToolNames = allCustomTools.map((t) => t.name);
+
+  const skillLoaderOpts =
+    fm.skills !== undefined ? { additionalSkillPaths: [...fm.skills], noSkills: true } : { noSkills: false as const };
+
+  const resourceLoader = new DefaultResourceLoader({
+    cwd,
+    agentDir: getAgentDir(),
+    systemPrompt,
+    ...skillLoaderOpts,
+    noExtensions: true,
+    noPromptTemplates: true,
+    noThemes: true,
+    noContextFiles: true,
+  });
+
   const { session } = await createAgentSession({
     cwd,
     model,
@@ -115,27 +78,15 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
     sessionManager: SessionManager.inMemory(),
     settingsManager: SettingsManager.inMemory({ compaction: { enabled: false } }),
     modelRegistry,
-    resourceLoader: {
-      getSystemPrompt: () => systemPrompt,
-      getExtensions: () => ({ extensions: [], errors: [], runtime: createExtensionRuntime() }),
-      getSkills: () => ({ skills: [], diagnostics: [] }),
-      getPrompts: () => ({ prompts: [], diagnostics: [] }),
-      getThemes: () => ({ themes: [], diagnostics: [] }),
-      getAgentsFiles: () => ({ agentsFiles: [] }),
-      getAppendSystemPrompt: () => [],
-      extendResources: () => {},
-      reload: async () => {},
-    } satisfies ResourceLoader,
+    resourceLoader,
   });
 
-  // Track metrics
   const tracker = createMetricsTracker();
   session.subscribe((event) => {
     tracker.handle(event);
     onUpdate?.(tracker.snapshot());
   });
 
-  // Run the agent — wire abort signal to session.abort() for in-flight cancellation
   if (signal?.aborted) {
     session.dispose();
     return { output: "", metrics: tracker.snapshot(), error: "Agent execution cancelled" };
@@ -155,28 +106,9 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
     signal?.removeEventListener("abort", abortHandler);
   }
 
-  // Extract final output, persist, and dispose — guaranteed cleanup via finally
   let output = "";
   try {
     output = extractAssistantOutput(session.messages);
-
-    // Persist full agent session for debugging — mirrors pi's session format
-    await dumpAgentSession({
-      agentName: fm.name,
-      caller,
-      task,
-      messages: session.messages,
-      output,
-      sessionDir,
-    });
-
-    // Write agent response to conversation log AFTER completion
-    await appendToLog(conversationLogPath, {
-      ts: new Date().toISOString(),
-      from: fm.name,
-      to: caller,
-      message: output,
-    });
   } finally {
     session.dispose();
   }

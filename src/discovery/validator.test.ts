@@ -4,32 +4,12 @@ import { validateAgent } from "./validator.js";
 const validFrontmatter = {
   name: "backend-dev",
   description: "Builds APIs.",
-  model: "anthropic/claude-sonnet-4-6",
-  role: "worker",
   color: "#36f9f6",
   icon: "💻",
-  domain: [{ path: "apps/backend/", read: true, write: true, delete: true }],
-  tools: ["read", "write", "edit", "grep", "bash", "find", "ls"],
-  skills: [{ path: ".pi/skills/mental-model.md", when: "Read at task start." }],
-  knowledge: {
-    project: {
-      path: ".pi/knowledge/project/backend-dev.yaml",
-      description: "Track patterns.",
-      updatable: true,
-      "max-lines": 10000,
-    },
-    general: {
-      path: ".pi/knowledge/general/backend-dev.yaml",
-      description: "General strategies.",
-      updatable: true,
-      "max-lines": 5000,
-    },
-  },
-  conversation: { path: ".pi/sessions/{{SESSION_ID}}/conversation.jsonl" },
 };
 
 describe("validateAgent", () => {
-  it("accepts valid worker config", () => {
+  it("accepts valid minimal frontmatter", () => {
     const result = validateAgent({
       frontmatter: validFrontmatter,
       body: "# Backend Dev\n\nYou build APIs.",
@@ -42,29 +22,48 @@ describe("validateAgent", () => {
     expect(result.value.systemPrompt).toContain("You build APIs.");
   });
 
-  it("rejects missing domain", () => {
-    const { domain: _, ...noD } = validFrontmatter;
+  it("rejects agent with skills but no read tool", () => {
     const result = validateAgent({
-      frontmatter: noD,
+      frontmatter: {
+        ...validFrontmatter,
+        skills: ["/abs/s/SKILL.md"],
+        tools: ["bash"],
+      },
       body: "# Agent\n\nInstructions.",
       filePath: "test.md",
       source: "project",
     });
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.errors.some((e) => e.message.includes("domain"))).toBe(true);
+    expect(result.errors.some((e) => e.message.includes("read"))).toBe(true);
   });
 
-  it("rejects worker with delegate", () => {
+  it("accepts agent with skills and explicit read tool", () => {
     const result = validateAgent({
-      frontmatter: { ...validFrontmatter, tools: ["read", "delegate"] },
+      frontmatter: {
+        ...validFrontmatter,
+        skills: ["/abs/s/SKILL.md"],
+        tools: ["read", "bash"],
+      },
       body: "# Agent\n\nInstructions.",
       filePath: "test.md",
       source: "project",
     });
-    expect(result.ok).toBe(false);
-    if (result.ok) return;
-    expect(result.errors.some((e) => e.message.includes("delegate"))).toBe(true);
+    expect(result.ok).toBe(true);
+  });
+
+  it("accepts agent with empty skills (opt-out) and no read tool", () => {
+    const result = validateAgent({
+      frontmatter: {
+        ...validFrontmatter,
+        skills: [],
+        tools: ["bash"],
+      },
+      body: "# Agent\n\nInstructions.",
+      filePath: "test.md",
+      source: "project",
+    });
+    expect(result.ok).toBe(true);
   });
 
   it("rejects empty system prompt body", () => {

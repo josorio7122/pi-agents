@@ -62,25 +62,25 @@ describe("extractAssistantOutput", () => {
     expect(extractAssistantOutput(messages)).toBe("Final answer");
   });
 
-  it("ignores knowledge writes after submit", () => {
+  it("ignores later non-submit tool activity after submit", () => {
     const messages = [
       user("Scout"),
       assistant([toolCall("read")]),
       toolResult("read"),
       assistant([toolCall("submit")]),
       submitResult("## Files Found\n- app.py"),
-      assistant([toolCall("write-knowledge")]),
-      toolResult("write-knowledge"),
-      assistant([text("Updated knowledge.")]),
+      assistant([toolCall("write")]),
+      toolResult("write"),
+      assistant([text("Finished the follow-up.")]),
     ];
     expect(extractAssistantOutput(messages)).toBe("## Files Found\n- app.py");
   });
 
-  it("ignores knowledge writes before submit", () => {
+  it("ignores earlier non-submit tool activity before submit", () => {
     const messages = [
       user("Research"),
-      assistant([toolCall("write-knowledge")]),
-      toolResult("write-knowledge"),
+      assistant([toolCall("write")]),
+      toolResult("write"),
       assistant([text("Now submitting results.")]),
       assistant([toolCall("submit")]),
       submitResult("## Analysis\n\nComplete findings."),

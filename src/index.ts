@@ -5,7 +5,6 @@ import { fileURLToPath } from "node:url";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { getAgentDir } from "@mariozechner/pi-coding-agent";
 import { formatAgentList } from "./command/agents-command.js";
-import { resolveConversationPath } from "./common/paths.js";
 import { extractFrontmatter } from "./discovery/extract-frontmatter.js";
 import { scanForAgentFiles } from "./discovery/scanner.js";
 import type { AgentConfig, DiscoveryDiagnostic } from "./discovery/validator.js";
@@ -98,15 +97,6 @@ export default function (pi: ExtensionAPI) {
       ctx.ui.notify(`[pi-agents] ${d.level}: ${d.filePath} — ${d.message}`, d.level === "error" ? "error" : "warning");
     }
 
-    const templates = new Set(agents.map((a) => a.frontmatter.conversation.path));
-    if (templates.size > 1) {
-      ctx.ui.notify("[pi-agents] warning: agents disagree on conversation.path; using default", "warning");
-    }
-    const uniqueTemplate: string | undefined = templates.size === 1 ? [...templates][0] : undefined;
-    const conversationLogPath = uniqueTemplate
-      ? resolveConversationPath({ template: uniqueTemplate, sessionId, cwd: ctx.cwd })
-      : join(ctx.cwd, ".pi", "sessions", sessionId, "conversation.jsonl");
-
     // Register agent tool with discovered agents
     if (agents.length > 0) {
       const tool = createAgentTool({
@@ -114,7 +104,6 @@ export default function (pi: ExtensionAPI) {
         modelRegistry: ctx.modelRegistry,
         cwd: ctx.cwd,
         sessionDir: join(ctx.cwd, ".pi", "sessions", sessionId),
-        conversationLogPath,
       });
       pi.registerTool(tool);
       ctx.ui.notify(`[pi-agents] ${agents.length} agent(s) loaded`, "info");

@@ -12,17 +12,10 @@ function makeAgent(overrides?: Partial<AgentConfig["frontmatter"]>): AgentConfig
       name: "scout",
       description: "Fast recon agent",
       model: "anthropic/claude-haiku-3",
-      role: "worker",
       color: "#00ff00",
       icon: "🔍",
-      domain: [{ path: "src/", read: true, write: false, delete: false }],
       tools: ["read", "ls"],
       skills: [],
-      knowledge: {
-        project: { path: "/tmp/knowledge/scout.yaml", description: "project", updatable: true, "max-lines": 100 },
-        general: { path: "/tmp/knowledge/general.yaml", description: "general", updatable: false, "max-lines": 50 },
-      },
-      conversation: { path: ".pi/sessions/{{SESSION_ID}}/conversation.jsonl" },
       ...overrides,
     },
     systemPrompt: "You are a scout.",
@@ -40,7 +33,6 @@ describe("createAgentTool — execute errors", () => {
       modelRegistry,
       cwd: "/tmp",
       sessionDir: "/tmp/sessions/abc",
-      conversationLogPath: "/tmp/sessions/abc/conversation.jsonl",
     });
     await expect(tool.execute("call-1", {}, undefined, undefined, fakeCtx)).rejects.toThrow("No mode specified");
   });
@@ -51,7 +43,6 @@ describe("createAgentTool — execute errors", () => {
       modelRegistry,
       cwd: "/tmp",
       sessionDir: "/tmp/sessions/abc",
-      conversationLogPath: "/tmp/sessions/abc/conversation.jsonl",
     });
     await expect(
       tool.execute("call-1", { agent: "nonexistent", task: "do stuff" }, undefined, undefined, fakeCtx),
@@ -64,7 +55,6 @@ describe("createAgentTool — execute errors", () => {
       modelRegistry,
       cwd: "/tmp",
       sessionDir: "/tmp/sessions/abc",
-      conversationLogPath: "/tmp/sessions/abc/conversation.jsonl",
     });
     await expect(
       tool.execute(
@@ -88,7 +78,6 @@ describe("createAgentTool — execute errors", () => {
       modelRegistry,
       cwd: "/tmp",
       sessionDir: "/tmp/sessions/abc",
-      conversationLogPath: "/tmp/sessions/abc/conversation.jsonl",
     });
     const controller = new AbortController();
     controller.abort();
@@ -103,7 +92,6 @@ describe("createAgentTool — execute errors", () => {
       modelRegistry,
       cwd: "/tmp",
       sessionDir: "/tmp/sessions/abc",
-      conversationLogPath: "/tmp/sessions/abc/conversation.jsonl",
     });
     await expect(
       tool.execute(

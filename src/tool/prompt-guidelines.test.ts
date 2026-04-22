@@ -2,28 +2,16 @@ import { describe, expect, it } from "vitest";
 import type { AgentConfig } from "../discovery/validator.js";
 import { buildPromptGuidelines } from "./prompt-guidelines.js";
 
-function fakeAgent(overrides: {
-  name: string;
-  description: string;
-  icon: string;
-  domain: Array<{ path: string; read: boolean; write: boolean; delete: boolean }>;
-}): AgentConfig {
+function fakeAgent(overrides: { name: string; description: string; icon: string }): AgentConfig {
   return {
     frontmatter: {
       name: overrides.name,
       description: overrides.description,
       icon: overrides.icon,
       model: "anthropic/claude-sonnet-4-6",
-      role: "worker",
       color: "#fff",
-      domain: overrides.domain,
       tools: ["read", "grep"],
-      skills: [{ path: ".pi/agent-skills/test.md", when: "always" }],
-      knowledge: {
-        project: { path: ".pi/knowledge/project/test.yaml", description: "test", updatable: true, "max-lines": 100 },
-        general: { path: ".pi/knowledge/general/test.yaml", description: "test", updatable: true, "max-lines": 100 },
-      },
-      conversation: { path: ".pi/sessions/{{SESSION_ID}}/conversation.jsonl" },
+      skills: [],
     },
     systemPrompt: "You are a test agent.",
     filePath: "/test/agent.md",
@@ -39,35 +27,18 @@ describe("buildPromptGuidelines", () => {
     expect(text).toContain("ONLY sees the task string");
   });
 
-  it("lists agents with access level from domain", () => {
+  it("lists agents with icon, name, and description", () => {
     const agents = [
-      fakeAgent({
-        name: "scout",
-        description: "Reads code",
-        icon: "🔍",
-        domain: [{ path: "src/", read: true, write: false, delete: false }],
-      }),
-      fakeAgent({
-        name: "dev",
-        description: "Writes code",
-        icon: "💻",
-        domain: [{ path: "src/", read: true, write: true, delete: false }],
-      }),
+      fakeAgent({ name: "scout", description: "Reads code", icon: "🔍" }),
+      fakeAgent({ name: "dev", description: "Writes code", icon: "💻" }),
     ];
     const text = buildPromptGuidelines(agents).join("\n");
-    expect(text).toContain("🔍 scout (read-only, worker) — Reads code");
-    expect(text).toContain("💻 dev (read/write, worker) — Writes code");
+    expect(text).toContain("🔍 scout — Reads code");
+    expect(text).toContain("💻 dev — Writes code");
   });
 
   it("uses first agent name in mode examples", () => {
-    const agents = [
-      fakeAgent({
-        name: "my-agent",
-        description: "test",
-        icon: "🔍",
-        domain: [{ path: "src/", read: true, write: false, delete: false }],
-      }),
-    ];
+    const agents = [fakeAgent({ name: "my-agent", description: "test", icon: "🔍" })];
     const text = buildPromptGuidelines(agents).join("\n");
     expect(text).toContain("agent: 'my-agent'");
     expect(text).not.toContain("scout");
@@ -78,28 +49,8 @@ describe("buildPromptGuidelines", () => {
     expect(text).toContain("agent: 'agent'");
   });
 
-  it("includes agent role", () => {
-    const agents = [
-      fakeAgent({
-        name: "scout",
-        description: "test",
-        icon: "🔍",
-        domain: [{ path: "src/", read: true, write: false, delete: false }],
-      }),
-    ];
-    const text = buildPromptGuidelines(agents).join("\n");
-    expect(text).toContain("worker");
-  });
-
   it("does not expose model information", () => {
-    const agents = [
-      fakeAgent({
-        name: "scout",
-        description: "test",
-        icon: "🔍",
-        domain: [{ path: "src/", read: true, write: false, delete: false }],
-      }),
-    ];
+    const agents = [fakeAgent({ name: "scout", description: "test", icon: "🔍" })];
     const text = buildPromptGuidelines(agents).join("\n");
     expect(text).not.toContain("sonnet");
     expect(text).not.toContain("haiku");

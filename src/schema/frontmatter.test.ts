@@ -1,199 +1,117 @@
 import { describe, expect, it } from "vitest";
-import { AgentFrontmatterSchema } from "./frontmatter.js";
+import { AgentFrontmatterSchema, PI_DEFAULT_TOOLS, validateFrontmatter } from "./frontmatter.js";
 import { safeParse } from "./parse.js";
 
-const validWorker = {
-  name: "backend-dev",
-  description: "Builds APIs and infrastructure.",
-  model: "anthropic/claude-sonnet-4-6",
-  role: "worker",
+const validMinimal = {
+  name: "scout",
+  description: "Fast codebase recon.",
   color: "#36f9f6",
-  icon: "💻",
-  domain: [{ path: "apps/backend/", read: true, write: true, delete: true }],
-  tools: ["read", "write", "edit", "grep", "bash", "find", "ls"],
-  skills: [{ path: ".pi/skills/mental-model.md", when: "Read at task start." }],
-  knowledge: {
-    project: {
-      path: ".pi/knowledge/project/backend-dev.yaml",
-      description: "Track patterns.",
-      updatable: true,
-      "max-lines": 10000,
-    },
-    general: {
-      path: ".pi/knowledge/general/backend-dev.yaml",
-      description: "General strategies.",
-      updatable: true,
-      "max-lines": 5000,
-    },
-  },
-  conversation: { path: ".pi/sessions/{{SESSION_ID}}/conversation.jsonl" },
-};
-
-const validLead = {
-  ...validWorker,
-  name: "eng-lead",
-  role: "lead",
-  tools: ["read", "write", "grep", "find", "ls", "delegate"],
-};
-
-const validOrchestrator = {
-  ...validWorker,
-  name: "orchestrator",
-  role: "orchestrator",
-  tools: ["read", "write", "grep", "find", "ls", "delegate"],
+  icon: "🔍",
 };
 
 describe("AgentFrontmatterSchema", () => {
-  describe("happy path", () => {
-    it("accepts valid worker", () => {
-      expect(safeParse(AgentFrontmatterSchema, validWorker).success).toBe(true);
-    });
-
-    it("accepts valid lead", () => {
-      expect(safeParse(AgentFrontmatterSchema, validLead).success).toBe(true);
-    });
-
-    it("accepts valid orchestrator", () => {
-      expect(safeParse(AgentFrontmatterSchema, validOrchestrator).success).toBe(true);
-    });
+  it("accepts minimal required fields", () => {
+    const result = safeParse(AgentFrontmatterSchema, validMinimal);
+    expect(result.success).toBe(true);
   });
 
-  describe("missing blocks", () => {
-    it("rejects missing name", () => {
-      const { name: _, ...data } = validWorker;
-      const result = safeParse(AgentFrontmatterSchema, data);
-      expect(result.success).toBe(false);
-    });
-
-    it("rejects missing domain", () => {
-      const { domain: _, ...data } = validWorker;
-      const result = safeParse(AgentFrontmatterSchema, data);
-      expect(result.success).toBe(false);
-    });
-
-    it("rejects missing tools", () => {
-      const { tools: _, ...data } = validWorker;
-      const result = safeParse(AgentFrontmatterSchema, data);
-      expect(result.success).toBe(false);
-    });
-
-    it("rejects missing skills", () => {
-      const { skills: _, ...data } = validWorker;
-      const result = safeParse(AgentFrontmatterSchema, data);
-      expect(result.success).toBe(false);
-    });
-
-    it("rejects missing knowledge", () => {
-      const { knowledge: _, ...data } = validWorker;
-      const result = safeParse(AgentFrontmatterSchema, data);
-      expect(result.success).toBe(false);
-    });
-
-    it("rejects missing conversation", () => {
-      const { conversation: _, ...data } = validWorker;
-      const result = safeParse(AgentFrontmatterSchema, data);
-      expect(result.success).toBe(false);
-    });
-
-    it("rejects missing color", () => {
-      const { color: _, ...data } = validWorker;
-      const result = safeParse(AgentFrontmatterSchema, data);
-      expect(result.success).toBe(false);
-    });
-
-    it("rejects missing icon", () => {
-      const { icon: _, ...data } = validWorker;
-      const result = safeParse(AgentFrontmatterSchema, data);
-      expect(result.success).toBe(false);
-    });
+  it("accepts model: inherit", () => {
+    const result = safeParse(AgentFrontmatterSchema, { ...validMinimal, model: "inherit" });
+    expect(result.success).toBe(true);
   });
 
-  describe("invalid values", () => {
-    it("rejects invalid role", () => {
-      const result = safeParse(AgentFrontmatterSchema, { ...validWorker, role: "invalid" });
-      expect(result.success).toBe(false);
-    });
-
-    it("rejects model without provider", () => {
-      const result = safeParse(AgentFrontmatterSchema, { ...validWorker, model: "claude-sonnet-4-6" });
-      expect(result.success).toBe(false);
-    });
-
-    it("accepts model with provider", () => {
-      const result = safeParse(AgentFrontmatterSchema, { ...validWorker, model: "anthropic/claude-sonnet-4-6" });
-      expect(result.success).toBe(true);
-    });
-
-    it("rejects invalid hex color", () => {
-      const result = safeParse(AgentFrontmatterSchema, { ...validWorker, color: "not-hex" });
-      expect(result.success).toBe(false);
-    });
-
-    it("rejects empty tools array", () => {
-      const result = safeParse(AgentFrontmatterSchema, { ...validWorker, tools: [] });
-      expect(result.success).toBe(false);
-    });
-
-    it("accepts custom tool names", () => {
-      const result = safeParse(AgentFrontmatterSchema, {
-        ...validWorker,
-        tools: ["read", "my-custom-tool", "another_tool"],
-      });
-      expect(result.success).toBe(true);
-    });
-
-    it("rejects empty domain array", () => {
-      const result = safeParse(AgentFrontmatterSchema, { ...validWorker, domain: [] });
-      expect(result.success).toBe(false);
-    });
-
-    it("rejects conversation path without SESSION_ID", () => {
-      const result = safeParse(AgentFrontmatterSchema, {
-        ...validWorker,
-        conversation: { path: ".pi/sessions/conversation.jsonl" },
-      });
-      expect(result.success).toBe(false);
-    });
-
-    it("rejects negative max-lines", () => {
-      const result = safeParse(AgentFrontmatterSchema, {
-        ...validWorker,
-        knowledge: {
-          ...validWorker.knowledge,
-          project: { ...validWorker.knowledge.project, "max-lines": -1 },
-        },
-      });
-      expect(result.success).toBe(false);
-    });
+  it("accepts model as provider/name", () => {
+    const result = safeParse(AgentFrontmatterSchema, { ...validMinimal, model: "anthropic/claude-sonnet-4-6" });
+    expect(result.success).toBe(true);
   });
 
-  describe("reports (optional)", () => {
-    it("accepts agent without reports block", () => {
-      expect(safeParse(AgentFrontmatterSchema, validWorker).success).toBe(true);
-    });
+  it("rejects model with bad format", () => {
+    const result = safeParse(AgentFrontmatterSchema, { ...validMinimal, model: "bogus" });
+    expect(result.success).toBe(false);
+  });
 
-    it("accepts agent with valid reports block", () => {
-      const result = safeParse(AgentFrontmatterSchema, {
-        ...validWorker,
-        reports: { path: ".pi/reports", updatable: true },
-      });
-      expect(result.success).toBe(true);
-    });
+  it("accepts tools when declared", () => {
+    const result = safeParse(AgentFrontmatterSchema, { ...validMinimal, tools: ["read", "bash"] });
+    expect(result.success).toBe(true);
+  });
 
-    it("rejects reports with empty path", () => {
-      const result = safeParse(AgentFrontmatterSchema, {
-        ...validWorker,
-        reports: { path: "", updatable: true },
-      });
-      expect(result.success).toBe(false);
-    });
+  it("accepts tools absent (inherits default)", () => {
+    const result = safeParse(AgentFrontmatterSchema, validMinimal);
+    expect(result.success).toBe(true);
+  });
 
-    it("rejects reports missing updatable", () => {
-      const result = safeParse(AgentFrontmatterSchema, {
-        ...validWorker,
-        reports: { path: ".pi/reports" },
-      });
-      expect(result.success).toBe(false);
+  it("rejects tools: [] (minItems 1 when field declared)", () => {
+    const result = safeParse(AgentFrontmatterSchema, { ...validMinimal, tools: [] });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts skills absent", () => {
+    const result = safeParse(AgentFrontmatterSchema, validMinimal);
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts skills: [] (explicit opt-out)", () => {
+    const result = safeParse(AgentFrontmatterSchema, { ...validMinimal, skills: [] });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts skills with absolute paths", () => {
+    const result = safeParse(AgentFrontmatterSchema, {
+      ...validMinimal,
+      skills: ["/abs/path/to/skill/SKILL.md"],
     });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects skills with relative paths", () => {
+    const result = safeParse(AgentFrontmatterSchema, {
+      ...validMinimal,
+      skills: ["./skill.md"],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects unknown top-level keys (additionalProperties: false)", () => {
+    const result = safeParse(AgentFrontmatterSchema, { ...validMinimal, extra: "value" });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("validateFrontmatter", () => {
+  it("returns [] when skills absent", () => {
+    expect(validateFrontmatter(validMinimal as never)).toEqual([]);
+  });
+
+  it("returns [] when skills declared with default tools (default includes read)", () => {
+    expect(
+      validateFrontmatter({
+        ...validMinimal,
+        skills: ["/abs/skill/SKILL.md"],
+      } as never),
+    ).toEqual([]);
+  });
+
+  it("returns error when skills declared and tools omits read", () => {
+    const errors = validateFrontmatter({
+      ...validMinimal,
+      tools: ["bash"],
+      skills: ["/abs/skill/SKILL.md"],
+    } as never);
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toContain("declares skills but has no 'read' tool");
+  });
+
+  it("returns [] for empty skills list (opt-out)", () => {
+    expect(
+      validateFrontmatter({
+        ...validMinimal,
+        tools: ["bash"],
+        skills: [],
+      } as never),
+    ).toEqual([]);
+  });
+
+  it("exposes pi-default tool list for consumers", () => {
+    expect(PI_DEFAULT_TOOLS).toEqual(["read", "bash", "edit", "write"]);
   });
 });

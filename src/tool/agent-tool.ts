@@ -1,3 +1,4 @@
+import type { Api, Model } from "@mariozechner/pi-ai";
 import type { ModelRegistry } from "@mariozechner/pi-coding-agent";
 import { defineTool } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
@@ -15,9 +16,8 @@ export function createAgentTool(params: {
   readonly modelRegistry: ModelRegistry;
   readonly cwd: string;
   readonly sessionDir: string;
-  readonly conversationLogPath: string;
 }) {
-  const { agents, modelRegistry, cwd, sessionDir, conversationLogPath } = params;
+  const { agents, modelRegistry, cwd, sessionDir } = params;
 
   function findAgentConfig(name: string) {
     return agents.find((a) => a.frontmatter.name === name);
@@ -27,18 +27,23 @@ export function createAgentTool(params: {
     const a = findAgentConfig(name);
     if (!a) return undefined;
     const { icon, name: n, color, model } = a.frontmatter;
-    return { icon, name: n, color, model };
+    return { icon, name: n, color, model: model ?? "inherit" };
   }
 
-  function makeRunAgent(agentConfig: AgentConfig, signal?: AbortSignal) {
+  function makeRunAgent(opts: {
+    readonly agentConfig: AgentConfig;
+    readonly inheritedModel: Model<Api> | undefined;
+    readonly signal: AbortSignal | undefined;
+  }) {
+    const { agentConfig, inheritedModel, signal } = opts;
     return async (p: { readonly task: string; readonly onMetrics?: (metrics: AgentMetrics) => void }) =>
       runAgent({
         agentConfig,
         task: p.task,
         cwd,
         sessionDir,
-        conversationLogPath,
         modelRegistry,
+        ...(inheritedModel ? { inheritedModel } : {}),
         ...(signal ? { signal } : {}),
         ...(p.onMetrics ? { onUpdate: p.onMetrics } : {}),
       });
@@ -65,15 +70,16 @@ export function createAgentTool(params: {
     }),
 
     // biome-ignore lint/complexity/useMaxParams: implements Pi's ToolDefinition.execute (5 positional params)
-    async execute(_toolCallId, toolParams, signal, onUpdate, _ctx) {
+    async execute(_toolCallId, toolParams, signal, onUpdate, ctx) {
       const emitProgress = (details: AgentResultDetails) => {
         onUpdate?.({ content: [{ type: "text" as const, text: "" }], details });
       };
+      const inheritedModel: Model<Api> | undefined = ctx.model;
       return executeAgentTool({
         toolParams: toolParams as Record<string, unknown>,
         agents,
         findAgent: findAgentConfig,
-        makeRunAgent,
+        makeRunAgent: (agentConfig, s) => makeRunAgent({ agentConfig, inheritedModel, signal: s }),
         emitProgress,
         signal,
       });

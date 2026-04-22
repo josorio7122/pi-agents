@@ -25,43 +25,11 @@ describe("extractAssistantOutput via runAgent (faux provider)", () => {
       task: "Do something",
       cwd: project.dir,
       sessionDir: project.sessionsDir,
-      conversationLogPath: project.conversationLogPath,
       modelRegistry,
       modelOverride: faux.getModel(),
     });
 
     expect(result.output).toBe("Here are the results.");
-  });
-
-  it("extracts output from submit tool call", async () => {
-    faux = registerFauxProvider();
-    faux.setResponses([
-      fauxAssistantMessage([fauxText("Investigating..."), fauxToolCall("bash", { command: "ls" })]),
-      // Agent calls submit with its findings
-      fauxAssistantMessage(fauxToolCall("submit", { response: "## Findings\n\nFound the bug in line 42." })),
-      // Post-submit noise + knowledge write
-      fauxAssistantMessage(
-        fauxToolCall("write-knowledge", {
-          path: ".pi/knowledge/project/test-agent.yaml",
-          content: "bugs:\n  - line 42",
-        }),
-      ),
-      fauxAssistantMessage(fauxText("Updated project knowledge.")),
-    ]);
-    const project = await makeTempProject();
-    const agent = makeTestAgent(project.dir);
-
-    const result = await runAgent({
-      agentConfig: agent,
-      task: "Investigate the bug",
-      cwd: project.dir,
-      sessionDir: project.sessionsDir,
-      conversationLogPath: project.conversationLogPath,
-      modelRegistry,
-      modelOverride: faux.getModel(),
-    });
-
-    expect(result.output).toBe("## Findings\n\nFound the bug in line 42.");
   });
 
   it("returns genuine summary after non-meta tool work", async () => {
@@ -83,7 +51,6 @@ describe("extractAssistantOutput via runAgent (faux provider)", () => {
       task: "Create the file",
       cwd: project.dir,
       sessionDir: project.sessionsDir,
-      conversationLogPath: project.conversationLogPath,
       modelRegistry,
       modelOverride: faux.getModel(),
     });

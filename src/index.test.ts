@@ -13,33 +13,13 @@ function writeValidAgent(params: { readonly dir: string; readonly name: string; 
 name: ${name}
 description: "Test agent"
 model: anthropic/claude-haiku-3
-role: worker
 color: "#00ff00"
 icon: "🔍"
-domain:
-  - path: src/
-    read: true
-    write: false
-    delete: false
 tools:
   - read
   - ls
 skills:
-  - path: ${join(rootDir, ".pi", "skills", "test.md")}
-    when: Always
-knowledge:
-  project:
-    path: ${join(rootDir, ".pi", "knowledge", "project", `${name}.yaml`)}
-    description: "Project knowledge"
-    updatable: true
-    max-lines: 100
-  general:
-    path: ${join(rootDir, ".pi", "knowledge", "general", `${name}.yaml`)}
-    description: "General knowledge"
-    updatable: false
-    max-lines: 50
-conversation:
-  path: .pi/sessions/{{SESSION_ID}}/conversation.jsonl
+  - ${join(rootDir, ".pi", "skills", "test.md")}
 ---
 
 # ${name}
@@ -152,7 +132,7 @@ describe("pi-agents extension", () => {
     expect(mock.registeredTools.length).toBe(0);
   });
 
-  it("reports diagnostics for invalid agents", async () => {
+  it("emits diagnostics for invalid agents", async () => {
     const { default: extension } = await import("./index.js");
     const dirs = makeTempDirs();
     writeInvalidAgent(dirs.projectAgents, "bad-agent");

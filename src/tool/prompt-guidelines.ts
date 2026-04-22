@@ -17,8 +17,7 @@ Modes:
 
 function describeAgent(a: AgentConfig) {
   const fm = a.frontmatter;
-  const access = fm.domain.some((d) => d.write) ? "read/write" : "read-only";
-  return `  ${fm.icon} ${fm.name} (${access}, ${fm.role}) — ${fm.description}`;
+  return `  ${fm.icon} ${fm.name} — ${fm.description}`;
 }
 
 export function buildPromptGuidelines(agents: ReadonlyArray<AgentConfig>) {

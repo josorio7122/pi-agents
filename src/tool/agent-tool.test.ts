@@ -1,8 +1,19 @@
-import type { Theme } from "@mariozechner/pi-coding-agent";
-import { describe, expect, it } from "vitest";
+import type { Api, Model } from "@mariozechner/pi-ai";
+import type { ExtensionContext, Theme } from "@mariozechner/pi-coding-agent";
+import { describe, expect, it, vi } from "vitest";
 import type { AgentConfig } from "../discovery/validator.js";
 import type { AgentMetrics } from "../invocation/metrics.js";
 import { createAgentTool } from "./agent-tool.js";
+
+vi.mock("../invocation/session.js", () => ({
+  runAgent: vi.fn(async () => ({
+    output: "done",
+    metrics: { turns: 0, inputTokens: 0, outputTokens: 0, cost: 0, toolCalls: [] },
+  })),
+}));
+
+const { runAgent } = await import("../invocation/session.js");
+const runAgentMock = vi.mocked(runAgent);
 
 const fakeTheme = { fg: (_c: string, t: string) => t, bold: (t: string) => t } as unknown as Theme;
 // ToolRenderContext is not exported — cast through unknown at the boundary
@@ -16,23 +27,20 @@ function makeAgent(overrides?: Partial<AgentConfig["frontmatter"]>): AgentConfig
       name: "scout",
       description: "Fast recon agent",
       model: "anthropic/claude-haiku-3",
-      role: "worker",
       color: "#00ff00",
       icon: "🔍",
-      domain: [{ path: "src/", read: true, write: false, delete: false }],
       tools: ["read", "ls"],
       skills: [],
-      knowledge: {
-        project: { path: "/tmp/knowledge/scout.yaml", description: "project", updatable: true, "max-lines": 100 },
-        general: { path: "/tmp/knowledge/general.yaml", description: "general", updatable: false, "max-lines": 50 },
-      },
-      conversation: { path: ".pi/sessions/{{SESSION_ID}}/conversation.jsonl" },
       ...overrides,
     },
     systemPrompt: "You are a scout.",
     filePath: "/tmp/agents/scout.md",
     source: "project",
   };
+}
+
+function makeCtx(model: Model<Api> | undefined): ExtensionContext {
+  return { model } as unknown as ExtensionContext;
 }
 
 describe("createAgentTool", () => {
@@ -44,7 +52,6 @@ describe("createAgentTool", () => {
       modelRegistry,
       cwd: "/tmp",
       sessionDir: "/tmp/sessions/abc",
-      conversationLogPath: "/tmp/sessions/abc/conversation.jsonl",
     });
     expect(tool.name).toBe("agent");
     expect(tool.label).toBe("Agent");
@@ -56,7 +63,6 @@ describe("createAgentTool", () => {
       modelRegistry,
       cwd: "/tmp",
       sessionDir: "/tmp/sessions/abc",
-      conversationLogPath: "/tmp/sessions/abc/conversation.jsonl",
     });
     const guidelines = (tool.promptGuidelines ?? []).join("\n");
     expect(guidelines).toContain("scout");
@@ -71,7 +77,6 @@ describe("createAgentTool", () => {
       modelRegistry,
       cwd: "/tmp",
       sessionDir: "/tmp/sessions/abc",
-      conversationLogPath: "/tmp/sessions/abc/conversation.jsonl",
     });
     const props = tool.parameters.properties;
     expect(props).toHaveProperty("agent");
@@ -86,10 +91,9 @@ describe("createAgentTool", () => {
       modelRegistry,
       cwd: "/tmp",
       sessionDir: "/tmp/sessions/abc",
-      conversationLogPath: "/tmp/sessions/abc/conversation.jsonl",
     });
-    const rendered = tool.renderCall!({ agent: "scout", task: "test" }, fakeTheme, fakeContext);
-    const text = rendered.render(120).join("\n");
+    const rendered = tool.renderCall?.({ agent: "scout", task: "test" }, fakeTheme, fakeContext);
+    const text = rendered?.render(120).join("\n") ?? "";
     expect(text).toContain("scout");
   });
 
@@ -99,16 +103,15 @@ describe("createAgentTool", () => {
       modelRegistry,
       cwd: "/tmp",
       sessionDir: "/tmp/sessions/abc",
-      conversationLogPath: "/tmp/sessions/abc/conversation.jsonl",
     });
 
-    const rendered = tool.renderResult!(
+    const rendered = tool.renderResult?.(
       { content: [{ type: "text", text: "" }], details: {} },
       { expanded: false, isPartial: false },
       fakeTheme,
       fakeContext,
     );
-    const text = rendered.render(120).join("\n");
+    const text = rendered?.render(120).join("\n") ?? "";
     expect(text).toContain("Working");
   });
 
@@ -118,10 +121,9 @@ describe("createAgentTool", () => {
       modelRegistry,
       cwd: "/tmp",
       sessionDir: "/tmp/sessions/abc",
-      conversationLogPath: "/tmp/sessions/abc/conversation.jsonl",
     });
 
-    const rendered = tool.renderResult!(
+    const rendered = tool.renderResult?.(
       {
         content: [{ type: "text", text: "done" }],
         details: {
@@ -139,7 +141,38 @@ describe("createAgentTool", () => {
       fakeTheme,
       fakeContext,
     );
-    const text = rendered.render(120).join("\n");
+    const text = rendered?.render(120).join("\n") ?? "";
     expect(text).toContain("✓");
+  });
+
+  it("propagates ctx.model to runAgent as inheritedModel", async () => {
+    runAgentMock.mockClear();
+    runAgentMock.mockResolvedValueOnce({ output: "ok", metrics: emptyMetrics });
+    const tool = createAgentTool({
+      agents: [makeAgent()],
+      modelRegistry,
+      cwd: "/tmp",
+      sessionDir: "/tmp/sessions/abc",
+    });
+    const parentModel = { id: "claude-parent", provider: "anthropic" } as unknown as Model<Api>;
+    await tool.execute("call-1", { agent: "scout", task: "do" }, undefined, undefined, makeCtx(parentModel));
+    expect(runAgentMock).toHaveBeenCalledTimes(1);
+    const call = runAgentMock.mock.calls[0]?.[0];
+    expect(call?.inheritedModel).toBe(parentModel);
+  });
+
+  it("omits inheritedModel when ctx.model is undefined", async () => {
+    runAgentMock.mockClear();
+    runAgentMock.mockResolvedValueOnce({ output: "ok", metrics: emptyMetrics });
+    const tool = createAgentTool({
+      agents: [makeAgent()],
+      modelRegistry,
+      cwd: "/tmp",
+      sessionDir: "/tmp/sessions/abc",
+    });
+    await tool.execute("call-1", { agent: "scout", task: "do" }, undefined, undefined, makeCtx(undefined));
+    expect(runAgentMock).toHaveBeenCalledTimes(1);
+    const call = runAgentMock.mock.calls[0]?.[0];
+    expect(call?.inheritedModel).toBeUndefined();
   });
 });

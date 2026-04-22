@@ -25,7 +25,6 @@ describe("submit tool e2e", () => {
         task: "What is 2 + 2? Reply with just the number.",
         cwd: project.dir,
         sessionDir: project.sessionsDir,
-        conversationLogPath: project.conversationLogPath,
         modelRegistry,
       });
 

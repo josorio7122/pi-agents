@@ -1,7 +1,6 @@
 import type { AgentFrontmatter } from "../schema/frontmatter.js";
-import { AgentFrontmatterSchema } from "../schema/frontmatter.js";
+import { AgentFrontmatterSchema, validateFrontmatter } from "../schema/frontmatter.js";
 import { safeParse } from "../schema/parse.js";
-import { validateRoleTools } from "../schema/validation.js";
 
 export type AgentConfig = Readonly<{
   frontmatter: AgentFrontmatter;
@@ -52,11 +51,12 @@ export function validateAgent(params: {
     return { ok: false, errors: diagnostics };
   }
 
-  // Cross-field: role-tool validation
-  const roleToolErrors = validateRoleTools(parsed.data.role, parsed.data.tools);
-  if (roleToolErrors.length > 0) {
-    for (const msg of roleToolErrors) {
-      diagnostics.push({ level: "error", filePath: params.filePath, message: msg });
+  // Cross-field validation
+  const fm: AgentFrontmatter = parsed.data;
+  const errors = validateFrontmatter(fm);
+  if (errors.length > 0) {
+    for (const err of errors) {
+      diagnostics.push({ level: "error", filePath: params.filePath, message: err });
     }
     return { ok: false, errors: diagnostics };
   }
