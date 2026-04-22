@@ -220,9 +220,16 @@ Paths are already absolute — `scanVendorSkills` builds them via `join(skillsDi
 
 Extend `AgentFrontmatterLike` with an optional `skills?: string[]` field parsed from upstream agent YAML frontmatter (by skill name, e.g. `["brainstorming", "test-driven-development"]`). pi-superpowers resolves names → absolute paths at build time. Neither shipped agent (`code-reviewer`, `general-purpose`) uses this field today, so default behavior — all 14 skills — is preserved. Unknown names produce a warning diagnostic from `buildAllAgentConfigs` but do not fail registration.
 
-**3. Domain extension — `src/subagents/agent-config-builder.ts`:**
+**3. Domain handling — `src/subagents/agent-config-builder.ts`:**
 
-pi-agents enforces domain ACLs on `read`. Vendor skill paths live under `node_modules/pi-superpowers/vendor/...`, outside the default `domain: [{path: ".", ...}]`. Extend the domain per dispatched agent to include the vendor skills dir as read-only:
+pi-agents enforces domain ACLs on `read`. Today, every dispatched agent has `domain: [{path: ".", read: true, ...}]`. When pi-superpowers is installed as a normal npm dependency, `node_modules/pi-superpowers/vendor/.../SKILL.md` resolves **under** the user's cwd and the existing `path: "."` entry permits it — no change needed for the common install shape.
+
+However, two edge cases require an explicit domain entry:
+
+1. **Global install** (e.g., `pi install -g pi-superpowers` or development via `pi -e /abs/path/to/pi-superpowers/src/index.ts`). Vendor skills then live outside the user's cwd and `checkDomain` rejects them with `Path "X" is not in agent's domain`.
+2. **Monorepo / non-project cwd.** If a user runs pi from a directory whose ancestor chain doesn't contain the pi-superpowers install, same failure.
+
+Defensively extend the domain per dispatched agent to include the vendor skills dir as read-only:
 
 ```ts
 domain: [
@@ -231,7 +238,7 @@ domain: [
 ],
 ```
 
-Without this, the agent would see the skill manifest but domain-check failures would block every `read` call.
+Cheap insurance — if the vendor path already overlaps cwd, the longest-prefix match logic in `checkDomain` uses whichever entry is more specific. No behavior change for the common case; the failure mode goes away for global/remote installs.
 
 **4. Built-in agent — `src/subagents/builtin-agents.ts`:
 
