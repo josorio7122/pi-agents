@@ -127,6 +127,19 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
     }
   });
 
+  // dispose() is best-effort: failures here must not mask the real run error.
+  // Idempotent via the `disposed` guard so multi-path callers can't double-free.
+  let disposed = false;
+  const safeDispose = () => {
+    if (disposed) return;
+    disposed = true;
+    try {
+      session.dispose();
+    } catch {
+      // swallow — disposal is cleanup, not a failure mode.
+    }
+  };
+
   // Wrap every return path so worktree cleanup runs uniformly: clean trees are
   // removed silently, dirty trees stay and surface in the result.
   const finalize = async (base: RunAgentResult): Promise<RunAgentResult> => {
@@ -142,7 +155,7 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
   };
 
   if (signal?.aborted) {
-    session.dispose();
+    safeDispose();
     return finalize({ output: "", metrics: tracker.snapshot(), error: "Agent execution cancelled" });
   }
 
@@ -162,6 +175,7 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
     } else {
       error = String(err);
     }
+    safeDispose();
     return finalize({ output: "", metrics: tracker.snapshot(), error });
   } finally {
     signal?.removeEventListener("abort", abortHandler);
@@ -171,7 +185,7 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
   try {
     output = extractAssistantOutput(session.messages);
   } finally {
-    session.dispose();
+    safeDispose();
   }
 
   // If maxTurns triggered abort but session.prompt() still resolved cleanly
