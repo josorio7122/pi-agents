@@ -143,4 +143,14 @@ describe("frontmatter additions", () => {
     const fm = { name: "x", description: "y", color: "#abcdef", icon: "i", inheritContextFiles: false };
     expect(Value.Check(AgentFrontmatterSchema, fm)).toBe(true);
   });
+
+  it("accepts isolation: worktree", () => {
+    const fm = { name: "x", description: "y", color: "#abcdef", icon: "i", isolation: "worktree" };
+    expect(Value.Check(AgentFrontmatterSchema, fm)).toBe(true);
+  });
+
+  it("rejects unknown isolation values", () => {
+    const fm = { name: "x", description: "y", color: "#abcdef", icon: "i", isolation: "remote" };
+    expect(Value.Check(AgentFrontmatterSchema, fm)).toBe(false);
+  });
 });

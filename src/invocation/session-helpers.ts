@@ -24,6 +24,12 @@ export type RunAgentResult = Readonly<{
   output: string;
   metrics: AgentMetrics;
   error?: string;
+  /**
+   * Populated only when the agent ran with `isolation: "worktree"` AND the
+   * worktree contained uncommitted changes when the agent finished — the
+   * worktree is left on disk so the parent can inspect or merge.
+   */
+  worktree?: Readonly<{ path: string; branch: string }>;
 }>;
 
 /**

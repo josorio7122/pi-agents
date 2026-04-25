@@ -32,6 +32,9 @@ export const AgentFrontmatterSchema = Type.Object(
 
     // When false, skip discovery of shared context files (AGENTS.md etc.).
     inheritContextFiles: Type.Optional(Type.Boolean()),
+
+    // Run agent inside an isolated git worktree under <cwd>/worktrees/<agentId>.
+    isolation: Type.Optional(Type.Union([Type.Literal("worktree")])),
   },
   { additionalProperties: false },
 );

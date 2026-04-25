@@ -18,6 +18,7 @@ import { createMetricsTracker } from "./metrics.js";
 import { resolveModel } from "./resolve-model.js";
 import type { RunAgentParams, RunAgentResult } from "./session-helpers.js";
 import { extractAssistantOutput } from "./session-helpers.js";
+import { createWorktree, removeWorktreeIfClean, type Worktree } from "./worktree.js";
 
 export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> {
   const {
@@ -54,10 +55,25 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
     return { output: "", metrics: createMetricsTracker().snapshot(), error: String(err) };
   }
 
+  const agentId = randomUUID();
+
+  // Optional worktree isolation: agent runs against a fresh git worktree under
+  // <cwd>/worktrees/<agentId>; cleanup post-run preserves dirty trees.
+  let effectiveCwd = cwd;
+  let activeWorktree: Worktree | undefined;
+  if (fm.isolation === "worktree") {
+    try {
+      activeWorktree = await createWorktree({ repoDir: cwd, id: agentId });
+      effectiveCwd = activeWorktree.path;
+    } catch (err) {
+      return { output: "", metrics: createMetricsTracker().snapshot(), error: `worktree creation failed: ${err}` };
+    }
+  }
+
   const { builtinTools, customTools: builtCustomTools } = buildAgentTools({
     tools: fm.tools,
     disallowedTools: fm.disallowedTools,
-    cwd,
+    cwd: effectiveCwd,
   });
   const allCustomTools = [...builtinTools, ...builtCustomTools, ...(customTools ?? [])];
   const activeToolNames = allCustomTools.map((t) => t.name);
@@ -66,7 +82,7 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
     fm.skills !== undefined ? { additionalSkillPaths: [...fm.skills], noSkills: true } : { noSkills: false as const };
 
   const resourceLoader = new DefaultResourceLoader({
-    cwd,
+    cwd: effectiveCwd,
     agentDir: getAgentDir(),
     systemPrompt,
     ...skillLoaderOpts,
@@ -79,16 +95,15 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
   // When we provide one, pi assumes it's initialized — skip this and getSkills() returns [].
   await resourceLoader.reload();
 
-  const agentId = randomUUID();
   const agentSessionDir = join(sessionDir, "agents", agentId);
   mkdirSync(agentSessionDir, { recursive: true });
 
   const { session } = await createAgentSession({
-    cwd,
+    cwd: effectiveCwd,
     model,
     tools: activeToolNames,
     customTools: allCustomTools,
-    sessionManager: SessionManager.create(cwd, agentSessionDir),
+    sessionManager: SessionManager.create(effectiveCwd, agentSessionDir),
     settingsManager: SettingsManager.inMemory({ compaction: { enabled: false } }),
     modelRegistry,
     resourceLoader,
@@ -112,9 +127,23 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
     }
   });
 
+  // Wrap every return path so worktree cleanup runs uniformly: clean trees are
+  // removed silently, dirty trees stay and surface in the result.
+  const finalize = async (base: RunAgentResult): Promise<RunAgentResult> => {
+    if (!activeWorktree) return base;
+    let removed = false;
+    try {
+      removed = await removeWorktreeIfClean(activeWorktree);
+    } catch {
+      removed = false;
+    }
+    if (removed) return base;
+    return { ...base, worktree: { path: activeWorktree.path, branch: activeWorktree.branch } };
+  };
+
   if (signal?.aborted) {
     session.dispose();
-    return { output: "", metrics: tracker.snapshot(), error: "Agent execution cancelled" };
+    return finalize({ output: "", metrics: tracker.snapshot(), error: "Agent execution cancelled" });
   }
 
   const abortHandler = () => {
@@ -133,7 +162,7 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
     } else {
       error = String(err);
     }
-    return { output: "", metrics: tracker.snapshot(), error };
+    return finalize({ output: "", metrics: tracker.snapshot(), error });
   } finally {
     signal?.removeEventListener("abort", abortHandler);
   }
@@ -149,12 +178,12 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
   // (e.g. abort landed between turns), surface the cap as an error so callers
   // can distinguish "finished" from "capped".
   if (maxTurnsReached) {
-    return {
+    return finalize({
       output,
       metrics: tracker.snapshot(),
       error: `Agent stopped: maxTurns (${fm.maxTurns}) reached`,
-    };
+    });
   }
 
-  return { output, metrics: tracker.snapshot() };
+  return finalize({ output, metrics: tracker.snapshot() });
 }
