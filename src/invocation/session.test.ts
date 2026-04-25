@@ -1,10 +1,9 @@
 import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import type { Api, Model } from "@mariozechner/pi-ai";
-import type { ModelRegistry } from "@mariozechner/pi-coding-agent";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AgentConfig } from "../discovery/validator.js";
-import { makeTempProject, makeTestAgent } from "./session-test-helpers.js";
+import { fakeModel, fakeRegistry, makeTempProject, makeTestAgent } from "./session-test-helpers.js";
 
 /**
  * Captures for assertions — populated by the mock factories below.
@@ -51,34 +50,10 @@ const mockSession = {
 
 vi.mock("@mariozechner/pi-coding-agent", async () => {
   const actual = await vi.importActual<typeof import("@mariozechner/pi-coding-agent")>("@mariozechner/pi-coding-agent");
-  class FakeResourceLoader {
-    constructor(opts: ResourceLoaderCall) {
-      captured.resourceLoader.push(opts);
-    }
-    getSystemPrompt() {
-      return "";
-    }
-    getExtensions() {
-      return { extensions: [], errors: [], runtime: {} };
-    }
-    getSkills() {
-      return { skills: [], diagnostics: [] };
-    }
-    getPrompts() {
-      return { prompts: [], diagnostics: [] };
-    }
-    getThemes() {
-      return { themes: [], diagnostics: [] };
-    }
-    getAgentsFiles() {
-      return { agentsFiles: [] };
-    }
-    getAppendSystemPrompt() {
-      return [];
-    }
-    extendResources() {}
-    async reload() {}
-  }
+  const { createFakeResourceLoader } = await import("./session-test-helpers.js");
+  const FakeResourceLoader = createFakeResourceLoader((opts) => {
+    captured.resourceLoader.push(opts as ResourceLoaderCall);
+  });
   return {
     ...actual,
     DefaultResourceLoader: FakeResourceLoader,
@@ -180,11 +155,6 @@ vi.mock("./worktree.js", () => ({
     return worktreeState.clean;
   }),
 }));
-
-const fakeModel = { provider: "faux", id: "faux-model" } as unknown as Model<Api>;
-const fakeRegistry = {
-  find: (_provider: string, _id: string) => fakeModel,
-} as unknown as ModelRegistry;
 
 // Import after mocks are registered.
 const { runAgent } = await import("./session.js");
