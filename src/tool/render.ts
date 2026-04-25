@@ -84,18 +84,6 @@ function renderListCall(params: {
 
 // ── renderCall ──────────────────────────────────────────────
 
-type ModeOrError = ReturnType<typeof detectMode>;
-
-function extractSingleModeAgent(mode: ModeOrError, args: Record<string, unknown>) {
-  if ("mode" in mode && mode.mode === "single") return mode.agent;
-  return typeof args?.agent === "string" ? args.agent : "...";
-}
-
-function extractSingleModeTask(mode: ModeOrError, args: Record<string, unknown>) {
-  if ("mode" in mode && mode.mode === "single") return mode.task;
-  return typeof args?.task === "string" ? args.task : "";
-}
-
 export function renderAgentCall(params: {
   readonly args: Record<string, unknown>;
   readonly theme: RenderTheme;
@@ -127,8 +115,11 @@ export function renderAgentCall(params: {
   }
 
   // Single mode (or incomplete args — defensive fallback)
-  const agentName = extractSingleModeAgent(mode, args);
-  const task = extractSingleModeTask(mode, args);
+  const fallbackAgent = typeof args?.agent === "string" ? args.agent : "...";
+  const fallbackTask = typeof args?.task === "string" ? args.task : "";
+  const single = "mode" in mode && mode.mode === "single" ? mode : undefined;
+  const agentName = single ? single.agent : fallbackAgent;
+  const task = single ? single.task : fallbackTask;
   const header = agentHeader({ agentName, theme, findAgent, direction: "call" });
   const box = new BorderedBox({ header, borderColor: borderColor(theme) });
   box.addChild(new Markdown(task, 0, 0, mdTheme));
