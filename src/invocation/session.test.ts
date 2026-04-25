@@ -36,6 +36,19 @@ const captured = {
   createSession: [] as CreateSessionCall[],
 };
 
+/**
+ * Toggles for the mocked agent session. Reset in beforeEach.
+ *
+ * promptShouldRejectOnAbort: when true, the mocked `prompt()` rejects with an
+ * abort-style error if `abort()` is called during a turn (i.e. mid-turn
+ * cancellation). Simulates pi's real behavior where a cancelled turn surfaces
+ * as a thrown rejection from `prompt()` rather than a clean resolve. Used to
+ * exercise the throw-path branch of session.ts's maxTurns handling.
+ */
+const mockSession = {
+  promptShouldRejectOnAbort: false,
+};
+
 vi.mock("@mariozechner/pi-coding-agent", async () => {
   const actual = await vi.importActual<typeof import("@mariozechner/pi-coding-agent")>("@mariozechner/pi-coding-agent");
   class FakeResourceLoader {
@@ -72,6 +85,7 @@ vi.mock("@mariozechner/pi-coding-agent", async () => {
     createAgentSession: vi.fn().mockImplementation(async (opts: CreateSessionCall) => {
       captured.createSession.push(opts);
       const listeners: Array<(e: unknown) => void> = [];
+      let aborted = false;
       const assistantMessage = {
         role: "assistant" as const,
         content: [{ type: "text" as const, text: "mocked assistant reply" }],
@@ -99,9 +113,19 @@ vi.mock("@mariozechner/pi-coding-agent", async () => {
             opts.sessionManager.appendMessage(assistantMessage);
             // Emit a turn_end so listeners (e.g. the maxTurns cap in session.ts)
             // observe at least one turn even though we resolve cleanly.
+            // A subscriber may call session.abort() synchronously here (e.g. the
+            // maxTurns cap), which sets `aborted = true` below.
             for (const fn of listeners) fn({ type: "turn_end" });
+            // Simulate pi's mid-turn cancellation: if abort landed during the
+            // turn and the test asked for the throw path, reject instead of
+            // resolving cleanly.
+            if (aborted && mockSession.promptShouldRejectOnAbort) {
+              throw new Error("aborted");
+            }
           },
-          abort: async () => {},
+          abort: async () => {
+            aborted = true;
+          },
           dispose: () => {},
         },
       };
@@ -233,6 +257,7 @@ describe("runAgent (resourceLoader + model resolution)", () => {
     worktreeState.removeCalls = [];
     worktreeState.clean = true;
     worktreeState.createThrows = undefined;
+    mockSession.promptShouldRejectOnAbort = false;
   });
 
   afterEach(() => {
@@ -381,6 +406,43 @@ describe("runAgent (resourceLoader + model resolution)", () => {
     expect(result.error).toBeDefined();
     expect(result.error).toContain("maxTurns");
     expect(result.error).toContain("1");
+  });
+
+  it("returns a maxTurns error when session.prompt() throws after abort", async () => {
+    const project = await makeTempProject();
+    // Configure mock so prompt() rejects when session.abort() is called from
+    // the maxTurns subscriber — simulates pi's prompt rejecting on a
+    // mid-turn cancellation. Exercises session.ts's catch-block
+    // prioritization of `maxTurnsReached` over BOTH the generic error path
+    // AND signal.aborted: an external abort lands mid-flight (via onUpdate)
+    // so by the time prompt() rejects, both `maxTurnsReached === true` and
+    // `signal.aborted === true`. Locks the catch-block ordering.
+    mockSession.promptShouldRejectOnAbort = true;
+    const agent = withMaxTurns(makeTestAgent(project.dir), 1);
+    const controller = new AbortController();
+
+    const result = await runAgent({
+      agentConfig: agent,
+      task: "Do it",
+      cwd: project.dir,
+      sessionDir: project.sessionsDir,
+      modelRegistry: fakeRegistry,
+      modelOverride: fakeModel,
+      signal: controller.signal,
+      // Fires from session.ts's subscribe callback BEFORE the maxTurns check;
+      // aborts the external signal mid-prompt so the catch block sees both
+      // signals simultaneously and must prefer `maxTurns` over `aborted`.
+      onUpdate: () => {
+        if (!controller.signal.aborted) controller.abort();
+      },
+    });
+
+    expect(result.error).toBeDefined();
+    expect(result.error).toContain("maxTurns");
+    expect(result.error).toContain("1");
+    // Negative assertion: if branches were reordered to check signal.aborted
+    // first, this would be "Agent execution cancelled" instead.
+    expect(result.error).not.toContain("cancelled");
   });
 
   it("writes a JSONL transcript per agent run under sessionDir/agents/<id>/", async () => {
