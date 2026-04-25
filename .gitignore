@@ -4,6 +4,7 @@ node_modules/
 dist/
 coverage/
 docs/superpowers/
+.worktrees/
 
 # Agent catalog (private repo: pi-teams-catalog)
 .pi/
