@@ -97,6 +97,9 @@ vi.mock("@mariozechner/pi-coding-agent", async () => {
           prompt: async () => {
             // Drive the real SessionManager so it persists the JSONL transcript.
             opts.sessionManager.appendMessage(assistantMessage);
+            // Emit a turn_end so listeners (e.g. the maxTurns cap in session.ts)
+            // observe at least one turn even though we resolve cleanly.
+            for (const fn of listeners) fn({ type: "turn_end" });
           },
           abort: async () => {},
           dispose: () => {},
@@ -116,6 +119,7 @@ vi.mock("../prompt/assembly.js", () => ({
 vi.mock("../common/context-files.js", () => ({
   discoverContextFiles: vi.fn().mockResolvedValue([]),
 }));
+const { discoverContextFiles } = await import("../common/context-files.js");
 
 // Stub build-tools to avoid pulling real pi tool factories during unit tests.
 vi.mock("./build-tools.js", () => ({
@@ -162,6 +166,26 @@ function withModel(agent: AgentConfig, model: string | undefined): AgentConfig {
     delete next.model;
   } else {
     next.model = model;
+  }
+  return { ...agent, frontmatter: next as AgentConfig["frontmatter"] };
+}
+
+function withMaxTurns(agent: AgentConfig, value: number | undefined): AgentConfig {
+  const next = { ...agent.frontmatter } as Record<string, unknown>;
+  if (value === undefined) {
+    delete next.maxTurns;
+  } else {
+    next.maxTurns = value;
+  }
+  return { ...agent, frontmatter: next as AgentConfig["frontmatter"] };
+}
+
+function withInheritContextFiles(agent: AgentConfig, value: boolean | undefined): AgentConfig {
+  const next = { ...agent.frontmatter } as Record<string, unknown>;
+  if (value === undefined) {
+    delete next.inheritContextFiles;
+  } else {
+    next.inheritContextFiles = value;
   }
   return { ...agent, frontmatter: next as AgentConfig["frontmatter"] };
 }
@@ -265,6 +289,59 @@ describe("runAgent (resourceLoader + model resolution)", () => {
 
     expect(result.error).toContain("no model is active");
     expect(captured.createSession).toHaveLength(0);
+  });
+
+  it("skips discoverContextFiles when fm.inheritContextFiles === false", async () => {
+    const project = await makeTempProject();
+    const agent = withInheritContextFiles(makeTestAgent(project.dir), false);
+
+    await runAgent({
+      agentConfig: agent,
+      task: "Do it",
+      cwd: project.dir,
+      sessionDir: project.sessionsDir,
+      modelRegistry: fakeRegistry,
+      modelOverride: fakeModel,
+    });
+
+    expect(discoverContextFiles).not.toHaveBeenCalled();
+  });
+
+  it("calls discoverContextFiles when fm.inheritContextFiles is undefined", async () => {
+    const project = await makeTempProject();
+    const agent = withInheritContextFiles(makeTestAgent(project.dir), undefined);
+
+    await runAgent({
+      agentConfig: agent,
+      task: "Do it",
+      cwd: project.dir,
+      sessionDir: project.sessionsDir,
+      modelRegistry: fakeRegistry,
+      modelOverride: fakeModel,
+    });
+
+    expect(discoverContextFiles).toHaveBeenCalled();
+  });
+
+  it("returns a maxTurns error when the cap fires but session.prompt resolves cleanly", async () => {
+    const project = await makeTempProject();
+    // Mocked prompt emits one turn_end then resolves without throwing.
+    // With maxTurns=1 the cap triggers session.abort() but prompt still resolves —
+    // exercises the happy-path branch that previously dropped the error.
+    const agent = withMaxTurns(makeTestAgent(project.dir), 1);
+
+    const result = await runAgent({
+      agentConfig: agent,
+      task: "Do it",
+      cwd: project.dir,
+      sessionDir: project.sessionsDir,
+      modelRegistry: fakeRegistry,
+      modelOverride: fakeModel,
+    });
+
+    expect(result.error).toBeDefined();
+    expect(result.error).toContain("maxTurns");
+    expect(result.error).toContain("1");
   });
 
   it("writes a JSONL transcript per agent run under sessionDir/agents/<id>/", async () => {

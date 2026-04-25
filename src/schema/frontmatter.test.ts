@@ -1,3 +1,4 @@
+import { Value } from "@sinclair/typebox/value";
 import { describe, expect, it } from "vitest";
 import { AgentFrontmatterSchema, PI_DEFAULT_TOOLS, validateFrontmatter } from "./frontmatter.js";
 import { safeParse } from "./parse.js";
@@ -113,5 +114,33 @@ describe("validateFrontmatter", () => {
 
   it("exposes pi-default tool list for consumers", () => {
     expect(PI_DEFAULT_TOOLS).toEqual(["read", "bash", "edit", "write"]);
+  });
+});
+
+describe("frontmatter additions", () => {
+  it("accepts disallowedTools", () => {
+    const fm = {
+      name: "x",
+      description: "y",
+      color: "#abcdef",
+      icon: "i",
+      disallowedTools: ["write", "edit"],
+    };
+    expect(Value.Check(AgentFrontmatterSchema, fm)).toBe(true);
+  });
+
+  it("accepts maxTurns positive integer", () => {
+    const fm = { name: "x", description: "y", color: "#abcdef", icon: "i", maxTurns: 10 };
+    expect(Value.Check(AgentFrontmatterSchema, fm)).toBe(true);
+  });
+
+  it("rejects maxTurns zero or negative", () => {
+    const fm = { name: "x", description: "y", color: "#abcdef", icon: "i", maxTurns: 0 };
+    expect(Value.Check(AgentFrontmatterSchema, fm)).toBe(false);
+  });
+
+  it("accepts inheritContextFiles boolean", () => {
+    const fm = { name: "x", description: "y", color: "#abcdef", icon: "i", inheritContextFiles: false };
+    expect(Value.Check(AgentFrontmatterSchema, fm)).toBe(true);
   });
 });

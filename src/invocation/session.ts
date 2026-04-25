@@ -3,6 +3,7 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import type { Api, Model } from "@mariozechner/pi-ai";
 import {
+  type AgentSessionEvent,
   createAgentSession,
   DefaultResourceLoader,
   getAgentDir,
@@ -35,7 +36,8 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
   } = params;
   const fm = agentConfig.frontmatter;
 
-  const sharedContextContents = sharedContext ?? (await discoverContextFiles({ cwd }));
+  const sharedContextContents =
+    sharedContext ?? (fm.inheritContextFiles === false ? [] : await discoverContextFiles({ cwd }));
 
   const assemblyCtx: AssemblyContext = {
     agentConfig,
@@ -54,6 +56,7 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
 
   const { builtinTools, customTools: builtCustomTools } = buildAgentTools({
     tools: fm.tools,
+    disallowedTools: fm.disallowedTools,
     cwd,
   });
   const allCustomTools = [...builtinTools, ...builtCustomTools, ...(customTools ?? [])];
@@ -92,9 +95,21 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
   });
 
   const tracker = createMetricsTracker();
-  session.subscribe((event) => {
+  // pi's SDK does not natively cap turns. Track turn_end events ourselves and
+  // abort the session once fm.maxTurns is reached.
+  let maxTurnsReached = false;
+  session.subscribe((event: AgentSessionEvent) => {
     tracker.handle(event);
     onUpdate?.(tracker.snapshot());
+    if (
+      fm.maxTurns !== undefined &&
+      !maxTurnsReached &&
+      event.type === "turn_end" &&
+      tracker.snapshot().turns >= fm.maxTurns
+    ) {
+      maxTurnsReached = true;
+      session.abort().catch(() => {});
+    }
   });
 
   if (signal?.aborted) {
@@ -110,7 +125,14 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
   try {
     await session.prompt(task);
   } catch (err) {
-    const error = signal?.aborted ? "Agent execution cancelled" : String(err);
+    let error: string;
+    if (maxTurnsReached) {
+      error = `Agent stopped: maxTurns (${fm.maxTurns}) reached`;
+    } else if (signal?.aborted) {
+      error = "Agent execution cancelled";
+    } else {
+      error = String(err);
+    }
     return { output: "", metrics: tracker.snapshot(), error };
   } finally {
     signal?.removeEventListener("abort", abortHandler);
@@ -121,6 +143,17 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
     output = extractAssistantOutput(session.messages);
   } finally {
     session.dispose();
+  }
+
+  // If maxTurns triggered abort but session.prompt() still resolved cleanly
+  // (e.g. abort landed between turns), surface the cap as an error so callers
+  // can distinguish "finished" from "capped".
+  if (maxTurnsReached) {
+    return {
+      output,
+      metrics: tracker.snapshot(),
+      error: `Agent stopped: maxTurns (${fm.maxTurns}) reached`,
+    };
   }
 
   return { output, metrics: tracker.snapshot() };
