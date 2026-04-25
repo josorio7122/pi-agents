@@ -6,7 +6,7 @@ export type AgentConfig = Readonly<{
   frontmatter: AgentFrontmatter;
   systemPrompt: string;
   filePath: string;
-  source: "project" | "user";
+  source: "project" | "user" | "built-in";
 }>;
 
 export type DiscoveryDiagnostic = Readonly<{
@@ -23,7 +23,7 @@ export function validateAgent(params: {
   readonly frontmatter: unknown;
   readonly body: string;
   readonly filePath: string;
-  readonly source: "project" | "user";
+  readonly source: "project" | "user" | "built-in";
 }): ValidateResult {
   const diagnostics: DiscoveryDiagnostic[] = [];
 

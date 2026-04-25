@@ -4,6 +4,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { getAgentDir } from "@mariozechner/pi-coding-agent";
+import { loadBuiltInAgents } from "./built-in/index.js";
 import { formatAgentList } from "./command/agents-command.js";
 import { extractFrontmatter } from "./discovery/extract-frontmatter.js";
 import { scanForAgentFiles } from "./discovery/scanner.js";
@@ -62,8 +63,9 @@ async function discoverAgents(params: { readonly projectDir: string; readonly us
   const userResult = await loadAgentsFromDir({ dir: params.userDir, source: "user" });
   const projectResult = await loadAgentsFromDir({ dir: params.projectDir, source: "project" });
 
-  // Project overrides user (same name)
+  // Override precedence: built-in < user < project
   const agentMap = new Map<string, AgentConfig>();
+  for (const a of loadBuiltInAgents()) agentMap.set(a.frontmatter.name, a);
   for (const a of userResult.agents) agentMap.set(a.frontmatter.name, a);
   for (const a of projectResult.agents) agentMap.set(a.frontmatter.name, a);
 

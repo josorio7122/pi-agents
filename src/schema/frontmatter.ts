@@ -23,6 +23,18 @@ export const AgentFrontmatterSchema = Type.Object(
     // Skills — optional; absent → inherit parent's default discovery;
     //                    present (even empty) → use ONLY these paths.
     skills: Type.Optional(Type.Array(Type.String({ pattern: "^/" }), { minItems: 0 })),
+
+    // Denied tool names. Intersected with `tools` (or pi's default).
+    disallowedTools: Type.Optional(Type.Array(Type.String({ minLength: 1 }))),
+
+    // Hard cap on LLM turns; absent → no cap (pi default).
+    maxTurns: Type.Optional(Type.Integer({ minimum: 1 })),
+
+    // When false, skip discovery of shared context files (AGENTS.md etc.).
+    inheritContextFiles: Type.Optional(Type.Boolean()),
+
+    // Run agent inside an isolated git worktree under <cwd>/worktrees/<agentId>.
+    isolation: Type.Optional(Type.Union([Type.Literal("worktree")])),
   },
   { additionalProperties: false },
 );

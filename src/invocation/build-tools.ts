@@ -23,12 +23,15 @@ function buildBuiltin(name: string, cwd: string): ExecutableTool | undefined {
 
 export function buildAgentTools(params: {
   readonly tools: readonly string[] | undefined;
+  readonly disallowedTools?: readonly string[] | undefined;
   readonly cwd: string;
 }): Readonly<{
   builtinTools: ReadonlyArray<ExecutableTool>;
   customTools: ReadonlyArray<ExecutableTool>;
 }> {
-  const effective = params.tools ?? PI_DEFAULT_TOOLS;
+  const allow = params.tools ?? PI_DEFAULT_TOOLS;
+  const deny = new Set(params.disallowedTools ?? []);
+  const effective = allow.filter((name) => !deny.has(name));
   const builtinTools = effective
     .map((name) => buildBuiltin(name, params.cwd))
     .filter((tool): tool is ExecutableTool => tool !== undefined);
