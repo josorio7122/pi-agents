@@ -1,3 +1,6 @@
+import { randomUUID } from "node:crypto";
+import { mkdirSync } from "node:fs";
+import { join } from "node:path";
 import type { Api, Model } from "@mariozechner/pi-ai";
 import {
   createAgentSession,
@@ -73,12 +76,16 @@ export async function runAgent(params: RunAgentParams): Promise<RunAgentResult> 
   // When we provide one, pi assumes it's initialized — skip this and getSkills() returns [].
   await resourceLoader.reload();
 
+  const agentId = randomUUID();
+  const agentSessionDir = join(sessionDir, "agents", agentId);
+  mkdirSync(agentSessionDir, { recursive: true });
+
   const { session } = await createAgentSession({
     cwd,
     model,
     tools: activeToolNames,
     customTools: allCustomTools,
-    sessionManager: SessionManager.inMemory(),
+    sessionManager: SessionManager.create(cwd, agentSessionDir),
     settingsManager: SettingsManager.inMemory({ compaction: { enabled: false } }),
     modelRegistry,
     resourceLoader,

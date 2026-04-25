@@ -1,4 +1,5 @@
-import { readdirSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 import type { Api, Model } from "@mariozechner/pi-ai";
 import type { ModelRegistry } from "@mariozechner/pi-coding-agent";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -25,6 +26,9 @@ type CreateSessionCall = Readonly<{
   model: Model<Api>;
   tools: ReadonlyArray<string>;
   customTools: ReadonlyArray<{ readonly name: string }>;
+  sessionManager: {
+    appendMessage: (message: unknown) => string;
+  };
 }>;
 
 const captured = {
@@ -68,13 +72,32 @@ vi.mock("@mariozechner/pi-coding-agent", async () => {
     createAgentSession: vi.fn().mockImplementation(async (opts: CreateSessionCall) => {
       captured.createSession.push(opts);
       const listeners: Array<(e: unknown) => void> = [];
+      const assistantMessage = {
+        role: "assistant" as const,
+        content: [{ type: "text" as const, text: "mocked assistant reply" }],
+        api: "anthropic",
+        provider: "faux",
+        model: "faux-model",
+        usage: {
+          input: 0,
+          output: 0,
+          cacheRead: 0,
+          cacheWrite: 0,
+          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+        },
+        stopReason: "stop" as const,
+        timestamp: Date.now(),
+      };
       return {
         session: {
-          messages: [{ role: "assistant", content: [{ type: "text", text: "mocked assistant reply" }] }],
+          messages: [assistantMessage],
           subscribe: (fn: (e: unknown) => void) => {
             listeners.push(fn);
           },
-          prompt: async () => {},
+          prompt: async () => {
+            // Drive the real SessionManager so it persists the JSONL transcript.
+            opts.sessionManager.appendMessage(assistantMessage);
+          },
           abort: async () => {},
           dispose: () => {},
         },
@@ -244,21 +267,24 @@ describe("runAgent (resourceLoader + model resolution)", () => {
     expect(captured.createSession).toHaveLength(0);
   });
 
-  it("writes no filesystem artifacts under sessionDir during a dispatch", async () => {
+  it("writes a JSONL transcript per agent run under sessionDir/agents/<id>/", async () => {
     const project = await makeTempProject();
     const agent = makeTestAgent(project.dir);
 
     await runAgent({
       agentConfig: agent,
-      task: "Do it",
+      task: "say hi",
       cwd: project.dir,
       sessionDir: project.sessionsDir,
       modelRegistry: fakeRegistry,
       modelOverride: fakeModel,
     });
 
-    // sessionsDir was created by makeTempProject, but nothing else should exist inside.
-    const entries = readdirSync(project.sessionsDir);
-    expect(entries).toEqual([]);
+    const agentsDir = join(project.sessionsDir, "agents");
+    expect(existsSync(agentsDir)).toBe(true);
+    const dirs = readdirSync(agentsDir);
+    expect(dirs.length).toBe(1);
+    const files = readdirSync(join(agentsDir, dirs[0]!));
+    expect(files.some((f) => f.endsWith(".jsonl"))).toBe(true);
   });
 });
