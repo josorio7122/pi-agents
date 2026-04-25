@@ -6,7 +6,7 @@ Agent layer specification for [pi](https://github.com/badlogic/pi-mono) — comp
 
 A minimal, opinionated way to define agents as `.md` files with YAML frontmatter. pi-agents delegates skill loading to pi's native [Agent Skills spec](https://agentskills.io/specification) implementation — the dispatched agent's system prompt carries a compact `<skills>` XML manifest, and the agent reads full skill bodies on demand via its `read` tool (progressive disclosure).
 
-Minimal frontmatter: 4 required fields + 3 optional. No filesystem ACL, no per-agent knowledge subsystem, no hand-rolled conversation log — pi does the heavy lifting.
+Minimal frontmatter: 4 required fields + 7 optional. No filesystem ACL, no per-agent knowledge subsystem, no hand-rolled conversation log — pi does the heavy lifting.
 
 ## Documentation
 
