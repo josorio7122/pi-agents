@@ -4,6 +4,31 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This project
 adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.2.0] — 2026-04-25
+
+Subagent parity — bring pi-agents in line with the per-invocation
+ergonomics expected of a first-class subagent system.
+
+- JSONL transcripts persist under `<sessionDir>/agents/<agentId>/`. One
+  line per conversation event (user turn, assistant turn, tool call,
+  tool result, metrics). Enables post-hoc inspection without re-running
+  the agent.
+- Frontmatter gains three optional fields:
+  - `disallowedTools` — list of tool names denied for this agent;
+    intersected with the resolved `tools` set.
+  - `maxTurns` — positive integer cap on LLM turns per invocation.
+  - `inheritContextFiles` — boolean; when `false`, skip discovery of
+    `AGENTS.md` and other shared context files.
+- Built-in agents `general-purpose` and `explore` ship with the package
+  and are always discoverable. User and project agents override by name.
+- Frontmatter `isolation: "worktree"` runs the agent in a freshly-created
+  git worktree under `<repoDir>/worktrees/<agentId>` on branch
+  `pi-agents/<agentId>`. Clean trees auto-removed on completion; dirty
+  trees preserved with their path/branch surfaced via the result.
+- Internal hardening: regression tests for abort signal propagation and
+  tool allowlist enforcement; `safeDispose` now swallows post-abort
+  cleanup errors so they don't mask the original failure.
+
 ## [0.1.0] — 2026-04-22
 
 Initial release.

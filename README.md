@@ -73,4 +73,6 @@ You are a code reviewer.
 
 `skills:` paths are absolute; when present, pi surfaces ONLY those skills to the agent (not the user's global ones). `read` is required in `tools:` whenever `skills:` is declared — pi-agents validates this at load time.
 
+pi-agents ships two built-in agents — `general-purpose` and `explore` — that are always available without any `.pi/agents/` setup. User or project agents with the same `name` override the built-in by name.
+
 See [docs/agent-example.md](docs/agent-example.md) for the full field reference and [docs/skills.md](docs/skills.md) for skill authoring.

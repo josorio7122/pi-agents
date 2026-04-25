@@ -54,6 +54,7 @@ This agent:
 - `disallowedTools` — list of tool names denied for this agent. Intersected with `tools` (or pi's default). Useful for "all tools except write/edit" read-only agents.
 - `maxTurns` — positive integer; agent loop stops after this many LLM turns. Defaults to pi's default (no cap) when omitted.
 - `inheritContextFiles` — boolean; when `false`, skip discovery of `AGENTS.md` and other shared context files. Use for read-only agents that don't need commit/lint guidelines.
+- `isolation` — when set to `"worktree"`, the agent runs in a freshly-created git worktree under `<repoDir>/worktrees/<agentId>`. Clean trees auto-removed; dirty trees preserved with path/branch surfaced via the result.
 
 ## pi tool reference
 
@@ -73,4 +74,4 @@ When `tools:` is omitted, the agent receives pi's active default set: `["read", 
 
 ## Schema reference
 
-See [`src/schema/frontmatter.ts`](../src/schema/frontmatter.ts) for the authoritative schema. Required: `name`, `description`, `color`, `icon`. Optional: `model`, `tools`, `skills`, `disallowedTools`, `maxTurns`, `inheritContextFiles`.
+See [`src/schema/frontmatter.ts`](../src/schema/frontmatter.ts) for the authoritative schema. Required: `name`, `description`, `color`, `icon`. Optional: `model`, `tools`, `skills`, `disallowedTools`, `maxTurns`, `inheritContextFiles`, `isolation`.
