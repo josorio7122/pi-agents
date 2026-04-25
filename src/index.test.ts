@@ -107,13 +107,14 @@ describe("pi-agents extension", () => {
 
     expect(mock.registeredTools.length).toBe(1);
     const infoNotifs = notifications.filter((n) => n.level === "info");
-    expect(infoNotifs.some((n) => n.msg.includes("1 agent(s) loaded"))).toBe(true);
+    // 1 project agent (scout) + 2 built-ins (general-purpose, explore) = 3
+    expect(infoNotifs.some((n) => n.msg.includes("3 agent(s) loaded"))).toBe(true);
   });
 
-  it("does not register tool when no agents found", async () => {
+  it("registers tool with built-ins when no project/user agents found", async () => {
     const { default: extension } = await import("./index.js");
     const dirs = makeTempDirs();
-    // No agents written
+    // No agents written — built-ins should still register
 
     const mock = createMockPi();
     extension(mock.pi as never);
@@ -129,7 +130,87 @@ describe("pi-agents extension", () => {
 
     await mock.handlers.session_start!({}, ctx);
 
-    expect(mock.registeredTools.length).toBe(0);
+    // Built-ins always available
+    expect(mock.registeredTools.length).toBe(1);
+  });
+
+  it("loads built-in agents when no project/user agents exist", async () => {
+    const { default: extension } = await import("./index.js");
+    const dirs = makeTempDirs();
+
+    const mock = createMockPi();
+    extension(mock.pi as never);
+
+    const notifications: Array<{ msg: string; level: string }> = [];
+    const ctx = {
+      cwd: dirs.root,
+      modelRegistry: { find: () => undefined },
+      ui: {
+        notify: (msg: string, level: string) => notifications.push({ msg, level }),
+      },
+    };
+
+    await mock.handlers.session_start!({}, ctx);
+
+    // Built-ins (general-purpose, explore) should be loaded even with no user/project agents
+    expect(mock.registeredTools.length).toBe(1);
+    const infoNotifs = notifications.filter((n) => n.level === "info");
+    // 2 built-ins: general-purpose + explore
+    expect(infoNotifs.some((n) => n.msg.includes("2 agent(s) loaded"))).toBe(true);
+  });
+
+  it("project agent overrides built-in agent of same name", async () => {
+    const { default: extension } = await import("./index.js");
+    const dirs = makeTempDirs();
+
+    // Override the built-in `explore` with a project-level version
+    const overrideContent = `---
+name: explore
+description: "Project-level override of explore"
+color: "#ff0000"
+icon: "🟥"
+tools:
+  - read
+---
+
+# Explore Override
+
+This is a project override.
+`;
+    writeFileSync(join(dirs.projectAgents, "explore.md"), overrideContent);
+
+    const mock = createMockPi();
+    extension(mock.pi as never);
+
+    let capturedAgents: ReadonlyArray<unknown> = [];
+    const notifications: Array<{ msg: string; level: string }> = [];
+    const ctx = {
+      cwd: dirs.root,
+      modelRegistry: { find: () => undefined },
+      ui: {
+        notify: (msg: string, level: string) => notifications.push({ msg, level }),
+      },
+    };
+
+    await mock.handlers.session_start!({}, ctx);
+
+    // Use the agents command handler to capture loaded agents (clean way to inspect them)
+    const agentsCmd = mock.registeredCommands.agents as { handler: (args: unknown, ctx: unknown) => Promise<void> };
+    await agentsCmd.handler(undefined, {
+      ui: {
+        notify: (msg: string) => {
+          capturedAgents = [msg];
+        },
+      },
+    });
+
+    // Verify project explore won by checking source via re-import + scan: simpler approach
+    // is to verify that "Project-level override" appears in the formatted list (description match)
+    expect(String(capturedAgents[0])).toContain("Project-level override");
+    // And the built-in description should NOT appear for explore
+    expect(String(capturedAgents[0])).not.toContain("Fast read-only codebase exploration");
+    // general-purpose built-in should still be listed (not overridden)
+    expect(String(capturedAgents[0])).toContain("general-purpose");
   });
 
   it("emits diagnostics for invalid agents", async () => {
@@ -153,6 +234,7 @@ describe("pi-agents extension", () => {
 
     const errorNotifs = notifications.filter((n) => n.level === "error");
     expect(errorNotifs.length).toBeGreaterThan(0);
-    expect(mock.registeredTools.length).toBe(0);
+    // Built-ins still register even when a project agent is invalid (built-ins always load)
+    expect(mock.registeredTools.length).toBe(1);
   });
 });
