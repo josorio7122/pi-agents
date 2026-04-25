@@ -1,9 +1,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import type { Api, Model } from "@mariozechner/pi-ai";
-import type { ModelRegistry } from "@mariozechner/pi-coding-agent";
 import { describe, expect, it, vi } from "vitest";
-import { makeTempProject, makeTestAgent } from "./session-test-helpers.js";
+import { fakeModel, fakeRegistry, makeTempProject, makeTestAgent } from "./session-test-helpers.js";
 
 /**
  * Regression guard: when a frontmatter restricts `tools` to a subset (e.g.
@@ -28,31 +26,8 @@ const captured = {
 
 vi.mock("@mariozechner/pi-coding-agent", async () => {
   const actual = await vi.importActual<typeof import("@mariozechner/pi-coding-agent")>("@mariozechner/pi-coding-agent");
-  class FakeResourceLoader {
-    getSystemPrompt() {
-      return "";
-    }
-    getExtensions() {
-      return { extensions: [], errors: [], runtime: {} };
-    }
-    getSkills() {
-      return { skills: [], diagnostics: [] };
-    }
-    getPrompts() {
-      return { prompts: [], diagnostics: [] };
-    }
-    getThemes() {
-      return { themes: [], diagnostics: [] };
-    }
-    getAgentsFiles() {
-      return { agentsFiles: [] };
-    }
-    getAppendSystemPrompt() {
-      return [];
-    }
-    extendResources() {}
-    async reload() {}
-  }
+  const { createFakeResourceLoader } = await import("./session-test-helpers.js");
+  const FakeResourceLoader = createFakeResourceLoader();
   return {
     ...actual,
     DefaultResourceLoader: FakeResourceLoader,
@@ -91,11 +66,6 @@ vi.mock("../prompt/assembly.js", () => ({
 vi.mock("../common/context-files.js", () => ({
   discoverContextFiles: vi.fn().mockResolvedValue([]),
 }));
-
-const fakeModel = { provider: "faux", id: "faux-model" } as unknown as Model<Api>;
-const fakeRegistry = {
-  find: (_provider: string, _id: string) => fakeModel,
-} as unknown as ModelRegistry;
 
 // Note: build-tools.ts is NOT mocked here — we want the real builder to run
 // so we exercise the actual allow/deny filtering logic.

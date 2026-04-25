@@ -39,27 +39,21 @@ function toTaskArray(value: unknown) {
 }
 
 export function detectMode(params: Record<string, unknown>): ModeOrError {
-  const candidates: Array<() => AgentMode> = [];
-  if (typeof params.agent === "string" && typeof params.task === "string") {
-    candidates.push(() => ({ mode: "single", agent: String(params.agent), task: String(params.task) }));
-  }
-  if (Array.isArray(params.tasks) && params.tasks.length > 0) {
-    candidates.push(() => ({ mode: "parallel", tasks: toTaskArray(params.tasks) }));
-  }
-  if (Array.isArray(params.chain) && params.chain.length > 0) {
-    candidates.push(() => ({ mode: "chain", chain: toTaskArray(params.chain) }));
-  }
-  if (candidates.length === 0) {
+  const hasSingle = typeof params.agent === "string" && typeof params.task === "string";
+  const hasParallel = Array.isArray(params.tasks) && params.tasks.length > 0;
+  const hasChain = Array.isArray(params.chain) && params.chain.length > 0;
+
+  const count = (hasSingle ? 1 : 0) + (hasParallel ? 1 : 0) + (hasChain ? 1 : 0);
+  if (count === 0) {
     return { error: "No mode specified. Provide agent+task, tasks array, or chain array." };
   }
-  if (candidates.length > 1) {
+  if (count > 1) {
     return { error: "Multiple modes specified. Provide exactly one of: agent+task, tasks, or chain." };
   }
-  const build = candidates[0];
-  if (!build) {
-    return { error: "No mode specified. Provide agent+task, tasks array, or chain array." };
-  }
-  return build();
+
+  if (hasSingle) return { mode: "single", agent: String(params.agent), task: String(params.task) };
+  if (hasParallel) return { mode: "parallel", tasks: toTaskArray(params.tasks) };
+  return { mode: "chain", chain: toTaskArray(params.chain) };
 }
 
 export async function executeParallel(params: {

@@ -4,6 +4,23 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This project
 adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+- Built-in `explore` agent now inherits the parent session's model
+  (previously pinned to `anthropic/claude-haiku-4-5`). Both built-ins
+  (`general-purpose` and `explore`) defer model choice to the caller.
+- `maxTurns` enforcement clarified: pi has no native turn cap, so
+  pi-agents enforces it at the extension level via `session.subscribe`
+  on `turn_end` events. Regression test added for the throw path
+  (when `session.prompt()` rejects mid-turn after the cap fires).
+- Internal cleanup: extracted shared test mocks
+  (`createFakeResourceLoader`, `fakeModel`, `fakeRegistry`) to
+  `session-test-helpers.ts`; removed orphan `extractFilePath` helper;
+  simplified `detectMode` and inlined single-use render helpers.
+- Doc drift fix: `README.md` and `docs/architecture.md` updated to
+  reflect typebox (not Zod), 7 optional frontmatter fields, and
+  current file layout.
+
 ## [0.2.0] — 2026-04-25
 
 Subagent parity — bring pi-agents in line with the per-invocation

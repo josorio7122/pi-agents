@@ -1,6 +1,6 @@
 # Architecture
 
-pi-agents is a Pi extension that turns `.md` files into composable AI agents with sandboxed tool access, self-updating knowledge, and multi-agent orchestration.
+pi-agents is a Pi extension that turns `.md` files into composable AI agents with progressive skill disclosure and multi-agent orchestration.
 
 ## Pipeline
 
@@ -17,17 +17,18 @@ Scans `.pi/agents/` (project) and `~/.pi/agents/` (user) for `.md` files. Each f
 | File | Purpose |
 |------|---------|
 | `scanner.ts` | Finds `.md` files in agent directories |
-| `parser.ts` | Splits frontmatter from body, validates structure |
-| `validator.ts` | Zod validation + cross-field checks (role-tool constraints) |
+| `extract-frontmatter.ts` | Splits YAML frontmatter from body (primary parser) |
+| `parser.ts` | Compat re-export shim around `extract-frontmatter.ts` for downstream consumers |
+| `validator.ts` | typebox validation + cross-field checks (read-tool requirement when skills declared) |
 
 ### Schema (`src/schema/`)
 
-Zod schemas define the contract for agent configuration and runtime data.
+typebox (`@sinclair/typebox`) schemas define the contract for agent configuration. Cross-field validation rules live inline alongside the schema.
 
 | File | Purpose |
 |------|---------|
-| `frontmatter.ts` | The minimal agent schema (4 required: name, description, color, icon; 3 optional: model, tools, skills) |
-| `validation.ts` | Frontmatter validation rules (e.g., read-tool requirement when skills are declared) |
+| `frontmatter.ts` | The minimal agent schema (4 required: `name`, `description`, `color`, `icon`; 7 optional: `model`, `tools`, `skills`, `disallowedTools`, `maxTurns`, `inheritContextFiles`, `isolation`) plus `validateFrontmatter` for cross-field checks (e.g., `read`-tool requirement when `skills` is declared) |
+| `parse.ts` | `safeParse` helper wrapping `Value.Check` / `Value.Errors` for ergonomic typebox validation |
 
 ### Invocation (`src/invocation/`)
 
@@ -100,10 +101,9 @@ No code changes required. The frontmatter schema in `src/schema/frontmatter.ts` 
 
 ## Key Design Decisions
 
-- **Functional core, impure shell** — domain logic is pure functions; I/O lives at the edges (session, conversation-log)
+- **Functional core, impure shell** — domain logic is pure functions; I/O lives at the edges (session, scanner)
 - **Zero classes** — factory functions with closures for stateful behavior
-- **Zod at boundaries** — frontmatter and conversation entries validated at parse time
+- **typebox at boundaries** — frontmatter validated at parse time
 - **Domain checks at execution time** — not at tool creation time, so paths are resolved against the actual CWD
 - **Abort signal propagation** — `RunAgentParams` accepts `signal?: AbortSignal`; session wires `signal.addEventListener('abort', () => session.abort())` for in-flight cancellation; parallel/chain loops check `signal.aborted` before dispatching new tasks
-- **Knowledge tools are separate from generic write/edit** — prevents accidental writes outside knowledge scope
 - **Truncation preserves head** — agent output capped at 2000 lines / 50KB before returning to parent context

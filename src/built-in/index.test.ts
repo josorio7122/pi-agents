@@ -21,6 +21,12 @@ describe("built-in agents", () => {
     expect(explore?.frontmatter.inheritContextFiles).toBe(false);
   });
 
+  it("explore inherits parent model (no pin)", () => {
+    const agents = loadBuiltInAgents();
+    const explore = agents.find((a) => a.frontmatter.name === "explore");
+    expect(explore?.frontmatter.model).toBeUndefined();
+  });
+
   it("general-purpose has no tool restrictions (inherits defaults)", () => {
     const gp = loadBuiltInAgents().find((a) => a.frontmatter.name === "general-purpose");
     expect(gp?.frontmatter.tools).toBeUndefined();

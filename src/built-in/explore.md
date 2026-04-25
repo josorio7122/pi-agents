@@ -3,7 +3,6 @@ name: explore
 description: Fast read-only codebase exploration — find files, search code, read selectively. Returns structured findings only. No edits.
 color: "#36f9f6"
 icon: 🔍
-model: anthropic/claude-haiku-4-5
 tools:
   - read
   - bash
