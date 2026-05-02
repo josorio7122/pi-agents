@@ -1,8 +1,8 @@
-# Subagent Parity Implementation Plan
+# Subagent Dispatch Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development to implement this plan task-by-task. After each task: dispatch superpowers:code-reviewer subagent, then code-simplifier subagent, then run e2e if applicable. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Bring pi-agents to feature parity and reliability with claude-code's subagent model, in pi-native form (sync-only, permissionless, typebox).
+**Goal:** Bring pi-agents to production-quality subagent dispatch: JSONL transcripts, schema additions (`disallowedTools`, `maxTurns`, `inheritContextFiles`, `isolation`), built-in agent presets (`general-purpose`, `explore`), worktree isolation, and runtime hardening (abort propagation, tool allowlist enforcement). Pi-native throughout: sync-only, permissionless, typebox.
 
 **Architecture:** Five additive changes to existing pipeline (Discovery → Validation → Invocation → Rendering). No new stages. Each change is an extension of the existing schema, the existing `runAgent`, or the existing build-tools step. JSONL transcripts swap an in-memory `SessionManager` for a disk-backed one — zero API change.
 
@@ -12,7 +12,7 @@
 - Per-agent MCP, per-agent hooks (pi has no native MCP/hooks layer)
 - Permission modes (pi is permissionless by design)
 - Background/async agents, fork, mailbox, resumable agents (deferred — not load-bearing)
-- Plan / verification / statusline-setup / claude-code-guide built-ins (CC-specific or task-system-coupled)
+- Plan / verification / statusline-setup / claude-code-guide built-ins (those are upstream-specific or coupled to a task system not yet ported)
 
 ---
 
@@ -1077,7 +1077,7 @@ git push -u origin feat/subagent-parity
 - [ ] **Step 2: Open PR**
 
 ```bash
-gh pr create --title "feat: subagent parity (transcripts, schema fields, built-ins, worktree, hardening)" --body "$(cat <<'EOF'
+gh pr create --title "feat: subagent dispatch (transcripts, schema fields, built-ins, worktree, hardening)" --body "$(cat <<'EOF'
 ## Summary
 - JSONL subagent transcripts (per-agent dir under `sessionDir/agents/<id>/`)
 - Frontmatter additions: `disallowedTools`, `maxTurns`, `inheritContextFiles`, `isolation: worktree`
