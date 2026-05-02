@@ -35,9 +35,9 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.14",
-    "@mariozechner/pi-ai": "*",
-    "@mariozechner/pi-coding-agent": "*",
-    "@mariozechner/pi-tui": "*",
+    "@mariozechner/pi-ai": "^0.72.0",
+    "@mariozechner/pi-coding-agent": "^0.72.0",
+    "@mariozechner/pi-tui": "^0.72.0",
     "@sinclair/typebox": "*",
     "@types/node": "^25.6.0",
     "lint-staged": "^16.4.0",
